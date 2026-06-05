@@ -191,14 +191,26 @@ function App() {
 
     // Already logged in but ended up on auth page — go to canvas
     if (activePage === 'auth' && user) {
-      return <AirCanvas initialDrawing={editingDrawing} onDrawingCleared={() => setEditingDrawing(null)} />
+      return (
+        <AirCanvas 
+          initialDrawing={editingDrawing} 
+          onDrawingCleared={() => setEditingDrawing(null)} 
+          onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
+        />
+      )
     }
 
     switch (activePage) {
       case 'landing':
         return <LandingPage onStartCanvas={() => navigateTo('canvas')} />
       case 'canvas':
-        return <AirCanvas initialDrawing={editingDrawing} onDrawingCleared={() => setEditingDrawing(null)} />
+        return (
+          <AirCanvas 
+            initialDrawing={editingDrawing} 
+            onDrawingCleared={() => setEditingDrawing(null)} 
+            onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
+          />
+        )
       case 'gallery':
         return <Gallery onEditDrawing={(drawing) => {
           setEditingDrawing(drawing)

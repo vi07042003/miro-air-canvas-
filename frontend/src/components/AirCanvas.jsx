@@ -260,10 +260,11 @@ const drawShapePath = (ctx, shapeType, startX, startY, drawX, drawY) => {
   }
 }
 
-export default function AirCanvas({ initialDrawing, onDrawingCleared }) {
+export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved }) {
   const canvasRef = useRef(null)
   const videoRef = useRef(null)
   const handCanvasRef = useRef(null)
+  const loadedDrawingIdRef = useRef(null)
   
   // DOM element references for 60 FPS direct updates (no React re-renders)
   const coordsTextRef = useRef(null)
@@ -282,6 +283,15 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared }) {
   const [saveTitle, setSaveTitle] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [dbMessage, setDbMessage] = useState('')
+
+  // Keep saveTitle synced with initialDrawing
+  useEffect(() => {
+    if (initialDrawing && initialDrawing.title) {
+      setSaveTitle(initialDrawing.title)
+    } else {
+      setSaveTitle('')
+    }
+  }, [initialDrawing])
   const [toolDropdownOpen, setToolDropdownOpen] = useState(false)
   const [colorDropdownOpen, setColorDropdownOpen] = useState(false)
 
@@ -393,26 +403,31 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared }) {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     
-    // Fill canvas with default background color
-    ctx.fillStyle = '#0a0518'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    
-    if (initialDrawing && initialDrawing.image_data) {
-      console.log("Loading image data from initialDrawing...")
-      const img = new Image()
-      img.onload = () => {
-        console.log("Image loaded successfully! Drawing on canvas...")
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    const initialId = initialDrawing ? initialDrawing.id : null
+    if (initialId !== loadedDrawingIdRef.current) {
+      loadedDrawingIdRef.current = initialId
+      
+      // Fill canvas with default background color
+      ctx.fillStyle = '#0a0518'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      if (initialDrawing && initialDrawing.image_data) {
+        console.log("Loading image data from initialDrawing...")
+        const img = new Image()
+        img.onload = () => {
+          console.log("Image loaded successfully! Drawing on canvas...")
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          saveCanvasState()
+        }
+        img.onerror = (err) => {
+          console.error("Failed to load image data URL:", err)
+        }
+        img.src = initialDrawing.image_data
+      } else {
+        console.log("No initial drawing provided, saving default state.")
+        // Save initial state
         saveCanvasState()
       }
-      img.onerror = (err) => {
-        console.error("Failed to load image data URL:", err)
-      }
-      img.src = initialDrawing.image_data
-    } else {
-      console.log("No initial drawing provided, saving default state.")
-      // Save initial state
-      saveCanvasState()
     }
 
     // Start particle trail animation loop
@@ -1120,9 +1135,15 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared }) {
     const dataUrl = canvas.toDataURL('image/png')
     const token = localStorage.getItem('token')
 
+    const isUpdate = !!initialDrawing
+    const url = isUpdate 
+      ? `${BACKEND_URL}/api/drawings/${initialDrawing.id}`
+      : `${BACKEND_URL}/api/drawings`
+    const method = isUpdate ? 'PUT' : 'POST'
+
     try {
-      const res = await fetch(`${BACKEND_URL}/api/drawings`, {
-        method: 'POST',
+      const res = await fetch(url, {
+        method: method,
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -1134,15 +1155,24 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared }) {
       })
 
       if (res.ok) {
-        setDbMessage('Sketch saved successfully!')
-        setSaveTitle('')
+        const data = await res.json()
+        setDbMessage(isUpdate ? 'Sketch updated successfully!' : 'Sketch saved successfully!')
+        
+        if (onDrawingSaved) {
+          onDrawingSaved(data)
+        }
+        
+        if (!isUpdate) {
+          setSaveTitle('')
+        }
+        
         setTimeout(() => {
           setShowSaveModal(false)
           setDbMessage('')
         }, 2000)
       } else {
         const data = await res.json()
-        setDbMessage(data.detail || 'Failed to save sketch')
+        setDbMessage(data.detail || (isUpdate ? 'Failed to update sketch' : 'Failed to save sketch'))
       }
     } catch (err) {
       setDbMessage('Server connection error')
@@ -1450,7 +1480,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared }) {
       {showSaveModal && (
         <div style={styles.modalBg} onClick={() => setShowSaveModal(false)}>
           <div className="glass-panel-heavy" style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <h2 style={styles.modalTitle}>Save Sketch to Database</h2>
+            <h2 style={styles.modalTitle}>{initialDrawing ? 'Update Sketch in Database' : 'Save Sketch to Database'}</h2>
             <form onSubmit={handleSaveToGallery} style={styles.modalForm}>
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Sketch Title</label>
@@ -1475,7 +1505,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared }) {
                   Cancel
                 </button>
                 <button type="submit" className="glass-btn glass-btn-primary" disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Sketch'}
+                  {saving ? (initialDrawing ? 'Updating...' : 'Saving...') : (initialDrawing ? 'Update Sketch' : 'Save Sketch')}
                 </button>
               </div>
             </form>

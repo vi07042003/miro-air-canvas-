@@ -136,6 +136,9 @@ class DrawingBase(pydantic.BaseModel):
 class DrawingCreate(DrawingBase):
     pass
 
+class DrawingUpdate(DrawingBase):
+    pass
+
 class DrawingResponse(DrawingBase):
     id: int
     created_at: str
@@ -276,6 +279,37 @@ def save_drawing(
         user_id=current_user.id
     )
     db.add(db_drawing)
+    db.commit()
+    db.refresh(db_drawing)
+    
+    return DrawingResponse(
+        id=db_drawing.id,
+        title=db_drawing.title,
+        image_data=db_drawing.image_data,
+        created_at=db_drawing.created_at.strftime("%Y-%m-%d %H:%M:%S")
+    )
+
+@app.put("/api/drawings/{drawing_id}", response_model=DrawingResponse)
+def update_drawing(
+    drawing_id: int,
+    drawing_in: DrawingUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """Update an existing drawing belonging to the active user."""
+    db_drawing = db.query(models.Drawing).filter(
+        models.Drawing.id == drawing_id,
+        models.Drawing.user_id == current_user.id
+    ).first()
+    
+    if not db_drawing:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Drawing not found or access denied"
+        )
+    
+    db_drawing.title = drawing_in.title
+    db_drawing.image_data = drawing_in.image_data
     db.commit()
     db.refresh(db_drawing)
     
