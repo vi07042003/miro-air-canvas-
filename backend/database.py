@@ -37,6 +37,9 @@ def init_db():
     from models import Base
     try:
         Base.metadata.create_all(bind=engine)
+        # Safe migration: add profile_picture column to users table if not exists
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_picture TEXT;"))
         print("[SUCCESS] Database tables ready.")
     except Exception as e:
         print(f"[ERROR] Failed to initialize database: {e}")

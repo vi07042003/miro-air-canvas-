@@ -1,0 +1,21 @@
+services:
+  backend:
+    develop:
+      watch:
+        - path: ./backend
+          action: sync
+          target: /app
+          ignore:
+            - ./backend/__pycache__/
+            - ./backend/venv/
+            - ./backend/air_canvas.db
+
+  frontend:
+    develop:
+      watch:
+        - path: ./frontend
+          action: sync
+          target: /app
+          ignore:
+            - ./frontend/node_modules/
+            - ./frontend/dist/

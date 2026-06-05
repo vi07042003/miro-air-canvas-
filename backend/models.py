@@ -11,6 +11,7 @@ class User(Base):
     username = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    profile_picture = Column(Text, nullable=True)
 
     # Establish one-to-many relationship with Drawing
     drawings = relationship("Drawing", back_populates="user", cascade="all, delete-orphan")

@@ -33,9 +33,19 @@ fi
 if [ -n "$DOCKER_COMPOSE_CMD" ]; then
   echo -e "${GREEN}[INFO] Docker and Docker Compose detected!${NC}"
   echo -e "${GREEN}[INFO] Launching AeroCanvas with Docker Compose...${NC}"
+  echo -e "${YELLOW}[TIP] If you need to force a rebuild (e.g. after changing package.json or requirements.txt), run: ./run.sh --build${NC}"
+  echo -e "${YELLOW}[TIP] To use Docker Compose Watch for real-time development sync, run: ./run.sh --watch${NC}"
   echo
-  # Start Docker Compose services
-  $DOCKER_COMPOSE_CMD up --build
+
+  if [ "$1" == "--build" ]; then
+    $DOCKER_COMPOSE_CMD up --build
+  elif [ "$1" == "--watch" ]; then
+    $DOCKER_COMPOSE_CMD -f docker-compose.yml -f docker-compose.dev.yml up --watch
+  else
+    # Run without --build to avoid registry connection/certificate issues.
+    # Docker compose will still build automatically if local images do not exist.
+    $DOCKER_COMPOSE_CMD up
+  fi
 else
   echo -e "${YELLOW}[WARNING] Docker / Docker Compose was not found.${NC}"
   echo -e "${YELLOW}[WARNING] To run with Docker (recommended for Linux), please install Docker Engine / Desktop.${NC}"

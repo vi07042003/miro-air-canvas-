@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from typing import List, Dict
+from typing import List, Dict, Optional
 import pydantic
 import os
 import hashlib
@@ -117,6 +117,17 @@ class UserResponseSchema(pydantic.BaseModel):
     id: int
     username: str
     token: str
+    profile_picture: Optional[str] = None
+
+class ProfileUpdateSchema(pydantic.BaseModel):
+    username: str
+    password: Optional[str] = None
+    profile_picture: Optional[str] = None
+
+class ProfileResponseSchema(pydantic.BaseModel):
+    username: str
+    token: str
+    profile_picture: Optional[str] = None
 
 class DrawingBase(pydantic.BaseModel):
     title: str
@@ -171,7 +182,7 @@ def register(user_in: UserAuthSchema, db: Session = Depends(database.get_db)):
     db.refresh(db_user)
 
     token = generate_token(db_user.username, db_user.id)
-    return UserResponseSchema(id=db_user.id, username=db_user.username, token=token)
+    return UserResponseSchema(id=db_user.id, username=db_user.username, token=token, profile_picture=db_user.profile_picture)
 
 @app.post("/api/auth/login", response_model=UserResponseSchema)
 def login(user_in: UserAuthSchema, db: Session = Depends(database.get_db)):
@@ -186,7 +197,53 @@ def login(user_in: UserAuthSchema, db: Session = Depends(database.get_db)):
         )
 
     token = generate_token(db_user.username, db_user.id)
-    return UserResponseSchema(id=db_user.id, username=db_user.username, token=token)
+    return UserResponseSchema(id=db_user.id, username=db_user.username, token=token, profile_picture=db_user.profile_picture)
+
+@app.post("/api/auth/profile", response_model=ProfileResponseSchema)
+def update_profile(
+    profile_in: ProfileUpdateSchema,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    """Update user profile name and/or password."""
+    new_username = profile_in.username.strip()
+    if not new_username or len(new_username) < 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username must be at least 3 characters long"
+        )
+    
+    # Check if username is taken by another user
+    existing_user = db.query(models.User).filter(
+        models.User.username == new_username, 
+        models.User.id != current_user.id
+    ).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username is already taken"
+        )
+    
+    current_user.username = new_username
+    
+    if profile_in.password:
+        new_password = profile_in.password
+        if len(new_password) < 6:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 6 characters long"
+            )
+        current_user.password_hash = hash_password(new_password)
+        
+    if profile_in.profile_picture is not None:
+        current_user.profile_picture = profile_in.profile_picture
+
+    db.commit()
+    db.refresh(current_user)
+    
+    # Generate new token with updated username
+    new_token = generate_token(current_user.username, current_user.id)
+    return ProfileResponseSchema(username=current_user.username, token=new_token, profile_picture=current_user.profile_picture)
 
 # Drawings Scoped to User
 @app.get("/api/drawings", response_model=List[DrawingResponse])

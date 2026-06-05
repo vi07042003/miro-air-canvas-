@@ -1,8 +1,8 @@
-﻿import React, { useState, useEffect } from 'react'
-import { Image, Download, Trash2, Eye, Calendar, X } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Image, Download, Trash2, Eye, Calendar, X, Edit } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 
-export default function Gallery() {
+export default function Gallery({ onEditDrawing }) {
   const [drawings, setDrawings] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedDrawing, setSelectedDrawing] = useState(null)
@@ -135,6 +135,17 @@ export default function Gallery() {
               </div>
               <div style={styles.cardActions}>
                 <button 
+                  className="glass-btn glass-btn-primary" 
+                  style={{ ...styles.actionBtn, marginRight: 'auto' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEditDrawing(drawing)
+                  }}
+                >
+                  <Edit size={14} />
+                  <span>Edit</span>
+                </button>
+                <button 
                   className="glass-btn" 
                   style={{ ...styles.actionBtn, ...styles.deleteBtn }}
                   onClick={(e) => handleDelete(drawing.id, e)}
@@ -170,13 +181,26 @@ export default function Gallery() {
             </div>
 
             <div style={styles.modalFooter}>
-              <button 
-                className="glass-btn glass-btn-primary" 
-                onClick={(e) => handleDownload(selectedDrawing, e)}
-              >
-                <Download size={16} />
-                <span>Download High-Res</span>
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button 
+                  className="glass-btn glass-btn-primary" 
+                  onClick={(e) => handleDownload(selectedDrawing, e)}
+                >
+                  <Download size={16} />
+                  <span>Download High-Res</span>
+                </button>
+                <button 
+                  className="glass-btn" 
+                  style={{ background: 'rgba(255, 255, 255, 0.05)', borderColor: 'var(--glass-border)' }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEditDrawing(selectedDrawing)
+                  }}
+                >
+                  <Edit size={16} />
+                  <span>Resume Sketch</span>
+                </button>
+              </div>
               <button 
                 className="glass-btn glass-btn-danger" 
                 style={styles.modalDeleteBtn}

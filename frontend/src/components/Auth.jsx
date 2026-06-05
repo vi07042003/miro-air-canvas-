@@ -40,7 +40,7 @@ export default function Auth({ onLoginSuccess }) {
 
       const data = await res.json()
       if (res.ok) {
-        onLoginSuccess(data.username, data.token)
+        onLoginSuccess(data.username, data.token, data.profile_picture)
       } else {
         setError(data.detail || 'Authentication failed')
       }
