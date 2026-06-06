@@ -260,6 +260,353 @@ const drawShapePath = (ctx, shapeType, startX, startY, drawX, drawY) => {
   }
 }
 
+// 3D Wireframe Canvas Projection & Drawing Math Helpers
+const project3DPoint = (x, y, z, rx, ry, zoom, width, height) => {
+  // Rotate around Y axis
+  const cosY = Math.cos(ry);
+  const sinY = Math.sin(ry);
+  const x1 = x * cosY - z * sinY;
+  const z1 = x * sinY + z * cosY;
+
+  // Rotate around X axis
+  const cosX = Math.cos(rx);
+  const sinX = Math.sin(rx);
+  const y2 = y * cosX - z1 * sinX;
+  const z2 = y * sinX + z1 * cosX;
+
+  // Perspective projection
+  const fov = 700;
+  const cameraZ = 700 / zoom;
+  const scaleProj = fov / (fov + z2 + cameraZ);
+  
+  const baseScale = 2.0;
+  
+  const screenX = (width / 2) + x1 * scaleProj * baseScale * zoom;
+  const screenY = (height / 2) + y2 * scaleProj * baseScale * zoom;
+
+  return { x: screenX, y: screenY, z: z2 };
+};
+
+const unprojectPoint = (sx, sy, rx, ry, zoom, width, height) => {
+  const fov = 700;
+  const cameraZ = 700 / zoom;
+  const baseScale = 2.0;
+  const gridY = 100; // Snap shape placement to grid floor plane
+
+  const dx = (sx - width / 2) / (baseScale * zoom);
+  const dy = (sy - height / 2) / (baseScale * zoom);
+
+  const cosX = Math.cos(rx);
+  const sinX = Math.sin(rx);
+  const cosY = Math.cos(ry);
+  const sinY = Math.sin(ry);
+
+  const C = fov + gridY * sinX + cameraZ;
+  const denom = dy * cosX + fov * sinX;
+  
+  // Avoid division by zero
+  const z1 = Math.abs(denom) > 0.001 
+    ? (fov * gridY * cosX - dy * C) / denom 
+    : 0;
+
+  const z2 = gridY * sinX + z1 * cosX;
+  const scaleProj = fov / (fov + z2 + cameraZ);
+  const x1 = dx / scaleProj;
+
+  const x = x1 * cosY + z1 * sinY;
+  const z = -x1 * sinY + z1 * cosY;
+
+  return { x, y: gridY, z };
+};
+
+const drawViewportGrid = (ctx, rx, ry, zoom, width, height) => {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+  ctx.lineWidth = 1;
+  const gridY = 100; // Place grid floor at standard baseline
+  
+  for (let x = -350; x <= 350; x += 50) {
+    ctx.beginPath();
+    if (x === 0) {
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.lineWidth = 1.5;
+    } else {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1;
+    }
+    const pStart = project3DPoint(x, gridY, -350, rx, ry, zoom, width, height);
+    const pEnd = project3DPoint(x, gridY, 350, rx, ry, zoom, width, height);
+    ctx.moveTo(pStart.x, pStart.y);
+    ctx.lineTo(pEnd.x, pEnd.y);
+    ctx.stroke();
+  }
+  
+  for (let z = -350; z <= 350; z += 50) {
+    ctx.beginPath();
+    if (z === 0) {
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
+      ctx.lineWidth = 1.5;
+    } else {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1;
+    }
+    const pStart = project3DPoint(-350, gridY, z, rx, ry, zoom, width, height);
+    const pEnd = project3DPoint(350, gridY, z, rx, ry, zoom, width, height);
+    ctx.moveTo(pStart.x, pStart.y);
+    ctx.lineTo(pEnd.x, pEnd.y);
+    ctx.stroke();
+  }
+  ctx.restore();
+};
+
+const drawWireframeCanvasBox = (ctx, rx, ry, zoom, width, height) => {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(139, 92, 246, 0.25)'; // Sleek neon violet frame matching Miro aesthetics
+  ctx.lineWidth = 1.5;
+  
+  const hW = 350; // half width
+  const hH = 200; // half height
+  const hD = 350; // half depth
+  
+  // 8 vertices of the wireframe bounding box
+  const vertices = [
+    { x: -hW, y: -hH, z: -hD },
+    { x: hW, y: -hH, z: -hD },
+    { x: hW, y: hH, z: -hD },
+    { x: -hW, y: hH, z: -hD },
+    { x: -hW, y: -hH, z: hD },
+    { x: hW, y: -hH, z: hD },
+    { x: hW, y: hH, z: hD },
+    { x: -hW, y: hH, z: hD }
+  ];
+  
+  // Project vertices
+  const proj = vertices.map(v => project3DPoint(v.x, v.y, v.z, rx, ry, zoom, width, height));
+  
+  // 12 edges
+  const edges = [
+    [0, 1], [1, 2], [2, 3], [3, 0], // Back face
+    [4, 5], [5, 6], [6, 7], [7, 4], // Front face
+    [0, 4], [1, 5], [2, 6], [3, 7]  // Connecting segments
+  ];
+  
+  ctx.beginPath();
+  edges.forEach(([s, e]) => {
+    ctx.moveTo(proj[s].x, proj[s].y);
+    ctx.lineTo(proj[e].x, proj[e].y);
+  });
+  ctx.stroke();
+  
+  // Draw corner labels for style
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.font = '9px monospace';
+  ctx.fillText("3D CANVAS LIMITS", proj[0].x + 10, proj[0].y + 15);
+  ctx.restore();
+};
+
+const drawAxisHelper = (ctx, rx, ry, zoom, width, height) => {
+  const cornerX = 70;
+  const cornerY = 80;
+  const axisLen = 35;
+  const pCenter = { x: cornerX, y: cornerY };
+  
+  const projectAxis = (ax, ay, az) => {
+    const cosY = Math.cos(ry);
+    const sinY = Math.sin(ry);
+    const x1 = ax * cosY - az * sinY;
+    const z1 = ax * sinY + az * cosY;
+    const cosX = Math.cos(rx);
+    const sinX = Math.sin(rx);
+    const y2 = ay * cosX - z1 * sinX;
+    return {
+      x: cornerX + x1 * axisLen,
+      y: cornerY + y2 * axisLen
+    };
+  };
+  
+  const pX = projectAxis(1, 0, 0);
+  const pY = projectAxis(0, -1, 0);
+  const pZ = projectAxis(0, 0, 1);
+  
+  ctx.save();
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(pCenter.x, pCenter.y);
+  ctx.lineTo(pX.x, pX.y);
+  ctx.stroke();
+  ctx.fillStyle = '#ef4444';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillText('X', pX.x + 3, pX.y + 3);
+  
+  ctx.strokeStyle = '#3b82f6';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(pCenter.x, pCenter.y);
+  ctx.lineTo(pY.x, pY.y);
+  ctx.stroke();
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillText('Y', pY.x + 3, pY.y + 3);
+  
+  ctx.strokeStyle = '#10b981';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(pCenter.x, pCenter.y);
+  ctx.lineTo(pZ.x, pZ.y);
+  ctx.stroke();
+  ctx.fillStyle = '#10b981';
+  ctx.fillText('Z', pZ.x + 3, pZ.y + 3);
+  
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.arc(pCenter.x, pCenter.y, 3, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.restore();
+};
+
+const getMesh = (type, size) => {
+  const vertices = [];
+  const edges = [];
+  
+  if (type === 'cube') {
+    const s = size;
+    vertices.push({x: -s, y: -s, z: -s});
+    vertices.push({x: s, y: -s, z: -s});
+    vertices.push({x: s, y: s, z: -s});
+    vertices.push({x: -s, y: s, z: -s});
+    vertices.push({x: -s, y: -s, z: s});
+    vertices.push({x: s, y: -s, z: s});
+    vertices.push({x: s, y: s, z: s});
+    vertices.push({x: -s, y: s, z: s});
+    
+    edges.push([0, 1], [1, 2], [2, 3], [3, 0]);
+    edges.push([4, 5], [5, 6], [6, 7], [7, 4]);
+    edges.push([0, 4], [1, 5], [2, 6], [3, 7]);
+  } else if (type === 'pyramid') {
+    const w = size;
+    const h = size * 1.5;
+    vertices.push({x: -w, y: h/2, z: -w});
+    vertices.push({x: w, y: h/2, z: -w});
+    vertices.push({x: w, y: h/2, z: w});
+    vertices.push({x: -w, y: h/2, z: w});
+    vertices.push({x: 0, y: -h/2, z: 0});
+    
+    edges.push([0, 1], [1, 2], [2, 3], [3, 0]);
+    edges.push([0, 4], [1, 4], [2, 4], [3, 4]);
+  } else if (type === 'cylinder') {
+    const r = size;
+    const h = size * 1.8;
+    const segments = 12;
+    for (let i = 0; i < segments; i++) {
+      const angle = (i * 2 * Math.PI) / segments;
+      vertices.push({x: r * Math.cos(angle), y: -h/2, z: r * Math.sin(angle)});
+      vertices.push({x: r * Math.cos(angle), y: h/2, z: r * Math.sin(angle)});
+    }
+    for (let i = 0; i < segments; i++) {
+      const next = (i + 1) % segments;
+      edges.push([i*2, next*2]);
+      edges.push([i*2+1, next*2+1]);
+      edges.push([i*2, i*2+1]);
+    }
+  } else if (type === 'cone') {
+    const r = size;
+    const h = size * 1.8;
+    const segments = 12;
+    for (let i = 0; i < segments; i++) {
+      const angle = (i * 2 * Math.PI) / segments;
+      vertices.push({x: r * Math.cos(angle), y: h/2, z: r * Math.sin(angle)});
+    }
+    vertices.push({x: 0, y: -h/2, z: 0});
+    for (let i = 0; i < segments; i++) {
+      const next = (i + 1) % segments;
+      edges.push([i, next]);
+      edges.push([i, segments]);
+    }
+  } else if (type === 'sphere') {
+    const r = size;
+    const stacks = 6;
+    const slices = 10;
+    for (let lat = 0; lat <= stacks; lat++) {
+      const phi = (lat * Math.PI) / stacks;
+      for (let lon = 0; lon < slices; lon++) {
+        const theta = (lon * 2 * Math.PI) / slices;
+        vertices.push({
+          x: r * Math.sin(phi) * Math.cos(theta),
+          y: r * Math.cos(phi),
+          z: r * Math.sin(phi) * Math.sin(theta)
+        });
+      }
+    }
+    for (let lat = 0; lat < stacks; lat++) {
+      for (let lon = 0; lon < slices; lon++) {
+        const current = lat * slices + lon;
+        const nextLon = lat * slices + ((lon + 1) % slices);
+        const nextLat = (lat + 1) * slices + lon;
+        edges.push([current, nextLon]);
+        edges.push([current, nextLat]);
+      }
+    }
+  }
+  
+  return { vertices, edges };
+};
+
+const drawMesh = (ctx, mesh, pos, rotation, rx, ry, zoom, baseScale, width, height, color, opacity, size) => {
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = opacity;
+  ctx.lineWidth = size || 2;
+  
+  const projectedVertices = mesh.vertices.map(v => {
+    const wx = v.x + pos.x;
+    const wy = v.y + pos.y;
+    const wz = v.z + pos.z;
+    return project3DPoint(wx, wy, wz, rx, ry, zoom, width, height);
+  });
+  
+  mesh.edges.forEach(([s, e]) => {
+    if (projectedVertices[s] && projectedVertices[e]) {
+      ctx.beginPath();
+      ctx.moveTo(projectedVertices[s].x, projectedVertices[s].y);
+      ctx.lineTo(projectedVertices[e].x, projectedVertices[e].y);
+      ctx.stroke();
+    }
+  });
+  
+  ctx.fillStyle = color;
+  ctx.globalAlpha = opacity * 0.9;
+  projectedVertices.forEach(pv => {
+    ctx.fillRect(pv.x - 2, pv.y - 2, 4, 4);
+  });
+  
+  ctx.restore();
+};
+
+const draw3DStroke = (ctx, strokePoints, rx, ry, zoom, baseScale, width, height, color, opacity, size) => {
+  if (!strokePoints || strokePoints.length < 2) return;
+  
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = opacity;
+  ctx.lineWidth = size || 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  
+  ctx.beginPath();
+  let first = true;
+  strokePoints.forEach(pt => {
+    const proj = project3DPoint(pt.x, pt.y, pt.z, rx, ry, zoom, width, height);
+    if (first) {
+      ctx.moveTo(proj.x, proj.y);
+      first = false;
+    } else {
+      ctx.lineTo(proj.x, proj.y);
+    }
+  });
+  ctx.stroke();
+  ctx.restore();
+};
+
 export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved }) {
   const canvasRef = useRef(null)
   const videoRef = useRef(null)
@@ -318,6 +665,35 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const [undoStack, setUndoStack] = useState([])
   const [redoStack, setRedoStack] = useState([])
 
+  // 3D Canvas Mode States & Refs
+  const [canvasMode, setCanvasMode] = useState('2d') // '2d' or '3d'
+  const [active3DTool, setActive3DToolState] = useState('orbit') // 'orbit', '3d-freehand', '3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'
+  const [undoStack3D, setUndoStack3D] = useState([[]])
+  const [redoStack3D, setRedoStack3D] = useState([])
+
+  const active3DToolRef = useRef('orbit')
+  const camera3DRef = useRef({ rx: 0.5, ry: -0.5, scale: 1.0 })
+  const stamped3DObjectsRef = useRef([])
+  const active3DStrokeRef = useRef(null)
+  const previewPos3DRef = useRef({ x: 0, y: 0, z: 0 })
+  const previewSize3DRef = useRef(40)
+  const canvas2DDataRef = useRef(null)
+
+  const set3DTool = (t) => {
+    setActive3DToolState(t)
+    active3DToolRef.current = t
+  }
+
+  const save3DState = () => {
+    const snapshot = [...stamped3DObjectsRef.current]
+    setUndoStack3D(prev => {
+      const next = [...prev, snapshot]
+      if (next.length > 25) next.shift()
+      return next
+    })
+    setRedoStack3D([])
+  }
+
   // Tracking state refs (keeps drawing loop at 60 FPS without React re-render lags)
   const drawingRef = useRef({
     isDrawing: false,
@@ -331,7 +707,18 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     lastGestureMode: 'None',
     wasSizing: false,
     sizingRadius: 0,
-    waveHistory: []
+    waveHistory: [],
+    // 3D tracking states
+    isOrbiting: false,
+    isOrbitingGest: false,
+    lastOrbitX: 0,
+    lastOrbitY: 0,
+    orbitStartRx: 0,
+    orbitStartRy: 0,
+    isDrawing3D: false,
+    isSizing3D: false,
+    wasSizing3D: false,
+    sizingSize3D: 0
   })
 
   // Camera settings loaded from Backend
@@ -348,7 +735,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     brushOpacity,
     stabilizeEnabled,
     settings,
-    isCameraOn
+    isCameraOn,
+    canvasMode: '2d'
   })
 
   useEffect(() => {
@@ -359,9 +747,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       brushOpacity,
       stabilizeEnabled,
       settings,
-      isCameraOn
+      isCameraOn,
+      canvasMode
     }
-  }, [color, tool, brushSize, brushOpacity, stabilizeEnabled, settings, isCameraOn])
+  }, [color, tool, brushSize, brushOpacity, stabilizeEnabled, settings, isCameraOn, canvasMode])
 
   // Particles Trail System Reference
   const particlesRef = useRef([])
@@ -455,8 +844,44 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     setRedoStack([])
   }
 
+  // Handle Mode Switching
+  const handleModeSwitch = (newMode) => {
+    if (newMode === canvasMode) return
+    
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    
+    if (newMode === '3d') {
+      // Save 2D canvas content before going to 3D
+      canvas2DDataRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      setCanvasMode('3d')
+    } else {
+      // Going to 2D
+      setCanvasMode('2d')
+      // Restore 2D canvas content
+      setTimeout(() => {
+        const canvas2 = canvasRef.current
+        if (!canvas2) return
+        const ctx2 = canvas2.getContext('2d')
+        ctx2.lineCap = 'round'
+        ctx2.lineJoin = 'round'
+        if (canvas2DDataRef.current) {
+          ctx2.putImageData(canvas2DDataRef.current, 0, 0)
+        } else {
+          ctx2.fillStyle = '#0a0518'
+          ctx2.fillRect(0, 0, canvas2.width, canvas2.height)
+        }
+      }, 50)
+    }
+  }
+
   // Handle Undo
   const handleUndo = () => {
+    if (canvasMode === '3d') {
+      handleUndo3D()
+      return
+    }
     if (undoStack.length <= 1) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
@@ -469,8 +894,23 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     setUndoStack(prev => prev.slice(0, -1))
   }
 
+  const handleUndo3D = () => {
+    if (undoStack3D.length <= 1) return
+    
+    const current = undoStack3D[undoStack3D.length - 1]
+    setRedoStack3D(prev => [...prev, current])
+    
+    const previous = undoStack3D[undoStack3D.length - 2]
+    stamped3DObjectsRef.current = [...previous]
+    setUndoStack3D(prev => prev.slice(0, -1))
+  }
+
   // Handle Redo
   const handleRedo = () => {
+    if (canvasMode === '3d') {
+      handleRedo3D()
+      return
+    }
     if (redoStack.length === 0) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
@@ -482,21 +922,159 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     setRedoStack(prev => prev.slice(0, -1))
   }
 
+  const handleRedo3D = () => {
+    if (redoStack3D.length === 0) return
+    
+    const nextState = redoStack3D[redoStack3D.length - 1]
+    stamped3DObjectsRef.current = [...nextState]
+    
+    setUndoStack3D(prev => [...prev, nextState])
+    setRedoStack3D(prev => prev.slice(0, -1))
+  }
+
+  // Handle Clear
+  const handleClear = () => {
+    if (canvasMode === '3d') {
+      handleClear3D()
+      return
+    }
+    if (!window.confirm('Are you sure you want to clear the canvas?')) return
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#0a0518'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    saveCanvasState()
+  }
+
+  const handleClear3D = () => {
+    if (!window.confirm('Are you sure you want to clear the 3D canvas?')) return
+    stamped3DObjectsRef.current = []
+    save3DState()
+  }
+
+  // 3D Mouse event listeners
+  const handleMouseDown3D = (e, rect) => {
+    const sx = e.clientX - rect.left
+    const sy = e.clientY - rect.top
+    const tool3d = active3DToolRef.current
+    
+    if (tool3d === 'orbit') {
+      drawingRef.current.isOrbiting = true
+      drawingRef.current.orbitStartX = sx
+      drawingRef.current.orbitStartY = sy
+      drawingRef.current.orbitStartRx = camera3DRef.current.rx
+      drawingRef.current.orbitStartRy = camera3DRef.current.ry
+    } else if (tool3d === '3d-freehand') {
+      drawingRef.current.isDrawing3D = true
+      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, rect.width, rect.height)
+      active3DStrokeRef.current = [pt]
+    } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+      drawingRef.current.isSizing3D = true
+      drawingRef.current.sizingStartX = sx
+      drawingRef.current.sizingStartY = sy
+      
+      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, rect.width, rect.height)
+      previewPos3DRef.current = pt
+      previewSize3DRef.current = 20
+    }
+  }
+
+  const handleMouseMove3D = (e, rect) => {
+    const sx = e.clientX - rect.left
+    const sy = e.clientY - rect.top
+    const tool3d = active3DToolRef.current
+    const drawState = drawingRef.current
+    
+    if (drawState.isOrbiting) {
+      const dx = sx - drawState.orbitStartX
+      const dy = sy - drawState.orbitStartY
+      camera3DRef.current.ry = drawState.orbitStartRy + dx * 0.007
+      camera3DRef.current.rx = drawState.orbitStartRx - dy * 0.007
+    } else if (drawState.isDrawing3D) {
+      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, rect.width, rect.height)
+      active3DStrokeRef.current = [...(active3DStrokeRef.current || []), pt]
+    } else if (drawState.isSizing3D) {
+      const dx = sx - drawState.sizingStartX
+      const dy = sy - drawState.sizingStartY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      previewSize3DRef.current = Math.max(10, dist * 0.5)
+    } else {
+      if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+        const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, rect.width, rect.height)
+        previewPos3DRef.current = pt
+      }
+    }
+  }
+
+  const handleMouseUp3D = () => {
+    const drawState = drawingRef.current
+    
+    if (drawState.isOrbiting) {
+      drawState.isOrbiting = false
+    } else if (drawState.isDrawing3D) {
+      drawState.isDrawing3D = false
+      if (active3DStrokeRef.current && active3DStrokeRef.current.length > 1) {
+        stamped3DObjectsRef.current.push({
+          type: 'stroke',
+          points: active3DStrokeRef.current,
+          color: stateRef.current.color,
+          opacity: stateRef.current.brushOpacity,
+          size: stateRef.current.brushSize
+        })
+        save3DState()
+        // Auto-switch to orbit mode so user can immediately rotate/zoom!
+        set3DTool('orbit')
+      }
+      active3DStrokeRef.current = null
+    } else if (drawState.isSizing3D) {
+      drawState.isSizing3D = false
+      const toolType = active3DToolRef.current.replace('3d-', '')
+      stamped3DObjectsRef.current.push({
+        type: toolType,
+        pos: { ...previewPos3DRef.current },
+        size: previewSize3DRef.current,
+        color: stateRef.current.color,
+        opacity: stateRef.current.brushOpacity
+      })
+      save3DState()
+      // Auto-switch to orbit mode so user can immediately rotate/zoom!
+      set3DTool('orbit')
+    }
+  }
+
+  const handleWheel3D = (e) => {
+    if (canvasMode !== '3d') return
+    const zoomSpeed = 0.05
+    camera3DRef.current.scale = Math.max(0.1, Math.min(5.0, camera3DRef.current.scale - e.deltaY * zoomSpeed * 0.01))
+  }
+
   // Fallback mouse listeners
   const handleMouseDown = (e) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
+    
+    if (stateRef.current.canvasMode === '3d') {
+      handleMouseDown3D(e, rect)
+      return
+    }
+    
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    
     startDraw(x, y)
   }
 
   const handleMouseMove = (e) => {
-    if (!drawingRef.current.isDrawing) return
     const canvas = canvasRef.current
+    if (!canvas) return
     const rect = canvas.getBoundingClientRect()
+    
+    if (stateRef.current.canvasMode === '3d') {
+      handleMouseMove3D(e, rect)
+      return
+    }
+    
+    if (!drawingRef.current.isDrawing) return
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
     
@@ -506,6 +1084,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   }
 
   const handleMouseUp = () => {
+    if (stateRef.current.canvasMode === '3d') {
+      handleMouseUp3D()
+      return
+    }
     if (!drawingRef.current.isDrawing) return
     endDraw()
   }
@@ -647,15 +1229,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     saveCanvasState()
   }
 
-  // Clear Board
-  const handleClear = () => {
-    if (!window.confirm('Are you sure you want to clear the canvas?')) return
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#0a0518'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    saveCanvasState()
-  }
+
 
   // Particle System Logic
   const addParticles = (x, y, particleColor) => {
@@ -678,11 +1252,332 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
   }
 
+  const draw3DViewportOverlay = (ctx, rx, ry, scale, width, height) => {
+    ctx.save()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'
+    ctx.font = '11px monospace'
+    
+    // Top-left viewport status
+    ctx.fillText(`Viewport: Blender Perspective`, 20, 30)
+    ctx.fillText(`Grid Spacing: 50m`, 20, 46)
+    ctx.fillText(`Cam Orbit: rx=${rx.toFixed(2)} ry=${ry.toFixed(2)}`, 20, 62)
+    ctx.fillText(`Zoom: ${scale.toFixed(2)}x`, 20, 78)
+    
+    // Top-right viewport stats
+    ctx.fillText(`Objects: ${stamped3DObjectsRef.current.length}`, width - 110, 30)
+    ctx.fillText(`Mode: 3D Gesture Viewport`, width - 200, 46)
+    
+    ctx.restore()
+  }
+
+  const draw3DCanvas = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    
+    // Clear main canvas with dark viewport background
+    ctx.fillStyle = '#0a0518'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    
+    // Get current camera settings from Ref (safe for 60fps)
+    const { rx, ry, scale } = camera3DRef.current
+    
+    // Draw grid
+    drawViewportGrid(ctx, rx, ry, scale, canvas.width, canvas.height)
+    
+    // Draw Axis Helper (in top-left corner)
+    drawAxisHelper(ctx, rx, ry, scale, canvas.width, canvas.height)
+    
+    // Draw all stamped 3D objects
+    const stampedObjects = stamped3DObjectsRef.current
+    stampedObjects.forEach(obj => {
+      if (obj.type === 'stroke') {
+        draw3DStroke(ctx, obj.points, rx, ry, scale, 1.0, canvas.width, canvas.height, obj.color, obj.opacity, obj.size)
+      } else {
+        const mesh = getMesh(obj.type, obj.size)
+        drawMesh(ctx, mesh, obj.pos, null, rx, ry, scale, 1.0, canvas.width, canvas.height, obj.color, obj.opacity, 2)
+      }
+    })
+    
+    // Draw active 3D freehand stroke if drawing
+    const activeStroke = active3DStrokeRef.current
+    if (activeStroke && activeStroke.length > 0) {
+      draw3DStroke(ctx, activeStroke, rx, ry, scale, 1.0, canvas.width, canvas.height, stateRef.current.color, stateRef.current.brushOpacity, stateRef.current.brushSize)
+    }
+    
+    // Draw shape preview if placing a primitive
+    const tool3d = active3DToolRef.current
+    if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+      const shapeType = tool3d.replace('3d-', '')
+      const previewPos = previewPos3DRef.current
+      const previewSize = previewSize3DRef.current
+      
+      const mesh = getMesh(shapeType, previewSize)
+      drawMesh(ctx, mesh, previewPos, null, rx, ry, scale, 1.0, canvas.width, canvas.height, stateRef.current.color, 0.8, 2)
+      
+      // Label near preview
+      const proj = project3DPoint(previewPos.x, previewPos.y, previewPos.z, rx, ry, scale, canvas.width, canvas.height)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+      ctx.font = 'bold 11px monospace'
+      ctx.fillText(`${shapeType.toUpperCase()} (Pinch to size, Fist to stamp)`, proj.x - 70, proj.y - 12)
+    }
+    
+    // Viewport labels overlay
+    draw3DViewportOverlay(ctx, rx, ry, scale, canvas.width, canvas.height)
+  }
+
+  const process3DTracking = (landmarks, x, y, isIndexUp, isMiddleUp, hCtx, canvas) => {
+    const indexTip = landmarks[8]
+    const thumbTip = landmarks[4]
+    const drawState = drawingRef.current
+    const tool3d = active3DToolRef.current
+    
+    // Calculate pinch distance (index tip to thumb tip)
+    const pinchDist = Math.sqrt(
+      Math.pow(indexTip.x - thumbTip.x, 2) +
+      Math.pow(indexTip.y - thumbTip.y, 2)
+    )
+    
+    let currentMode = 'None'
+    
+    // Wave gesture detection for Eraser tool in 3D
+    const { color: currentColor, brushOpacity: currentBrushOpacity, brushSize: currentBrushSize } = stateRef.current
+    
+    if (tool3d === 'eraser' || (tool3d === 'orbit' && stateRef.current.tool === 'eraser')) {
+      const now = performance.now()
+      if (!drawState.waveHistory) {
+        drawState.waveHistory = []
+      }
+      drawState.waveHistory.push({ x, y, time: now })
+      drawState.waveHistory = drawState.waveHistory.filter(pt => now - pt.time < 1000)
+      
+      if (drawState.waveHistory.length > 10) {
+        let directionChanges = 0
+        let lastDirection = 0
+        let lastPeakX = drawState.waveHistory[0].x
+        const minAmplitude = 60
+        
+        for (let i = 1; i < drawState.waveHistory.length; i++) {
+          const currentX = drawState.waveHistory[i].x
+          const diff = currentX - lastPeakX
+          if (lastDirection === 0) {
+            if (Math.abs(diff) > minAmplitude) {
+              lastDirection = diff > 0 ? 1 : -1
+              lastPeakX = currentX
+            }
+          } else if (lastDirection === 1) {
+            if (diff < -minAmplitude) {
+              directionChanges++
+              lastDirection = -1
+              lastPeakX = currentX
+            } else if (currentX > lastPeakX) {
+              lastPeakX = currentX
+            }
+          } else if (lastDirection === -1) {
+            if (diff > minAmplitude) {
+              directionChanges++
+              lastDirection = 1
+              lastPeakX = currentX
+            } else if (currentX < lastPeakX) {
+              lastPeakX = currentX
+            }
+          }
+        }
+        
+        if (directionChanges >= 3) {
+          drawState.waveHistory = []
+          stamped3DObjectsRef.current = []
+          save3DState()
+          currentMode = 'Canvas Cleared'
+          
+          hCtx.fillStyle = 'rgba(239, 68, 68, 0.3)'
+          hCtx.fillRect(0, 0, hCtx.canvas.width, hCtx.canvas.height)
+          hCtx.fillStyle = '#ffffff'
+          hCtx.font = 'bold 20px sans-serif'
+          hCtx.fillText("👋 Wave Detected - 3D Scene Cleared!", hCtx.canvas.width / 2 - 190, hCtx.canvas.height / 2)
+        }
+      }
+    } else {
+      drawState.waveHistory = []
+    }
+    
+    if (currentMode === 'Canvas Cleared') {
+      if (drawState.lastGestureMode !== currentMode) {
+        drawState.lastGestureMode = currentMode
+        updateDOMGestureStatus(currentMode)
+      }
+      return
+    }
+
+    // Main 3D Gesture States:
+    // 1. Hover Mode: Index & Middle up
+    if (isIndexUp && isMiddleUp) {
+      drawState.wasSizing3D = false
+      
+      // Stop drawing if we were drawing
+      if (drawState.isDrawing3D) {
+        drawState.isDrawing3D = false
+        if (active3DStrokeRef.current && active3DStrokeRef.current.length > 1) {
+          stamped3DObjectsRef.current.push({
+            type: 'stroke',
+            points: active3DStrokeRef.current,
+            color: currentColor,
+            opacity: currentBrushOpacity,
+            size: currentBrushSize
+          })
+          save3DState()
+          set3DTool('orbit')
+        }
+        active3DStrokeRef.current = null
+      }
+      
+      if (tool3d === 'orbit') {
+        currentMode = '3D Orbit Rotate'
+        if (!drawState.isOrbitingGest) {
+          drawState.isOrbitingGest = true
+          drawState.lastOrbitX = x
+          drawState.lastOrbitY = y
+        } else {
+          const dx = x - drawState.lastOrbitX
+          const dy = y - drawState.lastOrbitY
+          camera3DRef.current.ry += dx * 0.007
+          camera3DRef.current.rx -= dy * 0.007
+          drawState.lastOrbitX = x
+          drawState.lastOrbitY = y
+        }
+      } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+        currentMode = '3D Placing Shape'
+        drawState.isOrbitingGest = false
+        previewPos3DRef.current = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
+      } else {
+        currentMode = 'Hover'
+        drawState.isOrbitingGest = false
+      }
+    }
+    // 2. Sizing / Zooming or Drawing: Index Up & Middle Down
+    else if (isIndexUp && !isMiddleUp) {
+      drawState.isOrbitingGest = false
+      
+      // Check for Pinch Gesture: Index & Thumb raised, and pinch distance is large
+      if (pinchDist > 0.05) {
+        if (drawState.isDrawing3D) {
+          drawState.isDrawing3D = false
+          if (active3DStrokeRef.current && active3DStrokeRef.current.length > 1) {
+            stamped3DObjectsRef.current.push({
+              type: 'stroke',
+              points: active3DStrokeRef.current,
+              color: currentColor,
+              opacity: currentBrushOpacity,
+              size: currentBrushSize
+            })
+            save3DState()
+          }
+          active3DStrokeRef.current = null
+        }
+        
+        if (tool3d === 'orbit') {
+          currentMode = '3D View Zooming'
+          camera3DRef.current.scale = Math.max(0.1, Math.min(5.0, pinchDist * 7.0))
+        } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+          currentMode = '3D Sizing Shape'
+          previewPos3DRef.current = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
+          previewSize3DRef.current = pinchDist * canvas.width * 0.4
+          
+          drawState.wasSizing3D = true
+          drawState.sizingSize3D = previewSize3DRef.current
+        }
+      } 
+      // Thumb tucked: lock position / draw freehand stroke
+      else {
+        if (tool3d === '3d-freehand') {
+          currentMode = '3D Drawing'
+          if (!drawState.isDrawing3D) {
+            drawState.isDrawing3D = true
+            const pt = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
+            active3DStrokeRef.current = [pt]
+          } else {
+            const pt = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
+            active3DStrokeRef.current = [...(active3DStrokeRef.current || []), pt]
+          }
+        } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+          if (drawState.wasSizing3D) {
+            currentMode = '3D Shape Size Locked'
+            previewPos3DRef.current = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
+          } else {
+            currentMode = '3D Placing Shape'
+            previewPos3DRef.current = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
+            previewSize3DRef.current = 40
+          }
+        }
+      }
+    }
+    // 3. Fist (No fingers up) - Stamp Shape or finish stroke
+    else {
+      drawState.isOrbitingGest = false
+      
+      if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+        if (drawState.wasSizing3D) {
+          const shapeType = tool3d.replace('3d-', '')
+          stamped3DObjectsRef.current.push({
+            type: shapeType,
+            pos: { ...previewPos3DRef.current },
+            size: drawState.sizingSize3D || 40,
+            color: currentColor,
+            opacity: currentBrushOpacity
+          })
+          save3DState()
+          
+          drawState.wasSizing3D = false
+          drawState.sizingSize3D = 0
+          currentMode = '3D Shape Stamped'
+          set3DTool('orbit')
+        } else {
+          currentMode = 'None'
+        }
+      } else if (tool3d === '3d-freehand') {
+        if (drawState.isDrawing3D) {
+          drawState.isDrawing3D = false
+          if (active3DStrokeRef.current && active3DStrokeRef.current.length > 1) {
+            stamped3DObjectsRef.current.push({
+              type: 'stroke',
+              points: active3DStrokeRef.current,
+              color: currentColor,
+              opacity: currentBrushOpacity,
+              size: currentBrushSize
+            })
+            save3DState()
+            set3DTool('orbit')
+          }
+          active3DStrokeRef.current = null
+          currentMode = '3D Stroke Complete'
+        } else {
+          currentMode = 'None'
+        }
+      } else {
+        currentMode = 'None'
+      }
+    }
+    
+    if (coordsTextRef.current) {
+      coordsTextRef.current.innerText = `(${Math.round(x)}, ${Math.round(y)})`
+    }
+    
+    if (drawState.lastGestureMode !== currentMode) {
+      drawState.lastGestureMode = currentMode
+      updateDOMGestureStatus(currentMode)
+    }
+  }
+
   // Background particle animator loop (keeps rendering smooth and distinct from drawings)
   const startParticlesAnimationLoop = () => {
     const loop = () => {
       updateAndDrawParticles()
       trackFps()
+      
+      if (stateRef.current.canvasMode === '3d') {
+        draw3DCanvas()
+      }
+      
       animationFrameIdRef.current = requestAnimationFrame(loop)
     }
     animationFrameIdRef.current = requestAnimationFrame(loop)
@@ -903,6 +1798,13 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       // Add visual particle movement trail behind active finger tip
       addParticles(x, y, currentColor)
 
+      if (stateRef.current.canvasMode === '3d') {
+        const isIndexUp = indexTip.y < indexPip.y
+        const isMiddleUp = middleTip.y < middlePip.y
+        process3DTracking(landmarks, x, y, isIndexUp, isMiddleUp, hCtx, canvas)
+        return
+      }
+
       let currentMode = 'None'
 
       // Eraser wave gesture detection
@@ -1074,8 +1976,26 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     } else {
       let currentMode = 'None'
       const drawState = drawingRef.current
-      if (drawState.isDrawing) {
-        endDraw()
+      if (stateRef.current.canvasMode === '3d') {
+        drawState.isOrbitingGest = false
+        if (drawState.isDrawing3D) {
+          drawState.isDrawing3D = false
+          if (active3DStrokeRef.current && active3DStrokeRef.current.length > 1) {
+            stamped3DObjectsRef.current.push({
+              type: 'stroke',
+              points: active3DStrokeRef.current,
+              color: stateRef.current.color,
+              opacity: stateRef.current.brushOpacity,
+              size: stateRef.current.brushSize
+            })
+            save3DState()
+          }
+          active3DStrokeRef.current = null
+        }
+      } else {
+        if (drawState.isDrawing) {
+          endDraw()
+        }
       }
       if (drawState.lastGestureMode !== currentMode) {
         drawState.lastGestureMode = currentMode
@@ -1212,11 +2132,30 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         </div>
 
         <div style={styles.actionButtons}>
-          <button className="glass-btn" onClick={handleUndo} disabled={undoStack.length <= 1} title="Undo last stroke">
+          <div style={styles.segmentedControl}>
+            <button 
+              style={canvasMode === '2d' ? styles.segmentedBtnActive : styles.segmentedBtn}
+              onClick={() => handleModeSwitch('2d')}
+              title="Switch to 2D Canvas"
+            >
+              <Palette size={14} />
+              <span>2D Canvas</span>
+            </button>
+            <button 
+              style={canvasMode === '3d' ? styles.segmentedBtnActive : styles.segmentedBtn}
+              onClick={() => handleModeSwitch('3d')}
+              title="Switch to 3D digital wireframe canvas"
+            >
+              <Box size={14} />
+              <span>3D Canvas</span>
+            </button>
+          </div>
+
+          <button className="glass-btn" onClick={handleUndo} disabled={canvasMode === '3d' ? undoStack3D.length <= 1 : undoStack.length <= 1} title="Undo last stroke/stamp">
             <Undo size={16} />
             <span>Undo</span>
           </button>
-          <button className="glass-btn" onClick={handleRedo} disabled={redoStack.length === 0} title="Redo last stroke">
+          <button className="glass-btn" onClick={handleRedo} disabled={canvasMode === '3d' ? redoStack3D.length === 0 : redoStack.length === 0} title="Redo last stroke/stamp">
             <Redo size={16} />
             <span>Redo</span>
           </button>
@@ -1228,7 +2167,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             <Download size={16} />
             <span>Download</span>
           </button>
-          <button className="glass-btn glass-btn-primary" onClick={() => setShowSaveModal(true)} title="Save to database">
+          <button className="glass-btn glass-btn-primary" onClick={() => setShowSaveModal(true)} title="Save to database" disabled={canvasMode === '3d'}>
             <Save size={16} />
             <span>Save to files</span>
           </button>
@@ -1240,158 +2179,314 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         <div style={styles.canvasColumn}>
           {/* Top Canvas Controls Panel */}
           <div className="glass-panel" style={styles.canvasControls}>
-            {/* Tool Selection Dropdown */}
-            <div 
-              style={styles.dropdownContainer}
-              onMouseLeave={() => setToolDropdownOpen(false)}
-            >
-              <button 
-                className="glass-btn" 
-                style={styles.controlDropdownBtn}
-                onClick={() => {
-                  setToolDropdownOpen(!toolDropdownOpen)
-                  setColorDropdownOpen(false)
-                }}
-              >
-                <RenderIcon iconName={getActiveToolIcon(tool)} size={16} />
-                <span style={{ margin: '0 8px 0 6px', fontWeight: '600' }}>{getActiveToolName(tool)}</span>
-                <ChevronDown size={14} />
-              </button>
-              
-              {toolDropdownOpen && (
-                <div className="glass-panel-heavy" style={styles.toolDropdownMenu}>
-                  {TOOL_GROUPS.map(group => (
-                    <div key={group.name} style={styles.dropdownGroup}>
-                      <div style={styles.dropdownGroupTitle}>{group.name}</div>
-                      <div style={styles.dropdownGroupGrid}>
-                        {group.tools.map(t => (
-                          <button
-                            key={t.id}
-                            className={`glass-btn dropdown-item ${tool === t.id ? 'glass-btn-active' : ''}`}
-                            style={styles.dropdownItemBtn}
-                            onClick={() => {
-                              setTool(t.id)
-                              setToolDropdownOpen(false)
+            {canvasMode === '3d' ? (
+              <>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.4)', textTransform: 'uppercase', marginRight: '6px' }}>3D Tools:</span>
+                  <button 
+                    className={`glass-btn ${active3DTool === 'orbit' ? 'glass-btn-active' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    onClick={() => set3DTool('orbit')}
+                    title="Orbit View: Drag mouse or raise index & middle fingers to rotate, scroll wheel or pinch to zoom"
+                  >
+                    <Crosshair size={14} />
+                    <span>Orbit View</span>
+                  </button>
+                  <button 
+                    className={`glass-btn ${active3DTool === '3d-freehand' ? 'glass-btn-active' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    onClick={() => set3DTool('3d-freehand')}
+                    title="3D Freehand Sketch: Drag mouse or raise index finger to sketch in 3D"
+                  >
+                    <Pencil size={14} />
+                    <span>3D Sketch</span>
+                  </button>
+                  <button 
+                    className={`glass-btn ${active3DTool === '3d-cube' ? 'glass-btn-active' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    onClick={() => set3DTool('3d-cube')}
+                    title="Cube Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <Box size={14} />
+                    <span>Cube</span>
+                  </button>
+                  <button 
+                    className={`glass-btn ${active3DTool === '3d-sphere' ? 'glass-btn-active' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    onClick={() => set3DTool('3d-sphere')}
+                    title="Sphere Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <CircleIcon size={14} />
+                    <span>Sphere</span>
+                  </button>
+                  <button 
+                    className={`glass-btn ${active3DTool === '3d-cylinder' ? 'glass-btn-active' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    onClick={() => set3DTool('3d-cylinder')}
+                    title="Cylinder Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <Box size={14} />
+                    <span>Cylinder</span>
+                  </button>
+                  <button 
+                    className={`glass-btn ${active3DTool === '3d-pyramid' ? 'glass-btn-active' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    onClick={() => set3DTool('3d-pyramid')}
+                    title="Pyramid Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <Triangle size={14} />
+                    <span>Pyramid</span>
+                  </button>
+                  <button 
+                    className={`glass-btn ${active3DTool === '3d-cone' ? 'glass-btn-active' : ''}`}
+                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    onClick={() => set3DTool('3d-cone')}
+                    title="Cone Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <Triangle size={14} />
+                    <span>Cone</span>
+                  </button>
+                </div>
+                
+                {/* Color Palette Dropdown */}
+                <div 
+                  style={{ ...styles.dropdownContainer, marginLeft: 'auto' }}
+                  onMouseLeave={() => setColorDropdownOpen(false)}
+                >
+                  <button 
+                    className="glass-btn" 
+                    style={styles.controlDropdownBtn}
+                    onClick={() => {
+                      setColorDropdownOpen(!colorDropdownOpen)
+                      setToolDropdownOpen(false)
+                    }}
+                  >
+                    <span style={{
+                      display: 'inline-block',
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: color,
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      boxShadow: `0 0 6px ${color}`,
+                      marginRight: '6px'
+                    }} />
+                    <span style={{ marginRight: '8px', fontWeight: '600' }}>Color</span>
+                    <ChevronDown size={14} />
+                  </button>
+
+                  {colorDropdownOpen && (
+                    <div className="glass-panel-heavy" style={styles.colorDropdownMenu}>
+                      <div style={styles.colorPaletteGrid}>
+                        {PRESET_COLORS.map(c => (
+                          <button 
+                            key={c}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              backgroundColor: c,
+                              border: color === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
+                              boxShadow: color === c ? `0 0 8px ${c}` : 'none',
+                              cursor: 'pointer',
+                              padding: 0
                             }}
-                          >
-                            <RenderIcon iconName={t.icon} size={14} />
-                            <span style={{ marginLeft: '6px' }}>{t.name}</span>
-                          </button>
+                            onClick={() => {
+                              setColor(c)
+                              setColorDropdownOpen(false)
+                            }}
+                          />
                         ))}
                       </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Custom:</span>
+                        <input 
+                          type="color" 
+                          value={color}
+                          onChange={(e) => setColor(e.target.value)}
+                          style={{
+                            border: 'none',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            background: 'none'
+                          }}
+                        />
+                      </div>
                     </div>
-                  ))}
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Color Palette Dropdown */}
-            <div 
-              style={styles.dropdownContainer}
-              onMouseLeave={() => setColorDropdownOpen(false)}
-            >
-              <button 
-                className="glass-btn" 
-                style={styles.controlDropdownBtn}
-                onClick={() => {
-                  setColorDropdownOpen(!colorDropdownOpen)
-                  setToolDropdownOpen(false)
-                }}
-              >
-                <span style={{
-                  display: 'inline-block',
-                  width: '14px',
-                  height: '14px',
-                  borderRadius: '50%',
-                  backgroundColor: color,
-                  border: '1px solid rgba(255,255,255,0.3)',
-                  boxShadow: `0 0 6px ${color}`,
-                  marginRight: '6px'
-                }} />
-                <span style={{ marginRight: '8px', fontWeight: '600' }}>Color</span>
-                <ChevronDown size={14} />
-              </button>
-
-              {colorDropdownOpen && (
-                <div className="glass-panel-heavy" style={styles.colorDropdownMenu}>
-                  <div style={styles.colorPaletteGrid}>
-                    {PRESET_COLORS.map(c => (
-                      <button 
-                        key={c}
-                        style={{
-                          width: '28px',
-                          height: '28px',
-                          borderRadius: '50%',
-                          backgroundColor: c,
-                          border: color === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
-                          boxShadow: color === c ? `0 0 8px ${c}` : 'none',
-                          cursor: 'pointer',
-                          padding: 0
-                        }}
-                        onClick={() => {
-                          setColor(c)
-                          setColorDropdownOpen(false)
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Custom:</span>
-                    <input 
-                      type="color" 
-                      value={color}
-                      onChange={(e) => setColor(e.target.value)}
-                      style={{
-                        border: 'none',
-                        width: '24px',
-                        height: '24px',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        background: 'none'
-                      }}
-                    />
-                  </div>
+                {/* Line size slider for 3D strokes */}
+                <div style={styles.inlineControl}>
+                  <span style={styles.inlineLabel}>Size: {brushSize}px</span>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="30" 
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                    style={styles.inlineSlider}
+                  />
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <>
+                {/* Tool Selection Dropdown */}
+                <div 
+                  style={styles.dropdownContainer}
+                  onMouseLeave={() => setToolDropdownOpen(false)}
+                >
+                  <button 
+                    className="glass-btn" 
+                    style={styles.controlDropdownBtn}
+                    onClick={() => {
+                      setToolDropdownOpen(!toolDropdownOpen)
+                      setColorDropdownOpen(false)
+                    }}
+                  >
+                    <RenderIcon iconName={getActiveToolIcon(tool)} size={16} />
+                    <span style={{ margin: '0 8px 0 6px', fontWeight: '600' }}>{getActiveToolName(tool)}</span>
+                    <ChevronDown size={14} />
+                  </button>
+                  
+                  {toolDropdownOpen && (
+                    <div className="glass-panel-heavy" style={styles.toolDropdownMenu}>
+                      {TOOL_GROUPS.map(group => (
+                        <div key={group.name} style={styles.dropdownGroup}>
+                          <div style={styles.dropdownGroupTitle}>{group.name}</div>
+                          <div style={styles.dropdownGroupGrid}>
+                            {group.tools.map(t => (
+                              <button
+                                key={t.id}
+                                className={`glass-btn dropdown-item ${tool === t.id ? 'glass-btn-active' : ''}`}
+                                style={styles.dropdownItemBtn}
+                                onClick={() => {
+                                  setTool(t.id)
+                                  setToolDropdownOpen(false)
+                                }}
+                              >
+                                <RenderIcon iconName={t.icon} size={14} />
+                                <span style={{ marginLeft: '6px' }}>{t.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-            {/* Brush Size Slider */}
-            <div style={styles.inlineControl}>
-              <span style={styles.inlineLabel}>Size: {brushSize}px</span>
-              <input 
-                type="range" 
-                min="1" 
-                max="100" 
-                value={brushSize}
-                onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                style={styles.inlineSlider}
-              />
-            </div>
+                {/* Color Palette Dropdown */}
+                <div 
+                  style={styles.dropdownContainer}
+                  onMouseLeave={() => setColorDropdownOpen(false)}
+                >
+                  <button 
+                    className="glass-btn" 
+                    style={styles.controlDropdownBtn}
+                    onClick={() => {
+                      setColorDropdownOpen(!colorDropdownOpen)
+                      setToolDropdownOpen(false)
+                    }}
+                  >
+                    <span style={{
+                      display: 'inline-block',
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      backgroundColor: color,
+                      border: '1px solid rgba(255,255,255,0.3)',
+                      boxShadow: `0 0 6px ${color}`,
+                      marginRight: '6px'
+                    }} />
+                    <span style={{ marginRight: '8px', fontWeight: '600' }}>Color</span>
+                    <ChevronDown size={14} />
+                  </button>
 
-            {/* Opacity Slider */}
-            <div style={styles.inlineControl}>
-              <span style={styles.inlineLabel}>Opacity: {Math.round(brushOpacity * 100)}%</span>
-              <input 
-                type="range" 
-                min="0.1" 
-                max="1.0" 
-                step="0.05"
-                value={brushOpacity}
-                onChange={(e) => setBrushOpacity(parseFloat(e.target.value))}
-                style={styles.inlineSlider}
-              />
-            </div>
+                  {colorDropdownOpen && (
+                    <div className="glass-panel-heavy" style={styles.colorDropdownMenu}>
+                      <div style={styles.colorPaletteGrid}>
+                        {PRESET_COLORS.map(c => (
+                          <button 
+                            key={c}
+                            style={{
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '50%',
+                              backgroundColor: c,
+                              border: color === c ? '2px solid #fff' : '1px solid rgba(255,255,255,0.2)',
+                              boxShadow: color === c ? `0 0 8px ${c}` : 'none',
+                              cursor: 'pointer',
+                              padding: 0
+                            }}
+                            onClick={() => {
+                              setColor(c)
+                              setColorDropdownOpen(false)
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Custom:</span>
+                        <input 
+                          type="color" 
+                          value={color}
+                          onChange={(e) => setColor(e.target.value)}
+                          style={{
+                            border: 'none',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            background: 'none'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-            {/* Stabilizer Toggle */}
-            <button 
-              className={`glass-btn ${stabilizeEnabled ? 'glass-btn-active' : ''}`}
-              style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
-              onClick={() => setStabilizeEnabled(!stabilizeEnabled)}
-              title="Enhance drawing stability and snap lines/rectangles to perfect orientations"
-            >
-              <Crosshair size={14} style={{ marginRight: '6px' }} />
-              <span>{stabilizeEnabled ? 'Stabilizer ON' : 'Stabilizer OFF'}</span>
-            </button>
+                {/* Brush Size Slider */}
+                <div style={styles.inlineControl}>
+                  <span style={styles.inlineLabel}>Size: {brushSize}px</span>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max="100" 
+                    value={brushSize}
+                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
+                    style={styles.inlineSlider}
+                  />
+                </div>
+
+                {/* Opacity Slider */}
+                <div style={styles.inlineControl}>
+                  <span style={styles.inlineLabel}>Opacity: {Math.round(brushOpacity * 100)}%</span>
+                  <input 
+                    type="range" 
+                    min="0.1" 
+                    max="1.0" 
+                    step="0.05"
+                    value={brushOpacity}
+                    onChange={(e) => setBrushOpacity(parseFloat(e.target.value))}
+                    style={styles.inlineSlider}
+                  />
+                </div>
+
+                {/* Stabilizer Toggle */}
+                <button 
+                  className={`glass-btn ${stabilizeEnabled ? 'glass-btn-active' : ''}`}
+                  style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                  onClick={() => setStabilizeEnabled(!stabilizeEnabled)}
+                  title="Enhance drawing stability and snap lines/rectangles to perfect orientations"
+                >
+                  <Crosshair size={14} style={{ marginRight: '6px' }} />
+                  <span>{stabilizeEnabled ? 'Stabilizer ON' : 'Stabilizer OFF'}</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Main Drawing Canvas Container */}
@@ -1405,6 +2500,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseUp}
+              onWheel={handleWheel3D}
             />
           </div>
         </div>
@@ -1460,18 +2556,51 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           </div>
 
           <div className="glass-panel" style={styles.helpCard}>
-            <h4 style={styles.helpTitle}>How to Draw in the Air:</h4>
-            <ul style={styles.helpList}>
-              <li>Ensure you are in a well-lit area.</li>
-              <li><strong>Draw Gesture</strong>: Raise only your <strong>index finger</strong>. A line will trail your finger tip (works for Paint Brush, Sharp Pencil, Highlighter, Spray Can, and Eraser).</li>
-              <li><strong>Hover Pointer Gesture</strong>: Raise both your <strong>index & middle fingers</strong> (like a 'V' peace sign) to move the pointer without drawing.</li>
-              <li><strong>Eraser Wave Gesture</strong>: Select the <strong>Eraser</strong> tool and wave your hand rapidly left and right to clear the canvas paint!</li>
-              <li><strong>Shape Sizing Gesture</strong>: When a shape is active (e.g., Rectangle, Triangle, Heart, Cloud, Moon, Cube, etc.), raise your <strong>index finger & thumb</strong>. Move them apart/together to change the size.</li>
-              <li><strong>Lock Size Gesture</strong>: Tuck your <strong>thumb</strong> back to lock the shape's size. You can move your finger around to position the shape preview.</li>
-              <li><strong>Stamp Shape Gesture</strong>: Close all your fingers (make a <strong>fist</strong>) to stamp the shape onto the canvas!</li>
-              <li><strong>Tools & Colors Dropdown</strong>: Use the top bar dropdowns to select from 20+ shapes, customize colors, adjust size/opacity, and toggle stabilizer.</li>
-              <li>You can also click/drag on the canvas using your mouse as a fallback!</li>
-            </ul>
+            {canvasMode === '3d' ? (
+              <>
+                <h4 style={styles.helpTitle}>How to Build 3D Models in the Air:</h4>
+                <ul style={styles.helpList}>
+                  <li>Ensure you are in a well-lit area.</li>
+                  <li><strong>Orbit View Tool</strong>:
+                    <ul style={{ paddingLeft: '14px', listStyleType: 'circle', display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '3px' }}>
+                      <li><strong>Rotate View</strong>: Raise both <strong>index & middle fingers</strong> (Hover) and move them left/right/up/down to orbit the camera!</li>
+                      <li><strong>Zoom Camera</strong>: Raise <strong>index finger & thumb</strong> (Pinch) and spread them apart or pinch together to zoom in or out!</li>
+                    </ul>
+                  </li>
+                  <li><strong>3D Primitive Shapes (Cube, Sphere, Cylinder, Pyramid, Cone)</strong>:
+                    <ul style={{ paddingLeft: '14px', listStyleType: 'circle', display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '3px' }}>
+                      <li><strong>Hover/Move Shape</strong>: Raise <strong>index & middle fingers</strong> to move the active shape preview in 3D space!</li>
+                      <li><strong>Resize Shape</strong>: Raise <strong>index finger & thumb</strong> and move them apart/together to adjust the shape's size.</li>
+                      <li><strong>Lock Shape Size</strong>: Tuck your <strong>thumb</strong> back (only index up) to lock the shape's size. Move your finger to position the shape.</li>
+                      <li><strong>Stamp Shape into Scene</strong>: Close all your fingers (make a <strong>fist</strong>) to stamp the shape onto the wireframe canvas!</li>
+                    </ul>
+                  </li>
+                  <li><strong>3D Freehand Sketching Tool</strong>:
+                    <ul style={{ paddingLeft: '14px', listStyleType: 'circle', display: 'flex', flexDirection: 'column', gap: '3px', marginTop: '3px' }}>
+                      <li><strong>Draw 3D Stroke</strong>: Raise only your <strong>index finger</strong> and draw in thin air to create beautiful 3D wireframe sketches!</li>
+                      <li><strong>Lift Finger</strong>: Raise both <strong>index & middle fingers</strong> or close your fist to stop drawing.</li>
+                    </ul>
+                  </li>
+                  <li><strong>Clear Viewport</strong>: Select <strong>Eraser</strong> or press <strong>Clear</strong>. You can also wave your hand left & right to wipe the 3D scene!</li>
+                  <li>You can also drag with your mouse to orbit/sketch, and use the scroll wheel to zoom!</li>
+                </ul>
+              </>
+            ) : (
+              <>
+                <h4 style={styles.helpTitle}>How to Draw in the Air:</h4>
+                <ul style={styles.helpList}>
+                  <li>Ensure you are in a well-lit area.</li>
+                  <li><strong>Draw Gesture</strong>: Raise only your <strong>index finger</strong>. A line will trail your finger tip (works for Paint Brush, Sharp Pencil, Highlighter, Spray Can, and Eraser).</li>
+                  <li><strong>Hover Pointer Gesture</strong>: Raise both your <strong>index & middle fingers</strong> (like a 'V' peace sign) to move the pointer without drawing.</li>
+                  <li><strong>Eraser Wave Gesture</strong>: Select the <strong>Eraser</strong> tool and wave your hand rapidly left and right to clear the canvas paint!</li>
+                  <li><strong>Shape Sizing Gesture</strong>: When a shape is active (e.g., Rectangle, Triangle, Heart, Cloud, Moon, Cube, etc.), raise your <strong>index finger & thumb</strong>. Move them apart/together to change the size.</li>
+                  <li><strong>Lock Size Gesture</strong>: Tuck your <strong>thumb</strong> back to lock the shape's size. You can move your finger around to position the shape preview.</li>
+                  <li><strong>Stamp Shape Gesture</strong>: Close all your fingers (make a <strong>fist</strong>) to stamp the shape onto the canvas!</li>
+                  <li><strong>Tools & Colors Dropdown</strong>: Use the top bar dropdowns to select from 20+ shapes, customize colors, adjust size/opacity, and toggle stabilizer.</li>
+                  <li>You can also click/drag on the canvas using your mouse as a fallback!</li>
+                </ul>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1871,6 +3000,44 @@ const styles = {
     padding: '10px 14px',
     fontSize: '14px',
     fontWeight: '500',
+  },
+  segmentedControl: {
+    display: 'flex',
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    borderRadius: '100px',
+    padding: '3px',
+    gap: '4px',
+    marginRight: '8px',
+  },
+  segmentedBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    background: 'transparent',
+    border: '1px solid transparent',
+    color: 'var(--text-secondary)',
+    padding: '6px 14px',
+    borderRadius: '100px',
+    fontWeight: '600',
+    fontSize: '13px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+  segmentedBtnActive: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    background: 'rgba(255, 255, 255, 0.1)',
+    border: '1px solid rgba(255, 255, 255, 0.15)',
+    color: '#ffffff',
+    padding: '6px 14px',
+    borderRadius: '100px',
+    fontWeight: '600',
+    fontSize: '13px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
   }
 }
 
