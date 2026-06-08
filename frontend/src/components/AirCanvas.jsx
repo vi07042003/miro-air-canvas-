@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { 
   Palette, Eraser, Circle as CircleIcon, Square, Slash, Trash2, Undo, Redo, Download, Save, Camera, CameraOff, Video, Eye, ShieldAlert, Crosshair, Zap, Triangle, Star,
-  Pencil, Highlighter, Sparkles, ArrowUpRight, Move, CircleDot, Heart, Moon, Cloud, Plus, Box, ChevronDown, Hexagon
+  Pencil, Highlighter, Sparkles, ArrowUpRight, Move, CircleDot, Heart, Moon, Cloud, Plus, Box, ChevronDown, Hexagon, Image as ImageIcon
 } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 
@@ -321,21 +321,33 @@ const unprojectPoint = (sx, sy, rx, ry, zoom, width, height) => {
 
 const drawViewportGrid = (ctx, rx, ry, zoom, width, height) => {
   ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-  ctx.lineWidth = 1;
   const gridY = 100; // Place grid floor at standard baseline
   
   for (let x = -350; x <= 350; x += 50) {
     ctx.beginPath();
+    let baseAlpha = 0.12;
     if (x === 0) {
       ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
       ctx.lineWidth = 1.5;
+      baseAlpha = 0.4;
     } else {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1;
     }
     const pStart = project3DPoint(x, gridY, -350, rx, ry, zoom, width, height);
     const pEnd = project3DPoint(x, gridY, 350, rx, ry, zoom, width, height);
+    
+    // Average depth of the segment
+    const segmentZ = (pStart.z + pEnd.z) / 2;
+    const k = (segmentZ + 300) / 600;
+    const depthCue = Math.max(0.1, Math.min(1.0, 1.0 - k * 0.8));
+    
+    if (x === 0) {
+      ctx.strokeStyle = `rgba(239, 68, 68, ${baseAlpha * depthCue})`;
+    } else {
+      ctx.strokeStyle = `rgba(255, 255, 255, ${baseAlpha * depthCue})`;
+    }
+    
     ctx.moveTo(pStart.x, pStart.y);
     ctx.lineTo(pEnd.x, pEnd.y);
     ctx.stroke();
@@ -343,15 +355,29 @@ const drawViewportGrid = (ctx, rx, ry, zoom, width, height) => {
   
   for (let z = -350; z <= 350; z += 50) {
     ctx.beginPath();
+    let baseAlpha = 0.12;
     if (z === 0) {
       ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
       ctx.lineWidth = 1.5;
+      baseAlpha = 0.4;
     } else {
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
       ctx.lineWidth = 1;
     }
     const pStart = project3DPoint(-350, gridY, z, rx, ry, zoom, width, height);
     const pEnd = project3DPoint(350, gridY, z, rx, ry, zoom, width, height);
+    
+    // Average depth of the segment
+    const segmentZ = (pStart.z + pEnd.z) / 2;
+    const k = (segmentZ + 300) / 600;
+    const depthCue = Math.max(0.1, Math.min(1.0, 1.0 - k * 0.8));
+    
+    if (z === 0) {
+      ctx.strokeStyle = `rgba(16, 185, 129, ${baseAlpha * depthCue})`;
+    } else {
+      ctx.strokeStyle = `rgba(255, 255, 255, ${baseAlpha * depthCue})`;
+    }
+    
     ctx.moveTo(pStart.x, pStart.y);
     ctx.lineTo(pEnd.x, pEnd.y);
     ctx.stroke();
@@ -553,9 +579,6 @@ const getMesh = (type, size) => {
 
 const drawMesh = (ctx, mesh, pos, rotation, rx, ry, zoom, baseScale, width, height, color, opacity, size) => {
   ctx.save();
-  ctx.strokeStyle = color;
-  ctx.globalAlpha = opacity;
-  ctx.lineWidth = size || 2;
   
   const projectedVertices = mesh.vertices.map(v => {
     const wx = v.x + pos.x;
@@ -563,6 +586,20 @@ const drawMesh = (ctx, mesh, pos, rotation, rx, ry, zoom, baseScale, width, heig
     const wz = v.z + pos.z;
     return project3DPoint(wx, wy, wz, rx, ry, zoom, width, height);
   });
+  
+  // Calculate average depth of the entire mesh
+  let avgZ = 0;
+  projectedVertices.forEach(v => {
+    avgZ += v.z;
+  });
+  avgZ /= Math.max(1, projectedVertices.length);
+  
+  const k = (avgZ + 300) / 600;
+  const depthCue = Math.max(0.15, Math.min(1.2, 1.2 - k * 0.95));
+  
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = opacity * depthCue;
+  ctx.lineWidth = (size || 2) * depthCue;
   
   mesh.edges.forEach(([s, e]) => {
     if (projectedVertices[s] && projectedVertices[e]) {
@@ -574,7 +611,7 @@ const drawMesh = (ctx, mesh, pos, rotation, rx, ry, zoom, baseScale, width, heig
   });
   
   ctx.fillStyle = color;
-  ctx.globalAlpha = opacity * 0.9;
+  ctx.globalAlpha = opacity * depthCue * 0.9;
   projectedVertices.forEach(pv => {
     ctx.fillRect(pv.x - 2, pv.y - 2, 4, 4);
   });
@@ -585,26 +622,191 @@ const drawMesh = (ctx, mesh, pos, rotation, rx, ry, zoom, baseScale, width, heig
 const draw3DStroke = (ctx, strokePoints, rx, ry, zoom, baseScale, width, height, color, opacity, size) => {
   if (!strokePoints || strokePoints.length < 2) return;
   
+  let avgZ = 0;
+  const projected = [];
+  strokePoints.forEach(pt => {
+    const proj = project3DPoint(pt.x, pt.y, pt.z, rx, ry, zoom, width, height);
+    projected.push(proj);
+    avgZ += proj.z;
+  });
+  avgZ /= strokePoints.length;
+  
+  const k = (avgZ + 300) / 600;
+  const depthCue = Math.max(0.15, Math.min(1.2, 1.2 - k * 0.95));
+  
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.globalAlpha = opacity;
-  ctx.lineWidth = size || 3;
+  ctx.globalAlpha = opacity * depthCue;
+  ctx.lineWidth = (size || 3) * depthCue;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   
   ctx.beginPath();
-  let first = true;
-  strokePoints.forEach(pt => {
-    const proj = project3DPoint(pt.x, pt.y, pt.z, rx, ry, zoom, width, height);
-    if (first) {
-      ctx.moveTo(proj.x, proj.y);
-      first = false;
-    } else {
-      ctx.lineTo(proj.x, proj.y);
-    }
-  });
+  ctx.moveTo(projected[0].x, projected[0].y);
+  for (let i = 1; i < projected.length; i++) {
+    ctx.lineTo(projected[i].x, projected[i].y);
+  }
   ctx.stroke();
   ctx.restore();
+};
+
+const processImageToStencil = (img, threshold, invert) => {
+  const maxDim = 250;
+  let w = img.width;
+  let h = img.height;
+  if (!w || !h) return { previewUrl: '', contours: [], w: 0, h: 0 };
+  
+  if (w > maxDim || h > maxDim) {
+    if (w > h) {
+      h = Math.round((h * maxDim) / w);
+      w = maxDim;
+    } else {
+      w = Math.round((w * maxDim) / h);
+      h = maxDim;
+    }
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+
+  let imgData;
+  try {
+    imgData = ctx.getImageData(0, 0, w, h);
+  } catch (e) {
+    console.error("Failed to getImageData: Cross-origin image?", e);
+    return { previewUrl: '', contours: [], w, h };
+  }
+  const data = imgData.data;
+
+  // Grayscale
+  const grayscale = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const r = data[i * 4];
+    const g = data[i * 4 + 1];
+    const b = data[i * 4 + 2];
+    grayscale[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+  }
+
+  // Sobel Edge Detection
+  const sobelData = new Uint8Array(w * h);
+  for (let y = 1; y < h - 1; y++) {
+    for (let x = 1; x < w - 1; x++) {
+      const idx = y * w + x;
+      
+      const px00 = grayscale[(y - 1) * w + (x - 1)];
+      const px01 = grayscale[(y - 1) * w + x];
+      const px02 = grayscale[(y - 1) * w + (x + 1)];
+      
+      const px10 = grayscale[y * w + (x - 1)];
+      const px12 = grayscale[y * w + (x + 1)];
+      
+      const px20 = grayscale[(y + 1) * w + (x - 1)];
+      const px21 = grayscale[(y + 1) * w + x];
+      const px22 = grayscale[(y + 1) * w + (x + 1)];
+
+      const gx = -px00 + px02 - 2 * px10 + 2 * px12 - px20 + px22;
+      const gy = -px00 - 2 * px01 - px02 + px20 + 2 * px21 + px22;
+
+      const gMagnitude = Math.sqrt(gx * gx + gy * gy);
+      sobelData[idx] = Math.min(255, gMagnitude);
+    }
+  }
+
+  // Clear outer border margin to prevent image boundaries from showing up
+  const borderMargin = 6;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (x < borderMargin || x >= w - borderMargin || y < borderMargin || y >= h - borderMargin) {
+        sobelData[y * w + x] = 0;
+      }
+    }
+  }
+
+  // Create binary stencil image for preview
+  const binaryPixels = new Uint8Array(w * h);
+  const previewData = ctx.createImageData(w, h);
+  const previewPixels = previewData.data;
+
+  for (let i = 0; i < w * h; i++) {
+    const isEdge = sobelData[i] > threshold;
+    binaryPixels[i] = isEdge ? 255 : 0;
+
+    // Draw preview
+    if (invert) {
+      if (isEdge) {
+        previewPixels[i * 4] = 255;
+        previewPixels[i * 4 + 1] = 255;
+        previewPixels[i * 4 + 2] = 255;
+        previewPixels[i * 4 + 3] = 255;
+      } else {
+        previewPixels[i * 4] = 0;
+        previewPixels[i * 4 + 1] = 0;
+        previewPixels[i * 4 + 2] = 0;
+        previewPixels[i * 4 + 3] = 0;
+      }
+    } else {
+      if (isEdge) {
+        previewPixels[i * 4] = 0;
+        previewPixels[i * 4 + 1] = 0;
+        previewPixels[i * 4 + 2] = 0;
+        previewPixels[i * 4 + 3] = 255;
+      } else {
+        previewPixels[i * 4] = 255;
+        previewPixels[i * 4 + 1] = 255;
+        previewPixels[i * 4 + 2] = 255;
+        previewPixels[i * 4 + 3] = 0;
+      }
+    }
+  }
+  ctx.putImageData(previewData, 0, 0);
+  const previewUrl = canvas.toDataURL('image/png');
+
+  // Contour Tracing
+  const visited = new Uint8Array(w * h);
+  const contours = [];
+  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
+  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = y * w + x;
+      if (binaryPixels[idx] === 255 && !visited[idx]) {
+        const path = [];
+        let curX = x;
+        let curY = y;
+        path.push({ x: curX, y: curY });
+        visited[idx] = 1;
+
+        let found = true;
+        while (found) {
+          found = false;
+          for (let n = 0; n < 8; n++) {
+            const nx = curX + dx[n];
+            const ny = curY + dy[n];
+            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+              const nidx = ny * w + nx;
+              if (binaryPixels[nidx] === 255 && !visited[nidx]) {
+                curX = nx;
+                curY = ny;
+                path.push({ x: curX, y: curY });
+                visited[nidx] = 1;
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+        if (path.length > 2) {
+          contours.push(path);
+        }
+      }
+    }
+  }
+
+  return { previewUrl, contours, w, h, grayscale };
 };
 
 export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved }) {
@@ -630,6 +832,234 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const [saveTitle, setSaveTitle] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [dbMessage, setDbMessage] = useState('')
+
+  // Stencil Converter States
+  const [showStencilModal, setShowStencilModal] = useState(false)
+  const [uploadedImage, setUploadedImage] = useState(null)
+  const [stencilThreshold, setStencilThreshold] = useState(50)
+  const [stencilInvert, setStencilInvert] = useState(false)
+  const [stencilScale, setStencilScale] = useState(1.0)
+  const [stencilPreviewUrl, setStencilPreviewUrl] = useState('')
+  const [extractedContours, setExtractedContours] = useState([])
+  const [extractedGrayscale, setExtractedGrayscale] = useState(null)
+  const [stencilWidth, setStencilWidth] = useState(0)
+  const [stencilHeight, setStencilHeight] = useState(0)
+  const [stencilMode3D, setStencilMode3D] = useState('extrusion') // extrusion, heightmap
+
+  useEffect(() => {
+    if (!uploadedImage) {
+      setStencilPreviewUrl('')
+      setExtractedContours([])
+      setExtractedGrayscale(null)
+      return
+    }
+
+    const img = new Image()
+    img.src = uploadedImage
+    img.onload = () => {
+      const { previewUrl, contours, w, h, grayscale } = processImageToStencil(img, stencilThreshold, stencilInvert)
+      setStencilPreviewUrl(previewUrl)
+      setExtractedContours(contours)
+      setStencilWidth(w)
+      setStencilHeight(h)
+      setExtractedGrayscale(grayscale)
+    }
+  }, [uploadedImage, stencilThreshold, stencilInvert])
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setUploadedImage(event.target.result)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleApplyStencil = () => {
+    if (!stencilPreviewUrl) return
+
+    // Apply to 2D Canvas
+    const canvas = canvasRef.current
+    if (canvas && extractedContours.length > 0) {
+      const ctx = canvas.getContext('2d')
+      
+      ctx.save()
+      ctx.strokeStyle = color || '#06b6d4'
+      ctx.lineWidth = Math.max(2, brushSize / 2)
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.globalAlpha = brushOpacity
+      
+      const scale2D = stencilScale * 1.5
+      const offsetX = (canvas.width - stencilWidth * scale2D) / 2
+      const offsetY = (canvas.height - stencilHeight * scale2D) / 2
+      
+      extractedContours.forEach(path => {
+        if (path.length < 2) return
+        ctx.beginPath()
+        ctx.moveTo(offsetX + path[0].x * scale2D, offsetY + path[0].y * scale2D)
+        for (let i = 1; i < path.length; i++) {
+          ctx.lineTo(offsetX + path[i].x * scale2D, offsetY + path[i].y * scale2D)
+        }
+        ctx.stroke()
+      })
+      
+      ctx.restore()
+      saveCanvasState()
+    }
+
+    // Apply to 3D Canvas
+    if (stencilMode3D === 'heightmap' && extractedGrayscale) {
+      const scale3D = (250 / Math.max(stencilWidth, stencilHeight)) * stencilScale
+      const depth3D = 60 * stencilScale
+      
+      const gridW = 35
+      const gridH = 35
+      const stepX = stencilWidth / (gridW - 1)
+      const stepY = stencilHeight / (gridH - 1)
+      
+      const pointsGrid = []
+      
+      for (let r = 0; r < gridH; r++) {
+        const rowPoints = []
+        for (let c = 0; c < gridW; c++) {
+          const px = Math.min(stencilWidth - 1, Math.round(c * stepX))
+          const py = Math.min(stencilHeight - 1, Math.round(r * stepY))
+          const idx = py * stencilWidth + px
+          const val = extractedGrayscale[idx] || 0
+          
+          // Z depth is proportional to pixel brightness, centered on Z:
+          const z3d = (val / 255 - 0.5) * depth3D
+          
+          rowPoints.push({
+            x: (px - stencilWidth / 2) * scale3D,
+            y: (py - stencilHeight / 2) * scale3D,
+            z: z3d
+          })
+        }
+        pointsGrid.push(rowPoints)
+      }
+      
+      const new3DStrokes = []
+      
+      // Horizontal lines (rows)
+      for (let r = 0; r < gridH; r++) {
+        new3DStrokes.push({
+          type: 'stroke',
+          points: pointsGrid[r],
+          color: color || '#38bdf8',
+          opacity: 0.4,
+          size: 1.5
+        })
+      }
+      
+      // Vertical lines (columns)
+      for (let c = 0; c < gridW; c++) {
+        const colPoints = []
+        for (let r = 0; r < gridH; r++) {
+          colPoints.push(pointsGrid[r][c])
+        }
+        new3DStrokes.push({
+          type: 'stroke',
+          points: colPoints,
+          color: color || '#38bdf8',
+          opacity: 0.4,
+          size: 1.5
+        })
+      }
+      
+      stamped3DObjectsRef.current = [
+        ...stamped3DObjectsRef.current,
+        ...new3DStrokes
+      ]
+      save3DState()
+    } else if (extractedContours.length > 0) {
+      const scale3D = (250 / Math.max(stencilWidth, stencilHeight)) * stencilScale
+      const depth3D = 40 * stencilScale
+      
+      const new3DStrokes = []
+
+      extractedContours.forEach(path => {
+        // 1. Back face path (z = -depth3D / 2)
+        const backPoints = path.map(pt => ({
+          x: (pt.x - stencilWidth / 2) * scale3D,
+          y: (pt.y - stencilHeight / 2) * scale3D,
+          z: -depth3D / 2
+        }))
+
+        // 2. Front face path (z = depth3D / 2)
+        const frontPoints = path.map(pt => ({
+          x: (pt.x - stencilWidth / 2) * scale3D,
+          y: (pt.y - stencilHeight / 2) * scale3D,
+          z: depth3D / 2
+        }))
+
+        // Add back face stroke
+        new3DStrokes.push({
+          type: 'stroke',
+          points: backPoints,
+          color: color || '#38bdf8',
+          opacity: 0.8,
+          size: 2
+        })
+
+        // Add front face stroke
+        new3DStrokes.push({
+          type: 'stroke',
+          points: frontPoints,
+          color: color || '#38bdf8',
+          opacity: 0.8,
+          size: 2
+        })
+
+        // 3. Connect back and front faces at regular intervals
+        const step = Math.max(4, Math.floor(path.length / 12))
+        for (let i = 0; i < path.length; i += step) {
+          const pt = path[i]
+          const x3d = (pt.x - stencilWidth / 2) * scale3D
+          const y3d = (pt.y - stencilHeight / 2) * scale3D
+          
+          new3DStrokes.push({
+            type: 'stroke',
+            points: [
+              { x: x3d, y: y3d, z: -depth3D / 2 },
+              { x: x3d, y: y3d, z: depth3D / 2 }
+            ],
+            color: color || '#38bdf8',
+            opacity: 0.5,
+            size: 1.5
+          })
+        }
+
+        // Connect the last point to close
+        if (path.length > 0) {
+          const pt = path[path.length - 1]
+          const x3d = (pt.x - stencilWidth / 2) * scale3D
+          const y3d = (pt.y - stencilHeight / 2) * scale3D
+          new3DStrokes.push({
+            type: 'stroke',
+            points: [
+              { x: x3d, y: y3d, z: -depth3D / 2 },
+              { x: x3d, y: y3d, z: depth3D / 2 }
+            ],
+            color: color || '#38bdf8',
+            opacity: 0.5,
+            size: 1.5
+          })
+        }
+      })
+
+      stamped3DObjectsRef.current = [
+        ...stamped3DObjectsRef.current,
+        ...new3DStrokes
+      ]
+      save3DState()
+    }
+
+    setShowStencilModal(false)
+    setUploadedImage(null)
+  }
 
   // Keep saveTitle synced with initialDrawing
   useEffect(() => {
@@ -1288,9 +1718,39 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     // Draw Axis Helper (in top-left corner)
     drawAxisHelper(ctx, rx, ry, scale, canvas.width, canvas.height)
     
-    // Draw all stamped 3D objects
-    const stampedObjects = stamped3DObjectsRef.current
-    stampedObjects.forEach(obj => {
+    // Draw all stamped 3D objects (sorted back-to-front for proper depth sorting)
+    const stampedObjects = [...stamped3DObjectsRef.current]
+    const objectsWithDepth = stampedObjects.map(obj => {
+      let depth = 0
+      if (obj.type === 'stroke') {
+        if (obj.points && obj.points.length > 0) {
+          let sumZ = 0
+          obj.points.forEach(pt => {
+            const cosY = Math.cos(ry)
+            const sinY = Math.sin(ry)
+            const z1 = pt.x * sinY + pt.z * cosY
+            const cosX = Math.cos(rx)
+            const sinX = Math.sin(rx)
+            const z2 = pt.y * sinX + z1 * cosX
+            sumZ += z2
+          })
+          depth = sumZ / obj.points.length
+        }
+      } else {
+        const cosY = Math.cos(ry)
+        const sinY = Math.sin(ry)
+        const z1 = obj.pos.x * sinY + obj.pos.z * cosY
+        const cosX = Math.cos(rx)
+        const sinX = Math.sin(rx)
+        const z2 = obj.pos.y * sinX + z1 * cosX
+        depth = z2
+      }
+      return { obj, depth }
+    })
+
+    objectsWithDepth.sort((a, b) => b.depth - a.depth)
+
+    objectsWithDepth.forEach(({ obj }) => {
       if (obj.type === 'stroke') {
         draw3DStroke(ctx, obj.points, rx, ry, scale, 1.0, canvas.width, canvas.height, obj.color, obj.opacity, obj.size)
       } else {
@@ -2151,6 +2611,15 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             </button>
           </div>
 
+          <button 
+            className="glass-btn glass-btn-primary" 
+            onClick={() => setShowStencilModal(true)}
+            title="Convert image to stencil outline for 2D & 3D canvases"
+          >
+            <ImageIcon size={16} />
+            <span>Stencil Converter</span>
+          </button>
+
           <button className="glass-btn" onClick={handleUndo} disabled={canvasMode === '3d' ? undoStack3D.length <= 1 : undoStack.length <= 1} title="Undo last stroke/stamp">
             <Undo size={16} />
             <span>Undo</span>
@@ -2638,6 +3107,319 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Stencil Converter Modal */}
+      {showStencilModal && (
+        <div style={styles.modalBg} onClick={() => { setShowStencilModal(false); setUploadedImage(null); }}>
+          <div className="glass-panel-heavy" style={{ ...styles.modalContent, maxWidth: '750px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <h2 style={styles.modalTitle}>Image to Stencil Converter</h2>
+              <button 
+                className="glass-btn" 
+                style={{ padding: '6px 10px', minWidth: 'auto', border: 'none', background: 'transparent' }} 
+                onClick={() => { setShowStencilModal(false); setUploadedImage(null); }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div style={{
+              background: 'rgba(6, 182, 212, 0.05)',
+              border: '1px solid rgba(6, 182, 212, 0.15)',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              color: 'rgba(255, 255, 255, 0.85)',
+              lineHeight: '1.5',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
+            }}>
+              <span style={{ fontWeight: 'bold', color: '#06b6d4', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Sparkles size={14} /> Tip for Best Stencil Extraction:
+              </span>
+              <span>Please upload <strong>focused images</strong> with a single clear subject, sharp outlines, and high-contrast boundaries (like silhouettes or clean sketches). Avoid blurry or cluttered backgrounds.</span>
+            </div>
+
+            {!uploadedImage ? (
+              <div 
+                style={{
+                  border: '2px dashed rgba(255, 255, 255, 0.15)',
+                  borderRadius: '12px',
+                  padding: '40px 20px',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  transition: 'all 0.3s ease',
+                }}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const file = e.dataTransfer.files[0];
+                  if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => setUploadedImage(event.target.result);
+                    reader.readAsDataURL(file);
+                  }
+                }}
+                onClick={() => document.getElementById('stencil-file-input').click()}
+              >
+                <input 
+                  type="file" 
+                  id="stencil-file-input" 
+                  accept="image/*" 
+                  style={{ display: 'none' }} 
+                  onChange={handleImageUpload} 
+                />
+                <ImageIcon size={48} style={{ color: 'rgba(255, 255, 255, 0.3)', marginBottom: '12px' }} />
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '16px', color: 'rgba(255, 255, 255, 0.9)' }}>
+                  Drag & drop your focus image here
+                </h4>
+                <p style={{ margin: 0, fontSize: '13px', color: 'rgba(255, 255, 255, 0.4)' }}>
+                  or click to browse from files
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Image Previews */}
+                <div style={{ 
+                  display: 'flex', 
+                  gap: '16px', 
+                  flexWrap: 'wrap', 
+                  justifyContent: 'center' 
+                }}>
+                  <div style={{ 
+                    flex: '1 1 200px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: '8px' 
+                  }}>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.5)' }}>
+                      Original Focus Image
+                    </span>
+                    <div style={{
+                      width: '100%',
+                      height: '220px',
+                      borderRadius: '8px',
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <img 
+                        src={uploadedImage} 
+                        alt="Original source" 
+                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ 
+                    flex: '1 1 200px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: '8px' 
+                  }}>
+                    <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'rgba(255,255,255,0.5)' }}>
+                      Live Stencil Preview ({extractedContours.length} Paths)
+                    </span>
+                    <div style={{
+                      width: '100%',
+                      height: '220px',
+                      borderRadius: '8px',
+                      background: stencilInvert ? '#090518' : '#ffffff',
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'background-color 0.3s ease'
+                    }}>
+                      {stencilPreviewUrl ? (
+                        <img 
+                          src={stencilPreviewUrl} 
+                          alt="Stencil preview" 
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} 
+                        />
+                      ) : (
+                        <div className="spinner"></div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sliders and Configuration */}
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '14px',
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  padding: '16px',
+                  borderRadius: '10px'
+                }}>
+                  {/* Stencil 3D Mode Selector */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+                      3D Model Extraction Mode
+                    </span>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        type="button"
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid ' + (stencilMode3D === 'extrusion' ? '#06b6d4' : 'rgba(255,255,255,0.15)'),
+                          background: stencilMode3D === 'extrusion' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                          color: stencilMode3D === 'extrusion' ? '#06b6d4' : 'rgba(255,255,255,0.7)',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        onClick={() => setStencilMode3D('extrusion')}
+                      >
+                        <span>3D Extruded Outline</span>
+                        <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7 }}>Best for outline stencils</span>
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          flex: 1,
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid ' + (stencilMode3D === 'heightmap' ? '#06b6d4' : 'rgba(255,255,255,0.15)'),
+                          background: stencilMode3D === 'heightmap' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                          color: stencilMode3D === 'heightmap' ? '#06b6d4' : 'rgba(255,255,255,0.7)',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          transition: 'all 0.2s ease',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                        onClick={() => setStencilMode3D('heightmap')}
+                      >
+                        <span>3D Volumetric Mesh</span>
+                        <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7 }}>Best for photos & shading</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Threshold Slider */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+                        Edge Detection Threshold (Sensitivity)
+                      </span>
+                      <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>
+                        {stencilThreshold}
+                      </span>
+                    </div>
+                    <input 
+                      type="range"
+                      min="10"
+                      max="180"
+                      step="1"
+                      value={stencilThreshold}
+                      onChange={(e) => setStencilThreshold(parseInt(e.target.value))}
+                      style={{
+                        width: '100%',
+                        height: '6px',
+                        borderRadius: '3px',
+                        background: 'rgba(255,255,255,0.1)',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+
+                  {/* Scale Slider */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+                        Stencil Scale
+                      </span>
+                      <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>
+                        {Math.round(stencilScale * 100)}%
+                      </span>
+                    </div>
+                    <input 
+                      type="range"
+                      min="0.3"
+                      max="2.0"
+                      step="0.05"
+                      value={stencilScale}
+                      onChange={(e) => setStencilScale(parseFloat(e.target.value))}
+                      style={{
+                        width: '100%',
+                        height: '6px',
+                        borderRadius: '3px',
+                        background: 'rgba(255,255,255,0.1)',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </div>
+
+                  {/* Checkbox / Toggle Options */}
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginTop: '4px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', color: 'rgba(255,255,255,0.8)' }}>
+                      <input 
+                        type="checkbox"
+                        checked={stencilInvert}
+                        onChange={(e) => setStencilInvert(e.target.checked)}
+                        style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                      />
+                      <span>Invert Preview Colors (White lines on Dark)</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Action Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                  <button 
+                    type="button" 
+                    className="glass-btn glass-btn-danger" 
+                    onClick={() => { setUploadedImage(null); setStencilPreviewUrl(''); }}
+                  >
+                    Change Image
+                  </button>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      type="button" 
+                      className="glass-btn" 
+                      onClick={() => { setShowStencilModal(false); setUploadedImage(null); }}
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      className="glass-btn glass-btn-primary" 
+                      onClick={handleApplyStencil}
+                      disabled={!stencilPreviewUrl}
+                    >
+                      Convert & Apply Stencil
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
