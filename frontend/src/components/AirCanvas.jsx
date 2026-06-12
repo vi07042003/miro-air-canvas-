@@ -1,9 +1,16 @@
 import React, { useRef, useState, useEffect } from 'react'
 import { 
   Palette, Eraser, Circle as CircleIcon, Square, Slash, Trash2, Undo, Redo, Download, Save, Camera, CameraOff, Video, Eye, ShieldAlert, Crosshair, Zap, Triangle, Star,
-  Pencil, Highlighter, Sparkles, ArrowUpRight, Move, CircleDot, Heart, Moon, Cloud, Plus, Box, ChevronDown, Hexagon, Image as ImageIcon
+  Pencil, Highlighter, Sparkles, ArrowUpRight, Move, CircleDot, Heart, Moon, Cloud, Plus, Box, ChevronDown, Hexagon, Image as ImageIcon, X
 } from 'lucide-react'
 import { BACKEND_URL } from '../App'
+import { 
+  project3DPoint, unprojectPoint, drawViewportGrid, drawWireframeCanvasBox, drawAxisHelper, 
+  getMesh, drawMesh, draw3DStroke, generateOBJString 
+} from '../utils/3dUtils'
+import { drawShapePath } from '../utils/canvasUtils'
+import { processImageToStencil } from '../utils/stencilUtils'
+import ThreeDModelViewerModal from './ThreeDModelViewerModal'
 
 const PRESET_COLORS = [
   '#06b6d4', // Neon Cyan
@@ -91,723 +98,11 @@ const RenderIcon = ({ iconName, size = 18 }) => {
   const IconComp = ICON_MAP[iconName] || Palette
   return <IconComp size={size} />
 }
+// 3D Wireframe Canvas rendering helper functions are now imported from ../utils/3dUtils
 
-const drawShapePath = (ctx, shapeType, startX, startY, drawX, drawY) => {
-  const w = drawX - startX
-  const h = drawY - startY
-  const cx = startX + w / 2
-  const cy = startY + h / 2
-  const radius = Math.sqrt(w * w + h * h) / 2
 
-  if (shapeType === 'line') {
-    ctx.moveTo(startX, startY)
-    ctx.lineTo(drawX, drawY)
-  } else if (shapeType === 'arrow') {
-    ctx.moveTo(startX, startY)
-    ctx.lineTo(drawX, drawY)
-    const angle = Math.atan2(drawY - startY, drawX - startX)
-    const headLen = Math.max(12, ctx.lineWidth * 1.5)
-    ctx.lineTo(drawX - headLen * Math.cos(angle - Math.PI / 6), drawY - headLen * Math.sin(angle - Math.PI / 6))
-    ctx.moveTo(drawX, drawY)
-    ctx.lineTo(drawX - headLen * Math.cos(angle + Math.PI / 6), drawY - headLen * Math.sin(angle + Math.PI / 6))
-  } else if (shapeType === 'double-arrow') {
-    ctx.moveTo(startX, startY)
-    ctx.lineTo(drawX, drawY)
-    const angle = Math.atan2(drawY - startY, drawX - startX)
-    const headLen = Math.max(12, ctx.lineWidth * 1.5)
-    ctx.lineTo(drawX - headLen * Math.cos(angle - Math.PI / 6), drawY - headLen * Math.sin(angle - Math.PI / 6))
-    ctx.moveTo(drawX, drawY)
-    ctx.lineTo(drawX - headLen * Math.cos(angle + Math.PI / 6), drawY - headLen * Math.sin(angle + Math.PI / 6))
-    
-    ctx.moveTo(startX, startY)
-    ctx.lineTo(startX + headLen * Math.cos(angle - Math.PI / 6), startY + headLen * Math.sin(angle - Math.PI / 6))
-    ctx.moveTo(startX, startY)
-    ctx.lineTo(startX + headLen * Math.cos(angle + Math.PI / 6), startY + headLen * Math.sin(angle + Math.PI / 6))
-  } else if (shapeType === 'rect') {
-    ctx.rect(startX, startY, w, h)
-  } else if (shapeType === 'circle') {
-    const r = Math.sqrt(w * w + h * h) / 2
-    ctx.arc(cx, cy, r, 0, 2 * Math.PI)
-  } else if (shapeType === 'ellipse') {
-    ctx.ellipse(cx, cy, Math.abs(w / 2), Math.abs(h / 2), 0, 0, 2 * Math.PI)
-  } else if (shapeType === 'ring') {
-    ctx.ellipse(cx, cy, Math.abs(w / 2), Math.abs(h / 2), 0, 0, 2 * Math.PI)
-    ctx.ellipse(cx, cy, Math.abs(w / 3), Math.abs(h / 3), 0, 0, 2 * Math.PI)
-  } else if (shapeType === 'triangle') {
-    ctx.moveTo(startX + w / 2, startY)
-    ctx.lineTo(drawX, drawY)
-    ctx.lineTo(startX, drawY)
-    ctx.closePath()
-  } else if (shapeType === 'diamond') {
-    ctx.moveTo(cx, startY)
-    ctx.lineTo(drawX, cy)
-    ctx.lineTo(cx, drawY)
-    ctx.lineTo(startX, cy)
-    ctx.closePath()
-  } else if (shapeType === 'pentagon') {
-    const r = Math.min(Math.abs(w), Math.abs(h)) / 2
-    for (let i = 0; i < 5; i++) {
-      const angle = (i * 2 * Math.PI / 5) - Math.PI / 2
-      const px = cx + Math.cos(angle) * r
-      const py = cy + Math.sin(angle) * r
-      if (i === 0) ctx.moveTo(px, py)
-      else ctx.lineTo(px, py)
-    }
-    ctx.closePath()
-  } else if (shapeType === 'hexagon') {
-    const r = Math.min(Math.abs(w), Math.abs(h)) / 2
-    for (let i = 0; i < 6; i++) {
-      const angle = (i * 2 * Math.PI / 6) - Math.PI / 2
-      const px = cx + Math.cos(angle) * r
-      const py = cy + Math.sin(angle) * r
-      if (i === 0) ctx.moveTo(px, py)
-      else ctx.lineTo(px, py)
-    }
-    ctx.closePath()
-  } else if (shapeType === 'octagon') {
-    const r = Math.min(Math.abs(w), Math.abs(h)) / 2
-    for (let i = 0; i < 8; i++) {
-      const angle = (i * 2 * Math.PI / 8) - Math.PI / 2
-      const px = cx + Math.cos(angle) * r
-      const py = cy + Math.sin(angle) * r
-      if (i === 0) ctx.moveTo(px, py)
-      else ctx.lineTo(px, py)
-    }
-    ctx.closePath()
-  } else if (shapeType === 'star') {
-    const r = Math.min(Math.abs(w), Math.abs(h)) / 2
-    let rot = Math.PI / 2 * 3
-    const step = Math.PI / 5
-    ctx.moveTo(cx, cy - r)
-    for (let i = 0; i < 5; i++) {
-      ctx.lineTo(cx + Math.cos(rot) * r, cy + Math.sin(rot) * r)
-      rot += step
-      ctx.lineTo(cx + Math.cos(rot) * (r * 0.4), cy + Math.sin(rot) * (r * 0.4))
-      rot += step
-    }
-    ctx.closePath()
-  } else if (shapeType === 'star6') {
-    const r = Math.min(Math.abs(w), Math.abs(h)) / 2
-    let rot = Math.PI / 2 * 3
-    const step = Math.PI / 6
-    ctx.moveTo(cx, cy - r)
-    for (let i = 0; i < 6; i++) {
-      ctx.lineTo(cx + Math.cos(rot) * r, cy + Math.sin(rot) * r)
-      rot += step
-      ctx.lineTo(cx + Math.cos(rot) * (r * 0.5), cy + Math.sin(rot) * (r * 0.5))
-      rot += step
-    }
-    ctx.closePath()
-  } else if (shapeType === 'star8') {
-    const r = Math.min(Math.abs(w), Math.abs(h)) / 2
-    let rot = Math.PI / 2 * 3
-    const step = Math.PI / 8
-    ctx.moveTo(cx, cy - r)
-    for (let i = 0; i < 8; i++) {
-      ctx.lineTo(cx + Math.cos(rot) * r, cy + Math.sin(rot) * r)
-      rot += step
-      ctx.lineTo(cx + Math.cos(rot) * (r * 0.5), cy + Math.sin(rot) * (r * 0.5))
-      rot += step
-    }
-    ctx.closePath()
-  } else if (shapeType === 'heart') {
-    const topCurveHeight = Math.abs(h) * 0.3
-    ctx.moveTo(cx, startY + topCurveHeight)
-    ctx.bezierCurveTo(cx, startY, startX, startY, startX, startY + topCurveHeight)
-    ctx.bezierCurveTo(startX, startY + (Math.abs(h) + topCurveHeight)/2, cx, drawY, cx, drawY)
-    ctx.bezierCurveTo(cx, drawY, drawX, startY + (Math.abs(h) + topCurveHeight)/2, drawX, startY + topCurveHeight)
-    ctx.bezierCurveTo(drawX, startY, cx, startY, cx, startY + topCurveHeight)
-    ctx.closePath()
-  } else if (shapeType === 'crescent') {
-    const r = Math.min(Math.abs(w), Math.abs(h)) / 2
-    ctx.arc(cx, cy, r, -Math.PI/4, 3 * Math.PI / 4, false)
-    ctx.quadraticCurveTo(cx - r * 0.2, cy - r * 0.2, cx + r * Math.cos(-Math.PI/4), cy + r * Math.sin(-Math.PI/4))
-  } else if (shapeType === 'cross') {
-    const crossThick = Math.min(Math.abs(w), Math.abs(h)) * 0.3
-    ctx.rect(cx - crossThick/2, startY, crossThick, Math.abs(h))
-    ctx.rect(startX, cy - crossThick/2, Math.abs(w), crossThick)
-  } else if (shapeType === 'cloud') {
-    const rw = Math.abs(w)
-    const rh = Math.abs(h)
-    ctx.moveTo(startX + rw * 0.2, cy + rh * 0.2)
-    ctx.quadraticCurveTo(startX, cy, startX + rw * 0.15, cy - rh * 0.2)
-    ctx.quadraticCurveTo(cx - rw * 0.1, startY, cx + rw * 0.1, startY + rh * 0.1)
-    ctx.quadraticCurveTo(drawX - rw * 0.1, cy - rh * 0.3, drawX, cy)
-    ctx.quadraticCurveTo(drawX, cy + rh * 0.2, drawX - rw * 0.2, cy + rh * 0.3)
-    ctx.quadraticCurveTo(cx, drawY, startX + rw * 0.2, cy + rh * 0.2)
-    ctx.closePath()
-  } else if (shapeType === 'cylinder') {
-    const rx = Math.abs(w) / 2
-    const ry = Math.abs(h) * 0.15
-    ctx.ellipse(cx, startY + ry, rx, ry, 0, 0, 2 * Math.PI)
-    ctx.moveTo(cx - rx, startY + ry)
-    ctx.lineTo(cx - rx, drawY - ry)
-    ctx.moveTo(cx + rx, startY + ry)
-    ctx.lineTo(cx + rx, drawY - ry)
-    ctx.ellipse(cx, drawY - ry, rx, ry, 0, 0, Math.PI)
-  } else if (shapeType === 'cube') {
-    const side = Math.min(Math.abs(w), Math.abs(h)) * 0.7
-    ctx.rect(startX, startY + side * 0.3, side, side)
-    ctx.rect(startX + side * 0.3, startY, side, side)
-    ctx.moveTo(startX, startY + side * 0.3)
-    ctx.lineTo(startX + side * 0.3, startY)
-    ctx.moveTo(startX + side, startY + side * 0.3)
-    ctx.lineTo(startX + side * 1.3, startY)
-    ctx.moveTo(startX, startY + side * 1.3)
-    ctx.lineTo(startX + side * 0.3, startY + side)
-    ctx.moveTo(startX + side, startY + side * 1.3)
-    ctx.lineTo(startX + side * 1.3, startY + side)
-  }
-}
 
-// 3D Wireframe Canvas Projection & Drawing Math Helpers
-const project3DPoint = (x, y, z, rx, ry, zoom, width, height) => {
-  // Rotate around Y axis
-  const cosY = Math.cos(ry);
-  const sinY = Math.sin(ry);
-  const x1 = x * cosY - z * sinY;
-  const z1 = x * sinY + z * cosY;
-
-  // Rotate around X axis
-  const cosX = Math.cos(rx);
-  const sinX = Math.sin(rx);
-  const y2 = y * cosX - z1 * sinX;
-  const z2 = y * sinX + z1 * cosX;
-
-  // Perspective projection
-  const fov = 700;
-  const cameraZ = 700 / zoom;
-  const scaleProj = fov / (fov + z2 + cameraZ);
-  
-  const baseScale = 2.0;
-  
-  const screenX = (width / 2) + x1 * scaleProj * baseScale * zoom;
-  const screenY = (height / 2) + y2 * scaleProj * baseScale * zoom;
-
-  return { x: screenX, y: screenY, z: z2 };
-};
-
-const unprojectPoint = (sx, sy, rx, ry, zoom, width, height) => {
-  const fov = 700;
-  const cameraZ = 700 / zoom;
-  const baseScale = 2.0;
-  const gridY = 100; // Snap shape placement to grid floor plane
-
-  const dx = (sx - width / 2) / (baseScale * zoom);
-  const dy = (sy - height / 2) / (baseScale * zoom);
-
-  const cosX = Math.cos(rx);
-  const sinX = Math.sin(rx);
-  const cosY = Math.cos(ry);
-  const sinY = Math.sin(ry);
-
-  const C = fov + gridY * sinX + cameraZ;
-  const denom = dy * cosX + fov * sinX;
-  
-  // Avoid division by zero
-  const z1 = Math.abs(denom) > 0.001 
-    ? (fov * gridY * cosX - dy * C) / denom 
-    : 0;
-
-  const z2 = gridY * sinX + z1 * cosX;
-  const scaleProj = fov / (fov + z2 + cameraZ);
-  const x1 = dx / scaleProj;
-
-  const x = x1 * cosY + z1 * sinY;
-  const z = -x1 * sinY + z1 * cosY;
-
-  return { x, y: gridY, z };
-};
-
-const drawViewportGrid = (ctx, rx, ry, zoom, width, height) => {
-  ctx.save();
-  const gridY = 100; // Place grid floor at standard baseline
-  
-  for (let x = -350; x <= 350; x += 50) {
-    ctx.beginPath();
-    let baseAlpha = 0.12;
-    if (x === 0) {
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.4)';
-      ctx.lineWidth = 1.5;
-      baseAlpha = 0.4;
-    } else {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 1;
-    }
-    const pStart = project3DPoint(x, gridY, -350, rx, ry, zoom, width, height);
-    const pEnd = project3DPoint(x, gridY, 350, rx, ry, zoom, width, height);
-    
-    // Average depth of the segment
-    const segmentZ = (pStart.z + pEnd.z) / 2;
-    const k = (segmentZ + 300) / 600;
-    const depthCue = Math.max(0.1, Math.min(1.0, 1.0 - k * 0.8));
-    
-    if (x === 0) {
-      ctx.strokeStyle = `rgba(239, 68, 68, ${baseAlpha * depthCue})`;
-    } else {
-      ctx.strokeStyle = `rgba(255, 255, 255, ${baseAlpha * depthCue})`;
-    }
-    
-    ctx.moveTo(pStart.x, pStart.y);
-    ctx.lineTo(pEnd.x, pEnd.y);
-    ctx.stroke();
-  }
-  
-  for (let z = -350; z <= 350; z += 50) {
-    ctx.beginPath();
-    let baseAlpha = 0.12;
-    if (z === 0) {
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)';
-      ctx.lineWidth = 1.5;
-      baseAlpha = 0.4;
-    } else {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 1;
-    }
-    const pStart = project3DPoint(-350, gridY, z, rx, ry, zoom, width, height);
-    const pEnd = project3DPoint(350, gridY, z, rx, ry, zoom, width, height);
-    
-    // Average depth of the segment
-    const segmentZ = (pStart.z + pEnd.z) / 2;
-    const k = (segmentZ + 300) / 600;
-    const depthCue = Math.max(0.1, Math.min(1.0, 1.0 - k * 0.8));
-    
-    if (z === 0) {
-      ctx.strokeStyle = `rgba(16, 185, 129, ${baseAlpha * depthCue})`;
-    } else {
-      ctx.strokeStyle = `rgba(255, 255, 255, ${baseAlpha * depthCue})`;
-    }
-    
-    ctx.moveTo(pStart.x, pStart.y);
-    ctx.lineTo(pEnd.x, pEnd.y);
-    ctx.stroke();
-  }
-  ctx.restore();
-};
-
-const drawWireframeCanvasBox = (ctx, rx, ry, zoom, width, height) => {
-  ctx.save();
-  ctx.strokeStyle = 'rgba(139, 92, 246, 0.25)'; // Sleek neon violet frame matching Miro aesthetics
-  ctx.lineWidth = 1.5;
-  
-  const hW = 350; // half width
-  const hH = 200; // half height
-  const hD = 350; // half depth
-  
-  // 8 vertices of the wireframe bounding box
-  const vertices = [
-    { x: -hW, y: -hH, z: -hD },
-    { x: hW, y: -hH, z: -hD },
-    { x: hW, y: hH, z: -hD },
-    { x: -hW, y: hH, z: -hD },
-    { x: -hW, y: -hH, z: hD },
-    { x: hW, y: -hH, z: hD },
-    { x: hW, y: hH, z: hD },
-    { x: -hW, y: hH, z: hD }
-  ];
-  
-  // Project vertices
-  const proj = vertices.map(v => project3DPoint(v.x, v.y, v.z, rx, ry, zoom, width, height));
-  
-  // 12 edges
-  const edges = [
-    [0, 1], [1, 2], [2, 3], [3, 0], // Back face
-    [4, 5], [5, 6], [6, 7], [7, 4], // Front face
-    [0, 4], [1, 5], [2, 6], [3, 7]  // Connecting segments
-  ];
-  
-  ctx.beginPath();
-  edges.forEach(([s, e]) => {
-    ctx.moveTo(proj[s].x, proj[s].y);
-    ctx.lineTo(proj[e].x, proj[e].y);
-  });
-  ctx.stroke();
-  
-  // Draw corner labels for style
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-  ctx.font = '9px monospace';
-  ctx.fillText("3D CANVAS LIMITS", proj[0].x + 10, proj[0].y + 15);
-  ctx.restore();
-};
-
-const drawAxisHelper = (ctx, rx, ry, zoom, width, height) => {
-  const cornerX = 70;
-  const cornerY = 80;
-  const axisLen = 35;
-  const pCenter = { x: cornerX, y: cornerY };
-  
-  const projectAxis = (ax, ay, az) => {
-    const cosY = Math.cos(ry);
-    const sinY = Math.sin(ry);
-    const x1 = ax * cosY - az * sinY;
-    const z1 = ax * sinY + az * cosY;
-    const cosX = Math.cos(rx);
-    const sinX = Math.sin(rx);
-    const y2 = ay * cosX - z1 * sinX;
-    return {
-      x: cornerX + x1 * axisLen,
-      y: cornerY + y2 * axisLen
-    };
-  };
-  
-  const pX = projectAxis(1, 0, 0);
-  const pY = projectAxis(0, -1, 0);
-  const pZ = projectAxis(0, 0, 1);
-  
-  ctx.save();
-  ctx.strokeStyle = '#ef4444';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pCenter.x, pCenter.y);
-  ctx.lineTo(pX.x, pX.y);
-  ctx.stroke();
-  ctx.fillStyle = '#ef4444';
-  ctx.font = 'bold 10px monospace';
-  ctx.fillText('X', pX.x + 3, pX.y + 3);
-  
-  ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pCenter.x, pCenter.y);
-  ctx.lineTo(pY.x, pY.y);
-  ctx.stroke();
-  ctx.fillStyle = '#3b82f6';
-  ctx.fillText('Y', pY.x + 3, pY.y + 3);
-  
-  ctx.strokeStyle = '#10b981';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pCenter.x, pCenter.y);
-  ctx.lineTo(pZ.x, pZ.y);
-  ctx.stroke();
-  ctx.fillStyle = '#10b981';
-  ctx.fillText('Z', pZ.x + 3, pZ.y + 3);
-  
-  ctx.fillStyle = '#ffffff';
-  ctx.beginPath();
-  ctx.arc(pCenter.x, pCenter.y, 3, 0, 2 * Math.PI);
-  ctx.fill();
-  ctx.restore();
-};
-
-const getMesh = (type, size) => {
-  const vertices = [];
-  const edges = [];
-  
-  if (type === 'cube') {
-    const s = size;
-    vertices.push({x: -s, y: -s, z: -s});
-    vertices.push({x: s, y: -s, z: -s});
-    vertices.push({x: s, y: s, z: -s});
-    vertices.push({x: -s, y: s, z: -s});
-    vertices.push({x: -s, y: -s, z: s});
-    vertices.push({x: s, y: -s, z: s});
-    vertices.push({x: s, y: s, z: s});
-    vertices.push({x: -s, y: s, z: s});
-    
-    edges.push([0, 1], [1, 2], [2, 3], [3, 0]);
-    edges.push([4, 5], [5, 6], [6, 7], [7, 4]);
-    edges.push([0, 4], [1, 5], [2, 6], [3, 7]);
-  } else if (type === 'pyramid') {
-    const w = size;
-    const h = size * 1.5;
-    vertices.push({x: -w, y: h/2, z: -w});
-    vertices.push({x: w, y: h/2, z: -w});
-    vertices.push({x: w, y: h/2, z: w});
-    vertices.push({x: -w, y: h/2, z: w});
-    vertices.push({x: 0, y: -h/2, z: 0});
-    
-    edges.push([0, 1], [1, 2], [2, 3], [3, 0]);
-    edges.push([0, 4], [1, 4], [2, 4], [3, 4]);
-  } else if (type === 'cylinder') {
-    const r = size;
-    const h = size * 1.8;
-    const segments = 12;
-    for (let i = 0; i < segments; i++) {
-      const angle = (i * 2 * Math.PI) / segments;
-      vertices.push({x: r * Math.cos(angle), y: -h/2, z: r * Math.sin(angle)});
-      vertices.push({x: r * Math.cos(angle), y: h/2, z: r * Math.sin(angle)});
-    }
-    for (let i = 0; i < segments; i++) {
-      const next = (i + 1) % segments;
-      edges.push([i*2, next*2]);
-      edges.push([i*2+1, next*2+1]);
-      edges.push([i*2, i*2+1]);
-    }
-  } else if (type === 'cone') {
-    const r = size;
-    const h = size * 1.8;
-    const segments = 12;
-    for (let i = 0; i < segments; i++) {
-      const angle = (i * 2 * Math.PI) / segments;
-      vertices.push({x: r * Math.cos(angle), y: h/2, z: r * Math.sin(angle)});
-    }
-    vertices.push({x: 0, y: -h/2, z: 0});
-    for (let i = 0; i < segments; i++) {
-      const next = (i + 1) % segments;
-      edges.push([i, next]);
-      edges.push([i, segments]);
-    }
-  } else if (type === 'sphere') {
-    const r = size;
-    const stacks = 6;
-    const slices = 10;
-    for (let lat = 0; lat <= stacks; lat++) {
-      const phi = (lat * Math.PI) / stacks;
-      for (let lon = 0; lon < slices; lon++) {
-        const theta = (lon * 2 * Math.PI) / slices;
-        vertices.push({
-          x: r * Math.sin(phi) * Math.cos(theta),
-          y: r * Math.cos(phi),
-          z: r * Math.sin(phi) * Math.sin(theta)
-        });
-      }
-    }
-    for (let lat = 0; lat < stacks; lat++) {
-      for (let lon = 0; lon < slices; lon++) {
-        const current = lat * slices + lon;
-        const nextLon = lat * slices + ((lon + 1) % slices);
-        const nextLat = (lat + 1) * slices + lon;
-        edges.push([current, nextLon]);
-        edges.push([current, nextLat]);
-      }
-    }
-  }
-  
-  return { vertices, edges };
-};
-
-const drawMesh = (ctx, mesh, pos, rotation, rx, ry, zoom, baseScale, width, height, color, opacity, size) => {
-  ctx.save();
-  
-  const projectedVertices = mesh.vertices.map(v => {
-    const wx = v.x + pos.x;
-    const wy = v.y + pos.y;
-    const wz = v.z + pos.z;
-    return project3DPoint(wx, wy, wz, rx, ry, zoom, width, height);
-  });
-  
-  // Calculate average depth of the entire mesh
-  let avgZ = 0;
-  projectedVertices.forEach(v => {
-    avgZ += v.z;
-  });
-  avgZ /= Math.max(1, projectedVertices.length);
-  
-  const k = (avgZ + 300) / 600;
-  const depthCue = Math.max(0.15, Math.min(1.2, 1.2 - k * 0.95));
-  
-  ctx.strokeStyle = color;
-  ctx.globalAlpha = opacity * depthCue;
-  ctx.lineWidth = (size || 2) * depthCue;
-  
-  mesh.edges.forEach(([s, e]) => {
-    if (projectedVertices[s] && projectedVertices[e]) {
-      ctx.beginPath();
-      ctx.moveTo(projectedVertices[s].x, projectedVertices[s].y);
-      ctx.lineTo(projectedVertices[e].x, projectedVertices[e].y);
-      ctx.stroke();
-    }
-  });
-  
-  ctx.fillStyle = color;
-  ctx.globalAlpha = opacity * depthCue * 0.9;
-  projectedVertices.forEach(pv => {
-    ctx.fillRect(pv.x - 2, pv.y - 2, 4, 4);
-  });
-  
-  ctx.restore();
-};
-
-const draw3DStroke = (ctx, strokePoints, rx, ry, zoom, baseScale, width, height, color, opacity, size) => {
-  if (!strokePoints || strokePoints.length < 2) return;
-  
-  let avgZ = 0;
-  const projected = [];
-  strokePoints.forEach(pt => {
-    const proj = project3DPoint(pt.x, pt.y, pt.z, rx, ry, zoom, width, height);
-    projected.push(proj);
-    avgZ += proj.z;
-  });
-  avgZ /= strokePoints.length;
-  
-  const k = (avgZ + 300) / 600;
-  const depthCue = Math.max(0.15, Math.min(1.2, 1.2 - k * 0.95));
-  
-  ctx.save();
-  ctx.strokeStyle = color;
-  ctx.globalAlpha = opacity * depthCue;
-  ctx.lineWidth = (size || 3) * depthCue;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  
-  ctx.beginPath();
-  ctx.moveTo(projected[0].x, projected[0].y);
-  for (let i = 1; i < projected.length; i++) {
-    ctx.lineTo(projected[i].x, projected[i].y);
-  }
-  ctx.stroke();
-  ctx.restore();
-};
-
-const processImageToStencil = (img, threshold, invert) => {
-  const maxDim = 250;
-  let w = img.width;
-  let h = img.height;
-  if (!w || !h) return { previewUrl: '', contours: [], w: 0, h: 0 };
-  
-  if (w > maxDim || h > maxDim) {
-    if (w > h) {
-      h = Math.round((h * maxDim) / w);
-      w = maxDim;
-    } else {
-      w = Math.round((w * maxDim) / h);
-      h = maxDim;
-    }
-  }
-
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0, w, h);
-
-  let imgData;
-  try {
-    imgData = ctx.getImageData(0, 0, w, h);
-  } catch (e) {
-    console.error("Failed to getImageData: Cross-origin image?", e);
-    return { previewUrl: '', contours: [], w, h };
-  }
-  const data = imgData.data;
-
-  // Grayscale
-  const grayscale = new Uint8Array(w * h);
-  for (let i = 0; i < w * h; i++) {
-    const r = data[i * 4];
-    const g = data[i * 4 + 1];
-    const b = data[i * 4 + 2];
-    grayscale[i] = 0.299 * r + 0.587 * g + 0.114 * b;
-  }
-
-  // Sobel Edge Detection
-  const sobelData = new Uint8Array(w * h);
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const idx = y * w + x;
-      
-      const px00 = grayscale[(y - 1) * w + (x - 1)];
-      const px01 = grayscale[(y - 1) * w + x];
-      const px02 = grayscale[(y - 1) * w + (x + 1)];
-      
-      const px10 = grayscale[y * w + (x - 1)];
-      const px12 = grayscale[y * w + (x + 1)];
-      
-      const px20 = grayscale[(y + 1) * w + (x - 1)];
-      const px21 = grayscale[(y + 1) * w + x];
-      const px22 = grayscale[(y + 1) * w + (x + 1)];
-
-      const gx = -px00 + px02 - 2 * px10 + 2 * px12 - px20 + px22;
-      const gy = -px00 - 2 * px01 - px02 + px20 + 2 * px21 + px22;
-
-      const gMagnitude = Math.sqrt(gx * gx + gy * gy);
-      sobelData[idx] = Math.min(255, gMagnitude);
-    }
-  }
-
-  // Clear outer border margin to prevent image boundaries from showing up
-  const borderMargin = 6;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (x < borderMargin || x >= w - borderMargin || y < borderMargin || y >= h - borderMargin) {
-        sobelData[y * w + x] = 0;
-      }
-    }
-  }
-
-  // Create binary stencil image for preview
-  const binaryPixels = new Uint8Array(w * h);
-  const previewData = ctx.createImageData(w, h);
-  const previewPixels = previewData.data;
-
-  for (let i = 0; i < w * h; i++) {
-    const isEdge = sobelData[i] > threshold;
-    binaryPixels[i] = isEdge ? 255 : 0;
-
-    // Draw preview
-    if (invert) {
-      if (isEdge) {
-        previewPixels[i * 4] = 255;
-        previewPixels[i * 4 + 1] = 255;
-        previewPixels[i * 4 + 2] = 255;
-        previewPixels[i * 4 + 3] = 255;
-      } else {
-        previewPixels[i * 4] = 0;
-        previewPixels[i * 4 + 1] = 0;
-        previewPixels[i * 4 + 2] = 0;
-        previewPixels[i * 4 + 3] = 0;
-      }
-    } else {
-      if (isEdge) {
-        previewPixels[i * 4] = 0;
-        previewPixels[i * 4 + 1] = 0;
-        previewPixels[i * 4 + 2] = 0;
-        previewPixels[i * 4 + 3] = 255;
-      } else {
-        previewPixels[i * 4] = 255;
-        previewPixels[i * 4 + 1] = 255;
-        previewPixels[i * 4 + 2] = 255;
-        previewPixels[i * 4 + 3] = 0;
-      }
-    }
-  }
-  ctx.putImageData(previewData, 0, 0);
-  const previewUrl = canvas.toDataURL('image/png');
-
-  // Contour Tracing
-  const visited = new Uint8Array(w * h);
-  const contours = [];
-  const dx = [1, 1, 0, -1, -1, -1, 0, 1];
-  const dy = [0, 1, 1, 1, 0, -1, -1, -1];
-
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const idx = y * w + x;
-      if (binaryPixels[idx] === 255 && !visited[idx]) {
-        const path = [];
-        let curX = x;
-        let curY = y;
-        path.push({ x: curX, y: curY });
-        visited[idx] = 1;
-
-        let found = true;
-        while (found) {
-          found = false;
-          for (let n = 0; n < 8; n++) {
-            const nx = curX + dx[n];
-            const ny = curY + dy[n];
-            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-              const nidx = ny * w + nx;
-              if (binaryPixels[nidx] === 255 && !visited[nidx]) {
-                curX = nx;
-                curY = ny;
-                path.push({ x: curX, y: curY });
-                visited[nidx] = 1;
-                found = true;
-                break;
-              }
-            }
-          }
-        }
-        if (path.length > 2) {
-          contours.push(path);
-        }
-      }
-    }
-  }
-
-  return { previewUrl, contours, w, h, grayscale };
-};
+// Image to Stencil processing helpers are now imported from ../utils/stencilUtils
 
 export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved }) {
   const canvasRef = useRef(null)
@@ -845,6 +140,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const [stencilWidth, setStencilWidth] = useState(0)
   const [stencilHeight, setStencilHeight] = useState(0)
   const [stencilMode3D, setStencilMode3D] = useState('extrusion') // extrusion, heightmap
+  const [show3DDownloadModal, setShow3DDownloadModal] = useState(false)
+  const [downloaded3DModelData, setDownloaded3DModelData] = useState(null)
 
   useEffect(() => {
     if (!uploadedImage) {
@@ -2563,14 +1860,30 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
   // Local file download
   const handleDownloadLocally = () => {
-    const canvas = canvasRef.current
-    const dataUrl = canvas.toDataURL('image/png')
-    const link = document.createElement('a')
-    link.href = dataUrl
-    link.download = `miro_canvas_sketch_${Date.now()}.png`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    if (canvasMode === '3d') {
+      const objContent = generateOBJString(stamped3DObjectsRef.current)
+      const blob = new Blob([objContent], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `miro_3d_model_${Date.now()}.obj`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      
+      setDownloaded3DModelData([...stamped3DObjectsRef.current])
+      setShow3DDownloadModal(true)
+    } else {
+      const canvas = canvasRef.current
+      const dataUrl = canvas.toDataURL('image/png')
+      const link = document.createElement('a')
+      link.href = dataUrl
+      link.download = `miro_canvas_sketch_${Date.now()}.png`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
   }
 
   return (
@@ -3423,9 +2736,29 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           </div>
         </div>
       )}
+      {/* 3D Model Download & Viewer Modal */}
+      <ThreeDModelViewerModal
+        isOpen={show3DDownloadModal}
+        onClose={() => setShow3DDownloadModal(false)}
+        objects={downloaded3DModelData}
+        onDownloadAgain={() => {
+          if (!downloaded3DModelData) return
+          const objContent = generateOBJString(downloaded3DModelData)
+          const blob = new Blob([objContent], { type: 'text/plain' })
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = `miro_3d_model_${Date.now()}.obj`
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+        }}
+      />
     </div>
   )
 }
+
 
 const styles = {
   container: {
