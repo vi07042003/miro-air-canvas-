@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand } from 'lucide-react'
 
 export default function LandingPage({ onStartCanvas }) {
@@ -101,8 +102,8 @@ export default function LandingPage({ onStartCanvas }) {
       </section>
 
       {/* Manual / How It Works Modal */}
-      {showManual && (
-        <div style={styles.modalBg} onClick={() => setShowManual(false)}>
+      {showManual && createPortal(
+        <div className="modal-backdrop-glass" onClick={() => setShowManual(false)}>
           <div className="glass-panel-heavy" style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -166,7 +167,8 @@ export default function LandingPage({ onStartCanvas }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
