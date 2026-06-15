@@ -3,19 +3,37 @@ import { Palette, Save, Camera } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 
 const THEME_OPTIONS = [
-  { name: 'Liquid Indigo', color1: '#8b5cf6', color2: '#06b6d4' },
-  { name: 'Solar Flare', color1: '#ec4899', color2: '#f59e0b' },
-  { name: 'Neon Cyber', color1: '#06b6d4', color2: '#10b981' },
-  { name: 'Royal Amethyst', color1: '#8b5cf6', color2: '#ec4899' }
+  { name: 'Aurora Sky', color1: '#00f2fe', color2: '#4facfe' },
+  { name: 'Liquid Pearl', color1: '#ff758c', color2: '#ff7eb3' },
+  { name: 'Royal Orchid', color1: '#b18cfd', color2: '#ff7ebb' },
+  { name: 'Solar Flare', color1: '#ff0844', color2: '#ffb199' },
+  { name: 'Velvet Emerald', color1: '#0575e6', color2: '#00f260' }
 ]
 
-export default function Settings({ onThemeChange, activeThemeName }) {
+export default function Settings({ onThemeChange, activeThemeName, glassOpacity, onGlassOpacityChange }) {
   // App settings
   const [appSettings, setAppSettings] = useState({
     mirrorCamera: 'true',
     detectionConfidence: '0.5',
     defaultColor: '#06b6d4'
   })
+  
+  // Local values for smooth real-time slider updates without dragging latency
+  const [localOpacity, setLocalOpacity] = useState(glassOpacity !== undefined ? glassOpacity : 80)
+  const [localConfidence, setLocalConfidence] = useState(0.5)
+
+  useEffect(() => {
+    if (glassOpacity !== undefined) {
+      setLocalOpacity(glassOpacity)
+    }
+  }, [glassOpacity])
+
+  useEffect(() => {
+    if (appSettings.detectionConfidence) {
+      setLocalConfidence(parseFloat(appSettings.detectionConfidence) || 0.5)
+    }
+  }, [appSettings.detectionConfidence])
+
   const [loadingSettings, setLoadingSettings] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState('')
 
@@ -98,13 +116,15 @@ export default function Settings({ onThemeChange, activeThemeName }) {
                   min="0.2"
                   max="0.9"
                   step="0.05"
-                  value={appSettings.detectionConfidence}
-                  onChange={(e) => setAppSettings({ ...appSettings, detectionConfidence: e.target.value })}
-                  style={styles.range}
+                  value={localConfidence}
+                  onChange={(e) => setLocalConfidence(parseFloat(e.target.value))}
+                  onMouseUp={() => setAppSettings({ ...appSettings, detectionConfidence: localConfidence.toString() })}
+                  onTouchEnd={() => setAppSettings({ ...appSettings, detectionConfidence: localConfidence.toString() })}
+                  className="glass-range"
                 />
                 <div style={styles.rangeValues}>
                   <span>0.2 (Low - Easier detection)</span>
-                  <span style={{ fontWeight: 'bold', color: 'var(--theme-color-2)' }}>{appSettings.detectionConfidence}</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--theme-color-2)' }}>{localConfidence}</span>
                   <span>0.9 (High - Stricter)</span>
                 </div>
               </div>
@@ -119,6 +139,34 @@ export default function Settings({ onThemeChange, activeThemeName }) {
                     style={styles.colorPicker}
                   />
                   <span style={{ fontStyle: 'monospace' }}>{appSettings.defaultColor}</span>
+                </div>
+              </div>
+
+              <div style={styles.inputGroup}>
+                <label style={styles.label}>Glass Transparency</label>
+                <input 
+                  type="range"
+                  min="0"
+                  max="95"
+                  step="5"
+                  value={localOpacity}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setLocalOpacity(val);
+                    // Update CSS variable directly on root for 60fps real-time feedback
+                    const glassOpacityVal = 0.3 * (1 - val / 100);
+                    document.documentElement.style.setProperty('--glass-opacity-val', glassOpacityVal);
+                  }}
+                  onMouseUp={() => onGlassOpacityChange(localOpacity)}
+                  onTouchEnd={() => onGlassOpacityChange(localOpacity)}
+                  className="glass-range"
+                />
+                <div style={styles.rangeValues}>
+                  <span>0% (Solid)</span>
+                  <span style={{ fontWeight: 'bold', color: 'var(--theme-color-1)' }}>
+                    {localOpacity}%
+                  </span>
+                  <span>95% (Fully Clear)</span>
                 </div>
               </div>
             </div>

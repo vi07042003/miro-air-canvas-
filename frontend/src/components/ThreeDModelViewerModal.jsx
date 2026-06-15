@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Box, X, Crosshair, Zap, Download } from 'lucide-react';
 import { drawModel, getModelStats, generateOBJString } from '../utils/3dUtils';
 
@@ -55,8 +56,8 @@ export default function ThreeDModelViewerModal({ isOpen, onClose, objects, onDow
 
   const stats = getModelStats(objects);
 
-  return (
-    <div style={styles.modalBg} onClick={onClose}>
+  return createPortal(
+    <div className="modal-backdrop-glass" onClick={onClose}>
       <div 
         className="glass-panel-heavy fade-in" 
         style={{
@@ -66,7 +67,8 @@ export default function ThreeDModelViewerModal({ isOpen, onClose, objects, onDow
           display: 'flex',
           flexDirection: 'column',
           gap: '16px',
-          padding: '24px'
+          padding: '24px',
+          margin: 'auto'
         }} 
         onClick={e => e.stopPropagation()}
       >
@@ -194,7 +196,7 @@ export default function ThreeDModelViewerModal({ isOpen, onClose, objects, onDow
                   max="360"
                   value={lightAngle}
                   onChange={(e) => setLightAngle(parseInt(e.target.value))}
-                  style={{ width: '100%', accentColor: 'var(--theme-color-2)' }}
+                  className="glass-range"
                 />
               </div>
             )}
@@ -247,7 +249,8 @@ export default function ThreeDModelViewerModal({ isOpen, onClose, objects, onDow
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -266,12 +269,8 @@ const styles = {
     zIndex: 1000,
   },
   modalContent: {
-    backgroundColor: 'rgba(17, 12, 34, 0.45)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
-    borderRadius: '16px',
-    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
-    maxHeight: '90vh',
-    overflowY: 'auto',
+    backgroundColor: 'transparent',
+    border: 'none',
   },
   modalTitle: {
     color: '#fff',

@@ -1,12 +1,25 @@
 import React, { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Image, Download, Trash2, Eye, Calendar, X, Edit } from 'lucide-react'
 import { BACKEND_URL } from '../App'
+import GlassDialog from './GlassDialog'
 
 export default function Gallery({ onEditDrawing }) {
   const [drawings, setDrawings] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedDrawing, setSelectedDrawing] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
+
+  // Custom Glass Dialog State
+  const [dialog, setDialog] = useState({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    message: '',
+    onConfirm: null,
+    confirmText: 'OK',
+    cancelText: 'Cancel'
+  })
 
   const fetchDrawings = async () => {
     setLoading(true)
@@ -38,32 +51,55 @@ export default function Gallery({ onEditDrawing }) {
     fetchDrawings()
   }, [])
 
-  const handleDelete = async (id, e) => {
+  const handleDelete = (id, e) => {
     if (e) e.stopPropagation()
-    if (!window.confirm('Are you sure you want to delete this sketch?')) return
-
-    const token = localStorage.getItem('token')
-
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/drawings/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
+    setDialog({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Delete Artwork',
+      message: 'Are you sure you want to permanently delete this artwork? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      onConfirm: async () => {
+        setDialog(prev => ({ ...prev, isOpen: false }))
+        const token = localStorage.getItem('token')
+        try {
+          const res = await fetch(`${BACKEND_URL}/api/drawings/${id}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          if (res.ok) {
+            setDrawings(drawings.filter(d => d.id !== id))
+            if (selectedDrawing && selectedDrawing.id === id) {
+              setSelectedDrawing(null)
+            }
+          } else {
+            const data = await res.json()
+            setDialog({
+              isOpen: true,
+              type: 'alert',
+              title: 'Error',
+              message: data.detail || 'Could not delete drawing',
+              confirmText: 'OK',
+              onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+            })
+          }
+        } catch (err) {
+          console.error('Error deleting drawing:', err)
+          setDialog({
+            isOpen: true,
+            type: 'alert',
+            title: 'Network Error',
+            message: 'A network error occurred. Please check your connection and try again.',
+            confirmText: 'OK',
+            onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+          })
         }
-      })
-      if (res.ok) {
-        setDrawings(drawings.filter(d => d.id !== id))
-        if (selectedDrawing && selectedDrawing.id === id) {
-          setSelectedDrawing(null)
-        }
-      } else {
-        const data = await res.json()
-        alert(data.detail || 'Could not delete drawing')
-      }
-    } catch (err) {
-      console.error('Error deleting drawing:', err)
-      alert('Network error')
-    }
+      },
+      onCancel: () => setDialog(prev => ({ ...prev, isOpen: false }))
+    })
   }
 
   const handleDownload = (drawing, e) => {
@@ -77,91 +113,93 @@ export default function Gallery({ onEditDrawing }) {
   }
 
   return (
-    <div className="fade-in" style={styles.container}>
-      <h1 style={styles.title}>Sketch Gallery</h1>
-      
-      {loading ? (
-        <div style={styles.loadingContainer}>
-          <div style={styles.spinner}></div>
-          <p>Loading gallery items...</p>
-        </div>
-      ) : errorMsg ? (
-        <div className="glass-panel" style={styles.emptyContainer}>
-          <h2 style={{ ...styles.emptyTitle, color: '#f43f5e' }}>Authentication Error</h2>
-          <p style={styles.emptyText}>{errorMsg}</p>
-        </div>
-      ) : drawings.length === 0 ? (
-        <div className="glass-panel" style={styles.emptyContainer}>
-          <Image size={48} color="var(--text-muted)" />
-          <h2 style={styles.emptyTitle}>Canvas is Empty</h2>
-          <p style={styles.emptyText}>
-            You haven't saved any air drawings yet. Head over to the Canvas and create your first sketch!
-          </p>
-        </div>
-      ) : (
-        <div style={styles.grid}>
-          {drawings.map((drawing) => (
-            <div 
-              key={drawing.id} 
-              className="glass-card" 
-              style={styles.card}
-              onClick={() => setSelectedDrawing(drawing)}
-            >
-              <div style={styles.imageWrapper}>
-                <img src={drawing.image_data} alt={drawing.title} style={styles.image} />
-                <div className="card-overlay" style={styles.cardOverlay}>
+    <>
+      <div className="fade-in" style={styles.container}>
+        <h1 style={styles.title}>Sketch Gallery</h1>
+        
+        {loading ? (
+          <div style={styles.loadingContainer}>
+            <div style={styles.spinner}></div>
+            <p>Loading gallery items...</p>
+          </div>
+        ) : errorMsg ? (
+          <div className="glass-panel" style={styles.emptyContainer}>
+            <h2 style={{ ...styles.emptyTitle, color: '#f43f5e' }}>Authentication Error</h2>
+            <p style={styles.emptyText}>{errorMsg}</p>
+          </div>
+        ) : drawings.length === 0 ? (
+          <div className="glass-panel" style={styles.emptyContainer}>
+            <Image size={48} color="var(--text-muted)" />
+            <h2 style={styles.emptyTitle}>Canvas is Empty</h2>
+            <p style={styles.emptyText}>
+              You haven't saved any air drawings yet. Head over to the Canvas and create your first sketch!
+            </p>
+          </div>
+        ) : (
+          <div style={styles.grid}>
+            {drawings.map((drawing) => (
+              <div 
+                key={drawing.id} 
+                className="glass-card" 
+                style={styles.card}
+                onClick={() => setSelectedDrawing(drawing)}
+              >
+                <div style={styles.imageWrapper}>
+                  <img src={drawing.image_data} alt={drawing.title} style={styles.image} />
+                  <div className="card-overlay" style={styles.cardOverlay}>
+                    <button 
+                      style={styles.overlayBtn} 
+                      onClick={() => setSelectedDrawing(drawing)}
+                      title="View Fullscreen"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <button 
+                      style={styles.overlayBtn} 
+                      onClick={(e) => handleDownload(drawing, e)}
+                      title="Download Sketch"
+                    >
+                      <Download size={18} />
+                    </button>
+                  </div>
+                </div>
+                <div style={styles.cardInfo}>
+                  <h3 style={styles.cardTitle}>{drawing.title}</h3>
+                  <div style={styles.cardMeta}>
+                    <Calendar size={12} />
+                    <span>{drawing.created_at}</span>
+                  </div>
+                </div>
+                <div style={styles.cardActions}>
                   <button 
-                    style={styles.overlayBtn} 
-                    onClick={() => setSelectedDrawing(drawing)}
-                    title="View Fullscreen"
+                    className="glass-btn glass-btn-primary" 
+                    style={{ ...styles.actionBtn, marginRight: 'auto' }}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEditDrawing(drawing)
+                    }}
                   >
-                    <Eye size={18} />
+                    <Edit size={14} />
+                    <span>Edit</span>
                   </button>
                   <button 
-                    style={styles.overlayBtn} 
-                    onClick={(e) => handleDownload(drawing, e)}
-                    title="Download Sketch"
+                    className="glass-btn" 
+                    style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+                    onClick={(e) => handleDelete(drawing.id, e)}
                   >
-                    <Download size={18} />
+                    <Trash2 size={14} />
+                    <span>Delete</span>
                   </button>
                 </div>
               </div>
-              <div style={styles.cardInfo}>
-                <h3 style={styles.cardTitle}>{drawing.title}</h3>
-                <div style={styles.cardMeta}>
-                  <Calendar size={12} />
-                  <span>{drawing.created_at}</span>
-                </div>
-              </div>
-              <div style={styles.cardActions}>
-                <button 
-                  className="glass-btn glass-btn-primary" 
-                  style={{ ...styles.actionBtn, marginRight: 'auto' }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onEditDrawing(drawing)
-                  }}
-                >
-                  <Edit size={14} />
-                  <span>Edit</span>
-                </button>
-                <button 
-                  className="glass-btn" 
-                  style={{ ...styles.actionBtn, ...styles.deleteBtn }}
-                  onClick={(e) => handleDelete(drawing.id, e)}
-                >
-                  <Trash2 size={14} />
-                  <span>Delete</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Lightbox / Zoom Modal */}
-      {selectedDrawing && (
-        <div style={styles.modalBg} onClick={() => setSelectedDrawing(null)}>
+      {selectedDrawing && createPortal(
+        <div className="modal-backdrop-glass" onClick={() => setSelectedDrawing(null)}>
           <div className="glass-panel-heavy" style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div>
@@ -211,9 +249,20 @@ export default function Gallery({ onEditDrawing }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+      <GlassDialog
+        isOpen={dialog.isOpen}
+        type={dialog.type}
+        title={dialog.title}
+        message={dialog.message}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        onConfirm={dialog.onConfirm}
+        onCancel={dialog.onCancel}
+      />
+    </>
   )
 }
 
@@ -386,6 +435,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+    margin: 'auto',
   },
   modalHeader: {
     display: 'flex',

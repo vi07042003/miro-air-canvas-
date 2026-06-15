@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Home, Image, Settings as SettingsIcon, Palette, LogIn, LogOut, User as UserIcon, Lock, X } from 'lucide-react'
 import LandingPage from './components/LandingPage'
 import AirCanvas from './components/AirCanvas'
 import Gallery from './components/Gallery'
 import Settings from './components/Settings'
 import Auth from './components/Auth'
+import { AnimatePresence, motion } from 'framer-motion'
 
 // Backend URL configuration
 export const BACKEND_URL = 'http://localhost:8000'
@@ -30,17 +32,49 @@ function App() {
   const [editingDrawing, setEditingDrawing] = useState(null)
 
   // Theme Configuration
-  const [theme, setTheme] = useState({
-    name: 'Liquid Indigo',
-    color1: '#8b5cf6', // Violet
-    color2: '#06b6d4'  // Cyan
+  const [theme, setTheme] = useState(() => {
+    const savedName = localStorage.getItem('theme_name')
+    const savedColor1 = localStorage.getItem('theme_color_1')
+    const savedColor2 = localStorage.getItem('theme_color_2')
+    return savedName && savedColor1 && savedColor2 
+      ? { name: savedName, color1: savedColor1, color2: savedColor2 }
+      : { name: 'Aurora Sky', color1: '#00f2fe', color2: '#4facfe' }
   })
+
+  // Glass Transparency Configuration
+  const [glassOpacity, setGlassOpacity] = useState(() => {
+    const saved = localStorage.getItem('glass_opacity')
+    return saved ? parseInt(saved, 10) : 80
+  })
+
+  // Apply glass transparency dynamically to :root
+  useEffect(() => {
+    const root = document.documentElement
+    // Calculate alpha factor from transparency percentage (e.g. 80% transparency -> 0.06 alpha)
+    const glassOpacityVal = 0.3 * (1 - glassOpacity / 100)
+    root.style.setProperty('--glass-opacity-val', glassOpacityVal)
+  }, [glassOpacity])
 
   // Apply theme variables dynamically to :root
   useEffect(() => {
     const root = document.documentElement
     root.style.setProperty('--theme-color-1', theme.color1)
     root.style.setProperty('--theme-color-2', theme.color2)
+    
+    // Hex to RGB conversion for CSS alpha glows
+    const hexToRgb = (hex) => {
+      let c = hex.substring(1)
+      if (c.length === 3) {
+        c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]
+      }
+      const r = parseInt(c.substring(0, 2), 16)
+      const g = parseInt(c.substring(2, 4), 16)
+      const b = parseInt(c.substring(4, 6), 16)
+      return `${r}, ${g}, ${b}`
+    }
+    
+    root.style.setProperty('--theme-color-1-rgb', hexToRgb(theme.color1))
+    root.style.setProperty('--theme-color-2-rgb', hexToRgb(theme.color2))
   }, [theme])
 
   // Reset editing drawing when user leaves the canvas page
@@ -53,6 +87,9 @@ function App() {
   // Change theme handler
   const handleThemeChange = (color1, color2, name) => {
     setTheme({ color1, color2, name })
+    localStorage.setItem('theme_name', name)
+    localStorage.setItem('theme_color_1', color1)
+    localStorage.setItem('theme_color_2', color2)
   }
 
   // Session login success callback
@@ -181,45 +218,129 @@ function App() {
   const renderPage = () => {
     // Strict auth gate — canvas and gallery are ALWAYS blocked without a session
     if ((activePage === 'canvas' || activePage === 'gallery') && !user) {
-      return <Auth onLoginSuccess={handleLoginSuccess} />
+      return (
+        <motion.div
+          key="auth"
+          initial={{ opacity: 0, x: 15 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -15 }}
+          transition={{ duration: 0.22, ease: 'easeInOut' }}
+        >
+          <Auth onLoginSuccess={handleLoginSuccess} />
+        </motion.div>
+      )
     }
 
     // Show auth page when explicitly requested (unauthenticated)
     if (activePage === 'auth' && !user) {
-      return <Auth onLoginSuccess={handleLoginSuccess} />
+      return (
+        <motion.div
+          key="auth"
+          initial={{ opacity: 0, x: 15 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -15 }}
+          transition={{ duration: 0.22, ease: 'easeInOut' }}
+        >
+          <Auth onLoginSuccess={handleLoginSuccess} />
+        </motion.div>
+      )
     }
 
     // Already logged in but ended up on auth page — go to canvas
     if (activePage === 'auth' && user) {
       return (
-        <AirCanvas 
-          initialDrawing={editingDrawing} 
-          onDrawingCleared={() => setEditingDrawing(null)} 
-          onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
-        />
-      )
-    }
-
-    switch (activePage) {
-      case 'landing':
-        return <LandingPage onStartCanvas={() => navigateTo('canvas')} />
-      case 'canvas':
-        return (
+        <motion.div
+          key="canvas"
+          initial={{ opacity: 0, x: 15 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -15 }}
+          transition={{ duration: 0.22, ease: 'easeInOut' }}
+        >
           <AirCanvas 
             initialDrawing={editingDrawing} 
             onDrawingCleared={() => setEditingDrawing(null)} 
             onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
           />
+        </motion.div>
+      )
+    }
+
+    switch (activePage) {
+      case 'landing':
+        return (
+          <motion.div
+            key="landing"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+          >
+            <LandingPage onStartCanvas={() => navigateTo('canvas')} />
+          </motion.div>
+        )
+      case 'canvas':
+        return (
+          <motion.div
+            key="canvas"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+          >
+            <AirCanvas 
+              initialDrawing={editingDrawing} 
+              onDrawingCleared={() => setEditingDrawing(null)} 
+              onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
+            />
+          </motion.div>
         )
       case 'gallery':
-        return <Gallery onEditDrawing={(drawing) => {
-          setEditingDrawing(drawing)
-          setActivePage('canvas')
-        }} />
+        return (
+          <motion.div
+            key="gallery"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+          >
+            <Gallery onEditDrawing={(drawing) => {
+              setEditingDrawing(drawing)
+              setActivePage('canvas')
+            }} />
+          </motion.div>
+        )
       case 'settings':
-        return <Settings onThemeChange={handleThemeChange} activeThemeName={theme.name} />
+        return (
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+          >
+            <Settings 
+              onThemeChange={handleThemeChange} 
+              activeThemeName={theme.name}
+              glassOpacity={glassOpacity}
+              onGlassOpacityChange={(val) => {
+                setGlassOpacity(val)
+                localStorage.setItem('glass_opacity', val)
+              }}
+            />
+          </motion.div>
+        )
       default:
-        return <LandingPage onStartCanvas={() => navigateTo('canvas')} />
+        return (
+          <motion.div
+            key="landing"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+          >
+            <LandingPage onStartCanvas={() => navigateTo('canvas')} />
+          </motion.div>
+        )
     }
   }
 
@@ -230,13 +351,15 @@ function App() {
         <div className="liquid-blob blob-1"></div>
         <div className="liquid-blob blob-2"></div>
         <div className="liquid-blob blob-3"></div>
+        <div className="liquid-blob blob-4"></div>
+        <div className="liquid-blob blob-5"></div>
       </div>
 
       {/* Main Glass Header */}
       <header className="header-glass">
         <div className="logo-container" onClick={() => setActivePage('landing')}>
-          <div className="logo-icon" style={{ padding: '4px' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <div className="logo-icon" style={{ padding: '6px' }}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M4 19V5L12 13L20 5V19" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
@@ -248,7 +371,7 @@ function App() {
             className={`nav-item ${activePage === 'landing' ? 'nav-item-active' : ''}`}
             onClick={() => setActivePage('landing')}
           >
-            <Home size={16} />
+            <Home size={19} />
             <span>Home</span>
           </button>
           <button 
@@ -256,24 +379,24 @@ function App() {
             onClick={() => navigateTo('canvas')}
             title={!user ? 'Sign in to access Canvas' : 'Canvas'}
           >
-            <Palette size={16} />
+            <Palette size={19} />
             <span>Canvas</span>
-            {!user && <Lock size={11} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+            {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
           </button>
           <button 
             className={`nav-item ${activePage === 'gallery' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
             onClick={() => navigateTo('gallery')}
             title={!user ? 'Sign in to access Gallery' : 'Gallery'}
           >
-            <Image size={16} />
+            <Image size={19} />
             <span>Gallery</span>
-            {!user && <Lock size={11} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+            {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
           </button>
           <button 
             className={`nav-item ${activePage === 'settings' ? 'nav-item-active' : ''}`}
             onClick={() => setActivePage('settings')}
           >
-            <SettingsIcon size={16} />
+            <SettingsIcon size={19} />
             <span>Settings</span>
           </button>
         </nav>
@@ -287,7 +410,7 @@ function App() {
                   {user.profilePicture ? (
                     <img src={user.profilePicture} style={styles.headerAvatar} alt="Profile" />
                   ) : (
-                    <UserIcon size={14} color="var(--theme-color-2)" />
+                    <UserIcon size={18} color="var(--theme-color-2)" />
                   )}
                   <span>{user.username}</span>
                 </div>
@@ -308,13 +431,13 @@ function App() {
                 </div>
               </div>
               <button className="glass-btn" style={styles.authBtn} onClick={handleLogout} title="Log Out">
-                <LogOut size={14} />
+                <LogOut size={16} />
                 <span>Log Out</span>
               </button>
             </div>
           ) : (
             <button className="glass-btn glass-btn-primary" style={styles.authBtn} onClick={() => setActivePage('auth')}>
-              <LogIn size={14} />
+              <LogIn size={16} />
               <span>Sign In</span>
             </button>
           )}
@@ -322,13 +445,15 @@ function App() {
       </header>
 
       {/* Main Content Area */}
-      <main style={{ minHeight: 'calc(100vh - 73px)', padding: '24px' }}>
-        {renderPage()}
+      <main style={{ minHeight: 'calc(100vh - 73px)', padding: '24px', position: 'relative', overflowX: 'hidden' }}>
+        <AnimatePresence mode="wait">
+          {renderPage()}
+        </AnimatePresence>
       </main>
 
       {/* Profile Edit Modal */}
-      {showProfileModal && (
-        <div style={styles.modalBg} onClick={() => setShowProfileModal(false)}>
+      {showProfileModal && createPortal(
+        <div className="modal-backdrop-glass" onClick={() => setShowProfileModal(false)}>
           <div className="glass-panel-heavy fade-in" style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
             <div style={styles.modalHeader}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -416,7 +541,8 @@ function App() {
               </button>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )
@@ -446,15 +572,15 @@ const styles = {
     color: '#fff',
   },
   headerAvatar: {
-    width: '18px',
-    height: '18px',
+    width: '24px',
+    height: '24px',
     borderRadius: '50%',
     objectFit: 'cover',
     border: '1px solid var(--theme-color-2)',
   },
   authBtn: {
-    padding: '8px 14px',
-    fontSize: '13px',
+    padding: '10px 18px',
+    fontSize: '15px',
     borderRadius: '10px',
   },
   avatarSection: {
@@ -517,6 +643,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+    margin: 'auto',
   },
   modalHeader: {
     display: 'flex',

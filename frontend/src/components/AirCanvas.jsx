@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { 
   Palette, Eraser, Circle as CircleIcon, Square, Slash, Trash2, Undo, Redo, Download, Save, Camera, CameraOff, Video, Eye, ShieldAlert, Crosshair, Zap, Triangle, Star,
   Pencil, Highlighter, Sparkles, ArrowUpRight, Move, CircleDot, Heart, Moon, Cloud, Plus, Box, ChevronDown, Hexagon, Image as ImageIcon, X
@@ -11,6 +12,73 @@ import {
 import { drawShapePath } from '../utils/canvasUtils'
 import { processImageToStencil } from '../utils/stencilUtils'
 import ThreeDModelViewerModal from './ThreeDModelViewerModal'
+import GlassDialog from './GlassDialog'
+
+// Lightweight child component to isolate range slider re-renders and prevent canvas lag during drags
+function SmoothSlider({ label, min, max, step = 1, value, onChange, onRelease, formatValue = (v) => v, isInline = false, inlineSliderStyle = {} }) {
+  const [localVal, setLocalVal] = useState(value)
+
+  useEffect(() => {
+    setLocalVal(value)
+  }, [value])
+
+  const handleChange = (e) => {
+    const val = parseFloat(e.target.value)
+    setLocalVal(val)
+    if (onChange) onChange(val)
+  }
+
+  const handleRelease = () => {
+    if (onRelease) onRelease(localVal)
+  }
+
+  if (isInline) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <span style={{ fontSize: '12px', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+          {label}: {formatValue(localVal)}
+        </span>
+        <input 
+          type="range" 
+          min={min} 
+          max={max} 
+          step={step}
+          value={localVal}
+          onChange={handleChange}
+          onMouseUp={handleRelease}
+          onTouchEnd={handleRelease}
+          className="glass-range"
+          style={inlineSliderStyle}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+        <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+          {label}
+        </span>
+        <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>
+          {formatValue(localVal)}
+        </span>
+      </div>
+      <input 
+        type="range" 
+        min={min} 
+        max={max} 
+        step={step}
+        value={localVal}
+        onChange={handleChange}
+        onMouseUp={handleRelease}
+        onTouchEnd={handleRelease}
+        className="glass-range"
+      />
+    </div>
+  )
+}
+
 
 const PRESET_COLORS = [
   '#06b6d4', // Neon Cyan
@@ -127,6 +195,17 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const [saveTitle, setSaveTitle] = useState('')
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [dbMessage, setDbMessage] = useState('')
+
+  // Custom Glass Dialog State
+  const [dialog, setDialog] = useState({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    message: '',
+    onConfirm: null,
+    confirmText: 'OK',
+    cancelText: 'Cancel'
+  })
 
   // Stencil Converter States
   const [showStencilModal, setShowStencilModal] = useState(false)
@@ -665,18 +744,40 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       handleClear3D()
       return
     }
-    if (!window.confirm('Are you sure you want to clear the canvas?')) return
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#0a0518'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-    saveCanvasState()
+    setDialog({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Clear 2D Canvas',
+      message: 'Are you sure you want to clear the canvas? All current drawing paths will be cleared.',
+      confirmText: 'Clear',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        const canvas = canvasRef.current
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#0a0518'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        saveCanvasState()
+        setDialog(prev => ({ ...prev, isOpen: false }))
+      },
+      onCancel: () => setDialog(prev => ({ ...prev, isOpen: false }))
+    })
   }
 
   const handleClear3D = () => {
-    if (!window.confirm('Are you sure you want to clear the 3D canvas?')) return
-    stamped3DObjectsRef.current = []
-    save3DState()
+    setDialog({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Clear 3D Canvas',
+      message: 'Are you sure you want to clear the 3D canvas? This will permanently delete all 3D meshes on the screen.',
+      confirmText: 'Clear',
+      cancelText: 'Cancel',
+      onConfirm: () => {
+        stamped3DObjectsRef.current = []
+        save3DState()
+        setDialog(prev => ({ ...prev, isOpen: false }))
+      },
+      onCancel: () => setDialog(prev => ({ ...prev, isOpen: false }))
+    })
   }
 
   // 3D Mouse event listeners
@@ -1441,7 +1542,14 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       const CameraLib = window.Camera
 
       if (!HandsLib || !CameraLib) {
-        alert('MediaPipe tracking script libraries failed to load. Please check your network connection.')
+        setDialog({
+          isOpen: true,
+          type: 'alert',
+          title: 'MediaPipe Load Error',
+          message: 'MediaPipe tracking script libraries failed to load. Please check your network connection and reload.',
+          confirmText: 'OK',
+          onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
+        })
         setIsCameraOn(false)
         return
       }
@@ -2101,17 +2209,17 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                 </div>
 
                 {/* Line size slider for 3D strokes */}
-                <div style={styles.inlineControl}>
-                  <span style={styles.inlineLabel}>Size: {brushSize}px</span>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="30" 
-                    value={brushSize}
-                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                    style={styles.inlineSlider}
-                  />
-                </div>
+                <SmoothSlider 
+                  label="Size"
+                  min="1"
+                  max="30"
+                  value={brushSize}
+                  onChange={(val) => { stateRef.current.brushSize = val; }}
+                  onRelease={(val) => setBrushSize(val)}
+                  formatValue={(v) => `${v}px`}
+                  isInline={true}
+                  inlineSliderStyle={styles.inlineSlider}
+                />
               </>
             ) : (
               <>
@@ -2231,31 +2339,31 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                 </div>
 
                 {/* Brush Size Slider */}
-                <div style={styles.inlineControl}>
-                  <span style={styles.inlineLabel}>Size: {brushSize}px</span>
-                  <input 
-                    type="range" 
-                    min="1" 
-                    max="100" 
-                    value={brushSize}
-                    onChange={(e) => setBrushSize(parseInt(e.target.value))}
-                    style={styles.inlineSlider}
-                  />
-                </div>
+                <SmoothSlider 
+                  label="Size"
+                  min="1"
+                  max="100"
+                  value={brushSize}
+                  onChange={(val) => { stateRef.current.brushSize = val; }}
+                  onRelease={(val) => setBrushSize(val)}
+                  formatValue={(v) => `${v}px`}
+                  isInline={true}
+                  inlineSliderStyle={styles.inlineSlider}
+                />
 
                 {/* Opacity Slider */}
-                <div style={styles.inlineControl}>
-                  <span style={styles.inlineLabel}>Opacity: {Math.round(brushOpacity * 100)}%</span>
-                  <input 
-                    type="range" 
-                    min="0.1" 
-                    max="1.0" 
-                    step="0.05"
-                    value={brushOpacity}
-                    onChange={(e) => setBrushOpacity(parseFloat(e.target.value))}
-                    style={styles.inlineSlider}
-                  />
-                </div>
+                <SmoothSlider 
+                  label="Opacity"
+                  min="0.1"
+                  max="1.0"
+                  step="0.05"
+                  value={brushOpacity}
+                  onChange={(val) => { stateRef.current.brushOpacity = val; }}
+                  onRelease={(val) => setBrushOpacity(val)}
+                  formatValue={(v) => `${Math.round(v * 100)}%`}
+                  isInline={true}
+                  inlineSliderStyle={styles.inlineSlider}
+                />
 
                 {/* Stabilizer Toggle */}
                 <button 
@@ -2388,8 +2496,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       </div>
 
       {/* Save Modal */}
-      {showSaveModal && (
-        <div style={styles.modalBg} onClick={() => setShowSaveModal(false)}>
+      {showSaveModal && createPortal(
+        <div className="modal-backdrop-glass" onClick={() => setShowSaveModal(false)}>
           <div className="glass-panel-heavy" style={styles.modalContent} onClick={e => e.stopPropagation()}>
             <h2 style={styles.modalTitle}>{initialDrawing ? 'Update Sketch in Database' : 'Save Sketch to Database'}</h2>
             <form onSubmit={handleSaveToGallery} style={styles.modalForm}>
@@ -2421,12 +2529,13 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Stencil Converter Modal */}
-      {showStencilModal && (
-        <div style={styles.modalBg} onClick={() => { setShowStencilModal(false); setUploadedImage(null); }}>
+      {showStencilModal && createPortal(
+        <div className="modal-backdrop-glass" onClick={() => { setShowStencilModal(false); setUploadedImage(null); }}>
           <div className="glass-panel-heavy" style={{ ...styles.modalContent, maxWidth: '750px' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
               <h2 style={styles.modalTitle}>Image to Stencil Converter</h2>
@@ -2634,60 +2743,25 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                   </div>
 
                   {/* Threshold Slider */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
-                        Edge Detection Threshold (Sensitivity)
-                      </span>
-                      <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>
-                        {stencilThreshold}
-                      </span>
-                    </div>
-                    <input 
-                      type="range"
-                      min="10"
-                      max="180"
-                      step="1"
-                      value={stencilThreshold}
-                      onChange={(e) => setStencilThreshold(parseInt(e.target.value))}
-                      style={{
-                        width: '100%',
-                        height: '6px',
-                        borderRadius: '3px',
-                        background: 'rgba(255,255,255,0.1)',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    />
-                  </div>
+                  <SmoothSlider 
+                    label="Edge Detection Threshold (Sensitivity)"
+                    min="10"
+                    max="180"
+                    step="1"
+                    value={stencilThreshold}
+                    onRelease={(val) => setStencilThreshold(val)}
+                  />
 
                   {/* Scale Slider */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                      <span style={{ color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
-                        Stencil Scale
-                      </span>
-                      <span style={{ color: '#06b6d4', fontWeight: 'bold' }}>
-                        {Math.round(stencilScale * 100)}%
-                      </span>
-                    </div>
-                    <input 
-                      type="range"
-                      min="0.3"
-                      max="2.0"
-                      step="0.05"
-                      value={stencilScale}
-                      onChange={(e) => setStencilScale(parseFloat(e.target.value))}
-                      style={{
-                        width: '100%',
-                        height: '6px',
-                        borderRadius: '3px',
-                        background: 'rgba(255,255,255,0.1)',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      }}
-                    />
-                  </div>
+                  <SmoothSlider 
+                    label="Stencil Scale"
+                    min="0.3"
+                    max="2.0"
+                    step="0.05"
+                    value={stencilScale}
+                    onRelease={(val) => setStencilScale(val)}
+                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                  />
 
                   {/* Checkbox / Toggle Options */}
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginTop: '4px' }}>
@@ -2734,7 +2808,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
               </div>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* 3D Model Download & Viewer Modal */}
       <ThreeDModelViewerModal
@@ -2754,6 +2829,16 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           document.body.removeChild(link)
           URL.revokeObjectURL(url)
         }}
+      />
+      <GlassDialog
+        isOpen={dialog.isOpen}
+        type={dialog.type}
+        title={dialog.title}
+        message={dialog.message}
+        confirmText={dialog.confirmText}
+        cancelText={dialog.cancelText}
+        onConfirm={dialog.onConfirm}
+        onCancel={dialog.onCancel}
       />
     </div>
   )
@@ -2839,6 +2924,7 @@ const styles = {
     borderRadius: '12px',
     position: 'relative',
     zIndex: 10,
+    overflow: 'visible',
   },
   dropdownContainer: {
     position: 'relative',
@@ -3072,6 +3158,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+    margin: 'auto',
   },
   modalTitle: {
     fontFamily: 'var(--font-title)',
