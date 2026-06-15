@@ -22,6 +22,51 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
   const [localOpacity, setLocalOpacity] = useState(glassOpacity !== undefined ? glassOpacity : 80)
   const [localConfidence, setLocalConfidence] = useState(0.5)
 
+  const activeColor1 = activeThemeName === 'Custom Theme'
+    ? (localStorage.getItem('theme_color_1') || '#da12db')
+    : (THEME_OPTIONS.find(t => t.name === activeThemeName)?.color1 || '#00f2fe')
+
+  const activeColor2 = activeThemeName === 'Custom Theme'
+    ? (localStorage.getItem('theme_color_2') || '#13cbd6')
+    : (THEME_OPTIONS.find(t => t.name === activeThemeName)?.color2 || '#4facfe')
+
+  // Selected theme details (local state until Saved is clicked)
+  const [selectedThemeName, setSelectedThemeName] = useState(activeThemeName)
+  const [selectedColor1, setSelectedColor1] = useState(activeColor1)
+  const [selectedColor2, setSelectedColor2] = useState(activeColor2)
+  const [themeSavedMessage, setThemeSavedMessage] = useState('')
+
+  // Local values for custom colors, initialized to active custom colors or saved values or defaults
+  const [customColor1, setCustomColor1] = useState(() => {
+    if (activeThemeName === 'Custom Theme') {
+      const savedColor1 = localStorage.getItem('theme_color_1')
+      if (savedColor1) return savedColor1
+    }
+    return localStorage.getItem('custom_theme_color_1') || '#da12db'
+  })
+
+  const [customColor2, setCustomColor2] = useState(() => {
+    if (activeThemeName === 'Custom Theme') {
+      const savedColor2 = localStorage.getItem('theme_color_2')
+      if (savedColor2) return savedColor2
+    }
+    return localStorage.getItem('custom_theme_color_2') || '#13cbd6'
+  })
+
+  // Keep custom colors and selected theme in sync with active theme when it changes
+  useEffect(() => {
+    setSelectedThemeName(activeThemeName)
+    setSelectedColor1(activeColor1)
+    setSelectedColor2(activeColor2)
+
+    if (activeThemeName === 'Custom Theme') {
+      const savedColor1 = localStorage.getItem('theme_color_1')
+      const savedColor2 = localStorage.getItem('theme_color_2')
+      if (savedColor1) setCustomColor1(savedColor1)
+      if (savedColor2) setCustomColor2(savedColor2)
+    }
+  }, [activeThemeName, activeColor1, activeColor2])
+
   useEffect(() => {
     if (glassOpacity !== undefined) {
       setLocalOpacity(glassOpacity)
@@ -33,6 +78,16 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
       setLocalConfidence(parseFloat(appSettings.detectionConfidence) || 0.5)
     }
   }, [appSettings.detectionConfidence])
+
+  const isThemeChanged = selectedThemeName !== activeThemeName || 
+                         selectedColor1 !== activeColor1 || 
+                         selectedColor2 !== activeColor2
+
+  const handleSaveTheme = () => {
+    onThemeChange(selectedColor1, selectedColor2, selectedThemeName)
+    setThemeSavedMessage('Theme saved successfully!')
+    setTimeout(() => setThemeSavedMessage(''), 3000)
+  }
 
   const [loadingSettings, setLoadingSettings] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState('')
@@ -193,13 +248,17 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
             </p>
             <div style={styles.themeGrid}>
               {THEME_OPTIONS.map((theme) => {
-                const isActive = theme.name === activeThemeName
+                const isSelected = theme.name === selectedThemeName
                 return (
                   <button 
                     key={theme.name}
-                    className={`glass-card ${isActive ? 'glass-btn-active' : ''}`}
-                    style={styles.themeCard(theme.color1, theme.color2, isActive)}
-                    onClick={() => onThemeChange(theme.color1, theme.color2, theme.name)}
+                    className={`glass-card ${isSelected ? 'glass-btn-active' : ''}`}
+                    style={styles.themeCard(theme.color1, theme.color2, isSelected)}
+                    onClick={() => {
+                      setSelectedThemeName(theme.name)
+                      setSelectedColor1(theme.color1)
+                      setSelectedColor2(theme.color2)
+                    }}
                   >
                     <div style={styles.themePreview(theme.color1, theme.color2)}>
                       <div style={styles.themePreviewDot(theme.color1)}></div>
@@ -209,6 +268,83 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
                   </button>
                 )
               })}
+
+              {/* Custom Theme Option */}
+              {(() => {
+                const isCustomSelected = selectedThemeName === 'Custom Theme'
+                return (
+                  <>
+                    <button 
+                      className={`glass-card ${isCustomSelected ? 'glass-btn-active' : ''}`}
+                      style={styles.themeCard(customColor1, customColor2, isCustomSelected)}
+                      onClick={() => {
+                        setSelectedThemeName('Custom Theme')
+                        setSelectedColor1(customColor1)
+                        setSelectedColor2(customColor2)
+                      }}
+                    >
+                      <div style={styles.themePreview(customColor1, customColor2)}>
+                        <div style={styles.themePreviewDot(customColor1)}></div>
+                        <div style={styles.themePreviewDot(customColor2)}></div>
+                      </div>
+                      <span style={styles.themeName}>Custom Theme</span>
+                    </button>
+                    
+                    {isCustomSelected && (
+                      <div style={styles.customColorPickers} className="fade-in">
+                        <div style={styles.customColorInputGroup}>
+                          <label style={styles.customColorLabel}>Glow Color 1</label>
+                          <div style={styles.colorPickerWrapper}>
+                            <input 
+                              type="color" 
+                              value={customColor1}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setCustomColor1(val)
+                                setSelectedColor1(val)
+                                localStorage.setItem('custom_theme_color_1', val)
+                              }}
+                              style={styles.customColorPickerInput}
+                            />
+                            <span style={styles.colorHexText}>{customColor1}</span>
+                          </div>
+                        </div>
+                        <div style={styles.customColorInputGroup}>
+                          <label style={styles.customColorLabel}>Glow Color 2</label>
+                          <div style={styles.colorPickerWrapper}>
+                            <input 
+                              type="color" 
+                              value={customColor2}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setCustomColor2(val)
+                                setSelectedColor2(val)
+                                localStorage.setItem('custom_theme_color_2', val)
+                              }}
+                              style={styles.customColorPickerInput}
+                            />
+                            <span style={styles.colorHexText}>{customColor2}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
+            </div>
+
+            {/* Save Theme Button */}
+            <div style={styles.btnRowTheme}>
+              <button 
+                onClick={handleSaveTheme} 
+                className="glass-btn glass-btn-primary" 
+                style={styles.saveThemeBtn(isThemeChanged)}
+                disabled={!isThemeChanged}
+              >
+                <Save size={16} />
+                <span>Save Theme</span>
+              </button>
+              {themeSavedMessage && <span style={styles.successText}>{themeSavedMessage}</span>}
             </div>
           </div>
         </div>
@@ -363,5 +499,65 @@ const styles = {
     fontWeight: '600',
     fontSize: '15px',
     color: '#fff',
-  }
+  },
+  customColorPickers: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '14px',
+    padding: '16px',
+    background: 'rgba(255, 255, 255, 0.02)',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+    borderRadius: '12px',
+    marginTop: '4px',
+  },
+  customColorInputGroup: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  customColorLabel: {
+    fontSize: '13px',
+    fontWeight: '500',
+    color: '#a1a1aa',
+  },
+  colorPickerWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  customColorPickerInput: {
+    border: 'none',
+    width: '32px',
+    height: '32px',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    background: 'none',
+    padding: 0,
+  },
+  colorHexText: {
+    fontFamily: 'monospace',
+    fontSize: '13px',
+    color: '#fff',
+    background: 'rgba(255, 255, 255, 0.05)',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    minWidth: '70px',
+    textAlign: 'center',
+  },
+  btnRowTheme: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginTop: '20px',
+    borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+    paddingTop: '20px',
+  },
+  saveThemeBtn: (isEnabled) => ({
+    opacity: isEnabled ? 1 : 0.6,
+    cursor: isEnabled ? 'pointer' : 'not-allowed',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  })
 }
