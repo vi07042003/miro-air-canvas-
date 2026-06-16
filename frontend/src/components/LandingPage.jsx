@@ -203,9 +203,10 @@ const styles = {
     fontWeight: '500',
     color: '#e4e4e7',
     boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+    fontFamily: 'var(--font-accent)',
   },
   headline: {
-    fontFamily: 'var(--font-title)',
+    fontFamily: 'var(--font-display)',
     fontSize: '64px',
     fontWeight: '800',
     lineHeight: '1.1',
@@ -219,10 +220,13 @@ const styles = {
     textShadow: '0 0 40px rgba(139, 92, 246, 0.2)',
   },
   subheadline: {
-    fontSize: '18px',
+    fontFamily: 'var(--font-title)',
+    fontSize: '20px',
+    fontWeight: '300',
     color: 'var(--text-secondary)',
-    maxWidth: '650px',
+    maxWidth: '680px',
     lineHeight: '1.6',
+    letterSpacing: '-0.3px',
   },
   ctaContainer: {
     marginTop: '12px',
@@ -388,6 +392,7 @@ const styles = {
     fontWeight: '600',
     fontSize: '14px',
     color: '#fff',
+    fontFamily: 'var(--font-accent)',
   },
   stepText: {
     fontSize: '13px',

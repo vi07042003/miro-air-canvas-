@@ -360,7 +360,21 @@ function App() {
         <div className="logo-container" onClick={() => setActivePage('landing')}>
           <div className="logo-icon" style={{ padding: '6px' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M4 19V5L12 13L20 5V19" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <defs>
+                <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="100%" stopColor="rgba(255, 255, 255, 0.75)" />
+                </linearGradient>
+              </defs>
+              <path
+                d="M5 18C5 18 8 6 10.5 6C12.5 6 12 13.5 13.5 13.5C15 13.5 16.5 7.5 19 7.5"
+                stroke="url(#logo-grad)"
+                strokeWidth="3"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="19" cy="7.5" r="2.2" fill="#ffffff" />
+              <circle cx="19" cy="7.5" r="4.5" stroke="rgba(255, 255, 255, 0.5)" strokeWidth="0.8" strokeDasharray="2 2" />
             </svg>
           </div>
           <span>MIRO CANVAS</span>
