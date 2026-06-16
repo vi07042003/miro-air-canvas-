@@ -145,11 +145,24 @@ function App() {
       if (!response.ok) {
         setStencilGenError(data.detail || 'Failed to generate stencil')
       } else {
-        setStencilGenResult(data.stencil)
+        // Fetch the image from the returned stencil_url in the browser to avoid server timeout
+        const imgRes = await fetch(data.stencil_url)
+        if (!imgRes.ok) throw new Error("Failed to load image from generator")
+        const blob = await imgRes.blob()
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onloadend = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(blob)
+        })
+
+        setStencilGenResult(base64Data)
         setStencilUsage({ count: data.usage_count, max: data.max_usage, resetTime: data.reset_time })
       }
     } catch (err) {
-      setStencilGenError('Network error. Failed to connect to server.')
+      setStencilGenError(err.message === "Failed to load image from generator"
+        ? 'Failed to fetch the image from AI service. Please try again.'
+        : 'Network error. Failed to connect to server.')
       console.error(err)
     } finally {
       setStencilGenLoading(false)

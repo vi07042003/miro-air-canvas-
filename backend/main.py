@@ -419,11 +419,13 @@ def generate_stencil(
             detail=f"You have reached your limit of {MAX_STENCIL_USAGE} free AI stencil generations."
         )
         
-    try:
-        stencil_data_url = generate_ai_stencil(keyword)
-    except Exception as e:
-        print(f"Error generating stencil: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to generate stencil: {e}")
+    import urllib.parse
+    import random
+    seed = random.randint(1, 100000)
+    
+    prompt = f"black silhouette outline of {keyword}, pure white background, stencil, vector, minimalist, high contrast, clean edges"
+    encoded_prompt = urllib.parse.quote(prompt)
+    stencil_url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed={seed}&model=sana"
         
     # Update usage
     current_user.stencil_usage_count += 1
@@ -431,7 +433,7 @@ def generate_stencil(
     db.refresh(current_user)
     
     return {
-        "stencil": stencil_data_url,
+        "stencil_url": stencil_url,
         "usage_count": current_user.stencil_usage_count,
         "max_usage": MAX_STENCIL_USAGE,
         "reset_time": current_user.stencil_reset_time.isoformat() if current_user.stencil_reset_time else None
