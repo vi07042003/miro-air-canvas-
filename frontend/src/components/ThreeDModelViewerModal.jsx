@@ -238,12 +238,12 @@ export default function ThreeDModelViewerModal({ isOpen, onClose, objects, onDow
               </button>
               <button
                 className="glass-btn glass-btn-primary"
-                onClick={onDownloadAgain}
+                onClick={() => onDownloadAgain(renderMode)}
                 style={{ flex: 1.2, padding: '10px', fontSize: '13px' }}
-                title="Download OBJ File Again"
+                title="Download OBJ File"
               >
                 <Download size={13} style={{ marginRight: '6px' }} />
-                <span>Get OBJ</span>
+                <span>Download OBJ</span>
               </button>
             </div>
           </div>

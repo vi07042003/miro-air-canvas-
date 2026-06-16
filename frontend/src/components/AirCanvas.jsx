@@ -782,8 +782,12 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
   // 3D Mouse event listeners
   const handleMouseDown3D = (e, rect) => {
-    const sx = e.clientX - rect.left
-    const sy = e.clientY - rect.top
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const sx = (e.clientX - rect.left) * scaleX
+    const sy = (e.clientY - rect.top) * scaleY
     const tool3d = active3DToolRef.current
     
     if (tool3d === 'orbit') {
@@ -794,22 +798,26 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       drawingRef.current.orbitStartRy = camera3DRef.current.ry
     } else if (tool3d === '3d-freehand') {
       drawingRef.current.isDrawing3D = true
-      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, rect.width, rect.height)
+      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
       active3DStrokeRef.current = [pt]
     } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
       drawingRef.current.isSizing3D = true
       drawingRef.current.sizingStartX = sx
       drawingRef.current.sizingStartY = sy
       
-      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, rect.width, rect.height)
+      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
       previewPos3DRef.current = pt
       previewSize3DRef.current = 20
     }
   }
 
   const handleMouseMove3D = (e, rect) => {
-    const sx = e.clientX - rect.left
-    const sy = e.clientY - rect.top
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const sx = (e.clientX - rect.left) * scaleX
+    const sy = (e.clientY - rect.top) * scaleY
     const tool3d = active3DToolRef.current
     const drawState = drawingRef.current
     
@@ -819,7 +827,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       camera3DRef.current.ry = drawState.orbitStartRy + dx * 0.007
       camera3DRef.current.rx = drawState.orbitStartRx - dy * 0.007
     } else if (drawState.isDrawing3D) {
-      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, rect.width, rect.height)
+      const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
       active3DStrokeRef.current = [...(active3DStrokeRef.current || []), pt]
     } else if (drawState.isSizing3D) {
       const dx = sx - drawState.sizingStartX
@@ -828,7 +836,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       previewSize3DRef.current = Math.max(10, dist * 0.5)
     } else {
       if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
-        const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, rect.width, rect.height)
+        const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
         previewPos3DRef.current = pt
       }
     }
@@ -887,8 +895,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       return
     }
     
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
     startDraw(x, y)
   }
 
@@ -903,8 +913,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
     
     if (!drawingRef.current.isDrawing) return
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
     
     // Add interactive pointer particles while mouse dragging
     addParticles(x, y, stateRef.current.color)
@@ -1969,17 +1981,6 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   // Local file download
   const handleDownloadLocally = () => {
     if (canvasMode === '3d') {
-      const objContent = generateOBJString(stamped3DObjectsRef.current)
-      const blob = new Blob([objContent], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `miro_3d_model_${Date.now()}.obj`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      
       setDownloaded3DModelData([...stamped3DObjectsRef.current])
       setShow3DDownloadModal(true)
     } else {
@@ -2815,14 +2816,13 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         </div>,
         document.body
       )}
-      {/* 3D Model Download & Viewer Modal */}
       <ThreeDModelViewerModal
         isOpen={show3DDownloadModal}
         onClose={() => setShow3DDownloadModal(false)}
         objects={downloaded3DModelData}
-        onDownloadAgain={() => {
+        onDownloadAgain={(mode) => {
           if (!downloaded3DModelData) return
-          const objContent = generateOBJString(downloaded3DModelData)
+          const objContent = generateOBJString(downloaded3DModelData, mode)
           const blob = new Blob([objContent], { type: 'text/plain' })
           const url = URL.createObjectURL(blob)
           const link = document.createElement('a')
@@ -3060,7 +3060,7 @@ const styles = {
   videoWrapper: {
     position: 'relative',
     width: '100%',
-    aspectRatio: '4/3',
+    aspectRatio: '12/7',
     borderRadius: '12px',
     overflow: 'hidden',
     background: 'rgba(0, 0, 0, 0.4)',
@@ -3069,7 +3069,7 @@ const styles = {
   video: {
     width: '100%',
     height: '100%',
-    objectFit: 'cover',
+    objectFit: 'fill',
   },
   handOverlayCanvas: {
     position: 'absolute',

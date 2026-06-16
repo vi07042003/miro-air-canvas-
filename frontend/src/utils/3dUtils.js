@@ -594,15 +594,19 @@ export const getSolidGeometry = (type, size) => {
   return { vertices, faces };
 };
 
-export const generateOBJString = (objects) => {
+export const generateOBJString = (objects, renderMode = 'solid') => {
   if (!objects || objects.length === 0) return "# Empty Miro Air Canvas Model";
   
   let objText = "# Miro Air Canvas 3D Model Export\n";
-  objText += `# Created: ${new Date().toISOString()}\n\n`;
+  objText += `# Created: ${new Date().toISOString()}\n`;
+  objText += `# Render Mode: ${renderMode}\n\n`;
   
   let vertexOffset = 1;
   
   objects.forEach((obj, idx) => {
+    const objName = `${obj.type}_${idx + 1}`;
+    objText += `o ${objName}\n`;
+    objText += `g ${objName}\n`;
     objText += `# Object ${idx + 1}: ${obj.type}\n`;
     
     if (obj.type === 'stroke') {
@@ -612,11 +616,19 @@ export const generateOBJString = (objects) => {
         objText += `v ${pt.x.toFixed(4)} ${(-pt.y).toFixed(4)} ${pt.z.toFixed(4)}\n`;
       });
       
-      objText += "l";
-      for (let i = 0; i < obj.points.length; i++) {
-        objText += ` ${vertexOffset + i}`;
+      if (renderMode === 'point') {
+        objText += "p";
+        for (let i = 0; i < obj.points.length; i++) {
+          objText += ` ${vertexOffset + i}`;
+        }
+        objText += "\n\n";
+      } else {
+        objText += "l";
+        for (let i = 0; i < obj.points.length; i++) {
+          objText += ` ${vertexOffset + i}`;
+        }
+        objText += "\n\n";
       }
-      objText += "\n\n";
       
       vertexOffset += obj.points.length;
     } else {
@@ -630,12 +642,28 @@ export const generateOBJString = (objects) => {
         objText += `v ${wx.toFixed(4)} ${(-wy).toFixed(4)} ${wz.toFixed(4)}\n`;
       });
       
-      const faces = getPrimitiveFaces(obj.type, vertexOffset);
-      faces.forEach(f => {
-        objText += `f ${f.join(' ')}\n`;
-      });
+      if (renderMode === 'point') {
+        objText += "p";
+        for (let i = 0; i < geom.vertices.length; i++) {
+          objText += ` ${vertexOffset + i}`;
+        }
+        objText += "\n\n";
+      } else if (renderMode === 'wireframe') {
+        const mesh = getMesh(obj.type, obj.size);
+        if (mesh && mesh.edges) {
+          mesh.edges.forEach(([s, e]) => {
+            objText += `l ${vertexOffset + s} ${vertexOffset + e}\n`;
+          });
+        }
+        objText += "\n";
+      } else {
+        const faces = getPrimitiveFaces(obj.type, vertexOffset);
+        faces.forEach(f => {
+          objText += `f ${f.join(' ')}\n`;
+        });
+        objText += "\n";
+      }
       
-      objText += "\n";
       vertexOffset += geom.vertices.length;
     }
   });
@@ -933,9 +961,7 @@ export const drawModel = (canvas, objects, cameraState, renderMode, lightAngle) 
     } else if (item.type === 'face') {
       ctx.save();
       ctx.fillStyle = item.color;
-      ctx.strokeStyle = item.outlineColor;
-      ctx.globalAlpha = item.opacity;
-      ctx.lineWidth = 0.5;
+      ctx.globalAlpha = item.opacity * 0.45; // Semi-transparent glassmorphic face
       
       ctx.beginPath();
       ctx.moveTo(item.points[0].x, item.points[0].y);
@@ -944,6 +970,11 @@ export const drawModel = (canvas, objects, cameraState, renderMode, lightAngle) 
       }
       ctx.closePath();
       ctx.fill();
+
+      // Sharp glass outline/rim
+      ctx.strokeStyle = item.outlineColor;
+      ctx.globalAlpha = item.opacity * 0.8;
+      ctx.lineWidth = 0.8;
       ctx.stroke();
       ctx.restore();
     }
