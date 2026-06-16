@@ -172,7 +172,7 @@ const RenderIcon = ({ iconName, size = 18 }) => {
 
 // Image to Stencil processing helpers are now imported from ../utils/stencilUtils
 
-export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved }) {
+export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved, initialStencil, onClearInitialStencil }) {
   const canvasRef = useRef(null)
   const videoRef = useRef(null)
   const handCanvasRef = useRef(null)
@@ -241,6 +241,16 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       setExtractedGrayscale(grayscale)
     }
   }, [uploadedImage, stencilThreshold, stencilInvert])
+
+  useEffect(() => {
+    if (initialStencil) {
+      setUploadedImage(initialStencil)
+      setShowStencilModal(true)
+      if (onClearInitialStencil) {
+        onClearInitialStencil()
+      }
+    }
+  }, [initialStencil, onClearInitialStencil])
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0]

@@ -360,3 +360,91 @@ def update_settings(settings_data: Dict[str, str], db: Session = Depends(databas
             db.add(db_setting)
     db.commit()
     return {"message": "Settings updated successfully"}
+
+# --- AI Stencil Generation API ---
+
+MAX_STENCIL_USAGE = 10
+
+def generate_ai_stencil(keyword: str) -> str:
+    import urllib.request
+    import urllib.parse
+    import ssl
+    
+    # 1. Fetch AI image from Pollinations AI using a specific silhouette prompt and model=sana
+    prompt = f"black silhouette outline of {keyword}, pure white background, stencil, vector, minimalist, high contrast, clean edges"
+    encoded_prompt = urllib.parse.quote(prompt)
+    url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed=42&model=sana"
+    
+    # Send HTTP request with User-Agent header and ignore SSL check just in case
+    req = urllib.request.Request(
+        url, 
+        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+    )
+    context = ssl._create_unverified_context()
+    
+    with urllib.request.urlopen(req, context=context, timeout=25) as response:
+        img_data = response.read()
+        
+    img_str = base64.b64encode(img_data).decode('utf-8')
+    return f"data:image/png;base64,{img_str}"
+
+def check_and_reset_stencil_limit(user, db):
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    if not user.stencil_reset_time:
+        user.stencil_reset_time = now + timedelta(days=1)
+        user.stencil_usage_count = 0
+        db.commit()
+    elif now > user.stencil_reset_time:
+        user.stencil_reset_time = now + timedelta(days=1)
+        user.stencil_usage_count = 0
+        db.commit()
+
+@app.post("/api/stencil/generate")
+def generate_stencil(
+    payload: Dict[str, str],
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    keyword = payload.get("keyword", "").strip()
+    if not keyword:
+        raise HTTPException(status_code=400, detail="Keyword is required")
+        
+    check_and_reset_stencil_limit(current_user, db)
+        
+    # Check limit
+    if current_user.stencil_usage_count >= MAX_STENCIL_USAGE:
+        raise HTTPException(
+            status_code=403, 
+            detail=f"You have reached your limit of {MAX_STENCIL_USAGE} free AI stencil generations."
+        )
+        
+    try:
+        stencil_data_url = generate_ai_stencil(keyword)
+    except Exception as e:
+        print(f"Error generating stencil: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate stencil: {e}")
+        
+    # Update usage
+    current_user.stencil_usage_count += 1
+    db.commit()
+    db.refresh(current_user)
+    
+    return {
+        "stencil": stencil_data_url,
+        "usage_count": current_user.stencil_usage_count,
+        "max_usage": MAX_STENCIL_USAGE,
+        "reset_time": current_user.stencil_reset_time.isoformat() if current_user.stencil_reset_time else None
+    }
+
+@app.get("/api/stencil/usage")
+def get_stencil_usage(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    check_and_reset_stencil_limit(current_user, db)
+    return {
+        "usage_count": current_user.stencil_usage_count,
+        "max_usage": MAX_STENCIL_USAGE,
+        "reset_time": current_user.stencil_reset_time.isoformat() if current_user.stencil_reset_time else None
+    }

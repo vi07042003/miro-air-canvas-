@@ -12,6 +12,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     profile_picture = Column(Text, nullable=True)
+    stencil_usage_count = Column(Integer, default=0, nullable=False)
+    stencil_reset_time = Column(DateTime, nullable=True)
 
     # Establish one-to-many relationship with Drawing
     drawings = relationship("Drawing", back_populates="user", cascade="all, delete-orphan")
