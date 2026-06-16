@@ -7,6 +7,7 @@ import Gallery from './components/Gallery'
 import Settings from './components/Settings'
 import Auth from './components/Auth'
 import WelcomeAnimation from './components/WelcomeAnimation'
+import AIStencils from './components/AIStencils'
 import { AnimatePresence, motion } from 'framer-motion'
 
 // Backend URL configuration
@@ -34,12 +35,6 @@ function App() {
   const [editingDrawing, setEditingDrawing] = useState(null)
 
   // AI Stencil Generator State
-  const [showStencilGenModal, setShowStencilGenModal] = useState(false)
-  const [stencilKeyword, setStencilKeyword] = useState('')
-  const [stencilGenLoading, setStencilGenLoading] = useState(false)
-  const [stencilGenResult, setStencilGenResult] = useState(null)
-  const [stencilUsage, setStencilUsage] = useState({ count: 0, max: 10 })
-  const [stencilGenError, setStencilGenError] = useState('')
   const [externalStencil, setExternalStencil] = useState(null)
 
   // Theme Configuration
@@ -94,102 +89,6 @@ function App() {
       setEditingDrawing(null)
     }
   }, [activePage])
-
-  // Fetch stencil usage stats from backend
-  const fetchStencilUsage = async () => {
-    if (!user || !user.token) return
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/stencil/usage`, {
-        headers: {
-          'Authorization': `Bearer ${user.token}`
-        }
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setStencilUsage({ count: data.usage_count, max: data.max_usage, resetTime: data.reset_time })
-      }
-    } catch (err) {
-      console.error("Failed to fetch stencil usage:", err)
-    }
-  }
-
-  // Load stencil usage on modal open
-  useEffect(() => {
-    if (showStencilGenModal && user) {
-      fetchStencilUsage()
-      setStencilGenError('')
-      setStencilKeyword('')
-      setStencilGenResult(null)
-    }
-  }, [showStencilGenModal, user])
-
-  // Handle generating the stencil using backend AI
-  const handleGenerateStencil = async (e) => {
-    if (e) e.preventDefault()
-    const keyword = stencilKeyword.trim()
-    if (!keyword) return
-
-    setStencilGenLoading(true)
-    setStencilGenError('')
-    setStencilGenResult(null)
-
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/stencil/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.token}`
-        },
-        body: JSON.stringify({ keyword })
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        setStencilGenError(data.detail || 'Failed to generate stencil')
-      } else {
-        // Fetch the image from the returned stencil_url in the browser to avoid server timeout
-        const imgRes = await fetch(data.stencil_url)
-        if (!imgRes.ok) throw new Error("Failed to load image from generator")
-        const blob = await imgRes.blob()
-        const base64Data = await new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onloadend = () => resolve(reader.result)
-          reader.onerror = reject
-          reader.readAsDataURL(blob)
-        })
-
-        setStencilGenResult(base64Data)
-        setStencilUsage({ count: data.usage_count, max: data.max_usage, resetTime: data.reset_time })
-      }
-    } catch (err) {
-      setStencilGenError(err.message === "Failed to load image from generator"
-        ? 'Failed to fetch the image from AI service. Please try again.'
-        : 'Network error. Failed to connect to server.')
-      console.error(err)
-    } finally {
-      setStencilGenLoading(false)
-    }
-  }
-
-  // Handle applying stencil to canvas
-  const handleApplyStencil = () => {
-    if (!stencilGenResult) return
-    setExternalStencil(stencilGenResult)
-    setShowStencilGenModal(false)
-    navigateTo('canvas')
-  }
-
-  // Format the stencil usage limit reset time
-  const formatResetTime = (isoString) => {
-    if (!isoString) return ''
-    try {
-      const dateObj = isoString.endsWith('Z') ? new Date(isoString) : new Date(isoString + 'Z')
-      if (isNaN(dateObj.getTime())) return ''
-      return dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    } catch (e) {
-      return ''
-    }
-  }
 
   // Change theme handler
   const handleThemeChange = (color1, color2, name) => {
@@ -314,7 +213,7 @@ function App() {
 
   // Safe navigation: always redirects to auth for protected pages
   const navigateTo = (page) => {
-    const protectedPages = ['canvas', 'gallery']
+    const protectedPages = ['canvas', 'gallery', 'stencils']
     if (protectedPages.includes(page) && !user) {
       setActivePage('auth')
     } else {
@@ -323,8 +222,8 @@ function App() {
   }
 
   const renderPage = () => {
-    // Strict auth gate — canvas and gallery are ALWAYS blocked without a session
-    if ((activePage === 'canvas' || activePage === 'gallery') && !user) {
+    // Strict auth gate — canvas, gallery and stencils are ALWAYS blocked without a session
+    if ((activePage === 'canvas' || activePage === 'gallery' || activePage === 'stencils') && !user) {
       return (
         <motion.div
           key="auth"
@@ -440,6 +339,25 @@ function App() {
             />
           </motion.div>
         )
+      case 'stencils':
+        return (
+          <motion.div
+            key="stencils"
+            initial={{ opacity: 0, x: 15 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -15 }}
+            transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ width: '100%', padding: '0 40px' }}
+          >
+            <AIStencils 
+              user={user}
+              onApplyStencil={(stencilResult) => {
+                setExternalStencil(stencilResult)
+                navigateTo('canvas')
+              }}
+            />
+          </motion.div>
+        )
       default:
         return (
           <motion.div
@@ -535,14 +453,8 @@ function App() {
                 {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
               </button>
               <button 
-                className={`nav-item ${showStencilGenModal ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
-                onClick={() => {
-                  if (!user) {
-                    alert("Please sign in to use the AI Stencil Generator.");
-                    return;
-                  }
-                  setShowStencilGenModal(true);
-                }}
+                className={`nav-item ${activePage === 'stencils' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
+                onClick={() => navigateTo('stencils')}
                 title={!user ? 'Sign in to generate AI stencils' : 'AI Stencil Generator'}
               >
                 <Sparkles size={19} />
@@ -696,132 +608,6 @@ function App() {
                   >
                     {profileLoading ? 'Saving Changes...' : 'Save Profile'}
                   </button>
-                </form>
-              </div>
-            </div>,
-            document.body
-          )}
-
-          {/* AI Stencil Generator Modal */}
-          {showStencilGenModal && createPortal(
-            <div className="modal-backdrop-glass" onClick={() => setShowStencilGenModal(false)}>
-              <div className="glass-panel-heavy fade-in" style={styles.stencilModalContent} onClick={(e) => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Sparkles size={22} color="var(--theme-color-2)" />
-                    <h3 style={styles.modalTitle}>AI Stencil Generator</h3>
-                  </div>
-                  <button style={styles.closeBtn} onClick={() => setShowStencilGenModal(false)}>
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <form onSubmit={handleGenerateStencil} style={styles.modalBody}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label style={styles.label}>What would you like to paint?</label>
-                    <span style={{ fontSize: '11px', color: stencilUsage.count >= stencilUsage.max ? '#ef4444' : 'rgba(255,255,255,0.6)', fontWeight: 'bold' }}>
-                      Usage: {stencilUsage.count} / {stencilUsage.max} gens
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <input
-                      type="text"
-                      placeholder="e.g. rocket, butterfly, heart, star..."
-                      value={stencilKeyword}
-                      onChange={(e) => setStencilKeyword(e.target.value)}
-                      className="glass-input"
-                      style={{
-                        ...styles.modalInput,
-                        flex: 1,
-                      }}
-                      disabled={stencilGenLoading || stencilUsage.count >= stencilUsage.max}
-                    />
-                    <button
-                      type="submit"
-                      className="glass-btn glass-btn-primary"
-                      style={{ minWidth: '110px', justifyContent: 'center' }}
-                      disabled={stencilGenLoading || !stencilKeyword.trim() || stencilUsage.count >= stencilUsage.max}
-                    >
-                      {stencilGenLoading ? 'Generating...' : 'Generate'}
-                    </button>
-                  </div>
-
-                  {stencilUsage.resetTime && (
-                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: '-8px' }}>
-                      Rolling 24h limit resets at {formatResetTime(stencilUsage.resetTime)}
-                    </div>
-                  )}
-
-                  {stencilGenError && (
-                    <div style={{ 
-                      background: 'rgba(244, 63, 94, 0.15)', 
-                      border: '1px solid rgba(244, 63, 94, 0.3)', 
-                      color: '#fda4af', 
-                      padding: '10px 14px', 
-                      borderRadius: '10px', 
-                      fontSize: '13px' 
-                    }}>
-                      {stencilGenError}
-                    </div>
-                  )}
-
-                  {stencilUsage.count >= stencilUsage.max && !stencilGenResult && (
-                    <div style={{ 
-                      background: 'rgba(239, 68, 68, 0.15)', 
-                      border: '1px solid rgba(239, 68, 68, 0.3)', 
-                      color: '#f87171', 
-                      padding: '10px 14px', 
-                      borderRadius: '10px', 
-                      fontSize: '13px' 
-                    }}>
-                      ⚠️ You have reached your limit of {stencilUsage.max} free AI stencil generations. Limit resets at {formatResetTime(stencilUsage.resetTime)}.
-                    </div>
-                  )}
-
-                  {/* Stencil Result Preview */}
-                  {stencilGenResult && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', marginTop: '10px' }}>
-                      <div style={{ 
-                        width: '100%', 
-                        height: '220px', 
-                        borderRadius: '14px', 
-                        border: '1px solid rgba(255, 255, 255, 0.1)', 
-                        background: 'rgba(0,0,0,0.3)', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        overflow: 'hidden',
-                        position: 'relative'
-                      }}>
-                        <img 
-                          src={stencilGenResult} 
-                          alt="Generated Stencil" 
-                          style={{ 
-                            maxHeight: '100%', 
-                            maxWidth: '100%', 
-                            objectFit: 'contain', 
-                            filter: 'invert(1) drop-shadow(0 0 8px rgba(6, 182, 212, 0.6))'
-                          }} 
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="glass-btn"
-                        style={{
-                          width: '100%',
-                          justifyContent: 'center',
-                          background: 'linear-gradient(135deg, var(--theme-color-2) 0%, var(--theme-color-1) 100%)',
-                          color: '#fff',
-                          border: 'none',
-                          boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)'
-                        }}
-                        onClick={handleApplyStencil}
-                      >
-                        <span>Apply Stencil to Canvas</span>
-                      </button>
-                    </div>
-                  )}
                 </form>
               </div>
             </div>,

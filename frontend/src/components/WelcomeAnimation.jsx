@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react'
+/* eslint-disable react-hooks/purity */
+import { useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles } from 'lucide-react'
 
 export default function WelcomeAnimation({ onComplete }) {
   // Auto-complete the intro after 3.8 seconds
@@ -10,6 +10,17 @@ export default function WelcomeAnimation({ onComplete }) {
     }, 3800)
     return () => clearTimeout(timer)
   }, [onComplete])
+
+  // Pre-calculate floating particles to keep render function pure
+  const particles = useMemo(() => {
+    return Array.from({ length: 8 }).map((_, i) => ({
+      left: `${15 + Math.random() * 70}%`,
+      top: `${20 + Math.random() * 60}%`,
+      duration: 3 + Math.random() * 4,
+      delay: Math.random() * 2,
+      background: i % 2 === 0 ? 'var(--theme-color-1)' : 'var(--theme-color-2)',
+    }))
+  }, [])
 
   // Split text into individual letters for a staggered reveal
   const textBrand = "MIRO"
@@ -109,14 +120,14 @@ export default function WelcomeAnimation({ onComplete }) {
 
       {/* Floating particles */}
       <div className="welcome-particles-container" style={styles.particlesContainer}>
-        {[...Array(8)].map((_, i) => (
+        {particles.map((p, i) => (
           <motion.div
             key={i}
             style={{
               ...styles.particle,
-              left: `${15 + Math.random() * 70}%`,
-              top: `${20 + Math.random() * 60}%`,
-              background: i % 2 === 0 ? 'var(--theme-color-1)' : 'var(--theme-color-2)',
+              left: p.left,
+              top: p.top,
+              background: p.background,
             }}
             animate={{
               y: [0, -30, 0],
@@ -124,10 +135,10 @@ export default function WelcomeAnimation({ onComplete }) {
               scale: [1, 1.3, 1],
             }}
             transition={{
-              duration: 3 + Math.random() * 4,
+              duration: p.duration,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: Math.random() * 2
+              delay: p.delay
             }}
           />
         ))}

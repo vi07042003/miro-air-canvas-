@@ -169,7 +169,7 @@ export const drawWireframeCanvasBox = (ctx, rx, ry, zoom, width, height) => {
   ctx.restore();
 };
 
-export const drawAxisHelper = (ctx, rx, ry, zoom, width, height) => {
+export const drawAxisHelper = (ctx, rx, ry) => {
   const cornerX = 70;
   const cornerY = 80;
   const axisLen = 35;
