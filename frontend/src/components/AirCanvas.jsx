@@ -612,7 +612,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         img.onload = () => {
           console.log("Image loaded successfully! Drawing on canvas...")
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-          saveCanvasState()
+          saveCanvasState(false)
         }
         img.onerror = (err) => {
           console.error("Failed to load image data URL:", err)
@@ -621,7 +621,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       } else {
         console.log("No initial drawing provided, saving default state.")
         // Save initial state
-        saveCanvasState()
+        saveCanvasState(true)
       }
     }
 
@@ -636,14 +636,14 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   }, [initialDrawing])
 
   // Save state helper
-  const saveCanvasState = () => {
+  const saveCanvasState = (isEmpty = false) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     
     setUndoStack(prev => {
-      const next = [...prev, imgData]
+      const next = [...prev, { imgData, isEmpty }]
       if (next.length > 25) next.shift()
       return next
     })
@@ -696,7 +696,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     setRedoStack(prev => [...prev, current])
     
     const previous = undoStack[undoStack.length - 2]
-    ctx.putImageData(previous, 0, 0)
+    ctx.putImageData(previous.imgData, 0, 0)
     setUndoStack(prev => prev.slice(0, -1))
   }
 
@@ -722,7 +722,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const ctx = canvas.getContext('2d')
     
     const nextState = redoStack[redoStack.length - 1]
-    ctx.putImageData(nextState, 0, 0)
+    ctx.putImageData(nextState.imgData, 0, 0)
     
     setUndoStack(prev => [...prev, nextState])
     setRedoStack(prev => prev.slice(0, -1))
@@ -756,7 +756,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         const ctx = canvas.getContext('2d')
         ctx.fillStyle = '#0a0518'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
-        saveCanvasState()
+        saveCanvasState(true)
         setDialog(prev => ({ ...prev, isOpen: false }))
       },
       onCancel: () => setDialog(prev => ({ ...prev, isOpen: false }))
@@ -1726,7 +1726,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             const mainCtx = canvas.getContext('2d')
             mainCtx.fillStyle = '#0a0518'
             mainCtx.fillRect(0, 0, canvas.width, canvas.height)
-            saveCanvasState()
+            saveCanvasState(true)
             
             currentMode = 'Canvas Cleared'
             
@@ -1994,6 +1994,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
   }
 
+  const is2DEmpty = undoStack.length === 0 || !!undoStack[undoStack.length - 1]?.isEmpty
+  const is3DEmpty = (undoStack3D[undoStack3D.length - 1] || []).length === 0
+  const isCanvasEmpty = canvasMode === '3d' ? is3DEmpty : is2DEmpty
+
   return (
     <div className="fade-in" style={styles.container}>
       {/* Top action bar */}
@@ -2049,15 +2053,15 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             <Redo size={16} />
             <span>Redo</span>
           </button>
-          <button className="glass-btn" onClick={handleClear} title="Clear Canvas">
+          <button className="glass-btn" onClick={handleClear} disabled={isCanvasEmpty} title="Clear Canvas">
             <Trash2 size={16} color="#f43f5e" />
             <span>Clear</span>
           </button>
-          <button className="glass-btn" onClick={handleDownloadLocally} title="Save to local disk">
+          <button className="glass-btn" onClick={handleDownloadLocally} disabled={isCanvasEmpty} title="Save to local disk">
             <Download size={16} />
             <span>Download</span>
           </button>
-          <button className="glass-btn glass-btn-primary" onClick={() => setShowSaveModal(true)} title="Save to database" disabled={canvasMode === '3d'}>
+          <button className="glass-btn glass-btn-primary" onClick={() => setShowSaveModal(true)} title="Save to database" disabled={isCanvasEmpty || canvasMode === '3d'}>
             <Save size={16} />
             <span>Save to files</span>
           </button>

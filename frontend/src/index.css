@@ -406,6 +406,26 @@ body::before {
     0 0 15px rgba(var(--theme-color-2-rgb), 0.4) !important;
 }
 
+.glass-btn:disabled,
+.glass-btn:disabled:hover,
+.glass-btn:disabled:active {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.glass-btn-primary:disabled,
+.glass-btn-primary:disabled:hover,
+.glass-btn-primary:disabled:active {
+  background: linear-gradient(135deg, rgba(var(--theme-color-1-rgb), 0.15) 0%, rgba(var(--theme-color-2-rgb), 0.15) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important;
+}
+
+
 /* Glass Inputs */
 .glass-input {
   background: rgba(0, 0, 0, calc(0.35 - var(--glass-opacity-val)));
