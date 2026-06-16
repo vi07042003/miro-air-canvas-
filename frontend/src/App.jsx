@@ -6,12 +6,14 @@ import AirCanvas from './components/AirCanvas'
 import Gallery from './components/Gallery'
 import Settings from './components/Settings'
 import Auth from './components/Auth'
+import WelcomeAnimation from './components/WelcomeAnimation'
 import { AnimatePresence, motion } from 'framer-motion'
 
 // Backend URL configuration
 export const BACKEND_URL = 'http://localhost:8000'
 
 function App() {
+  const [showWelcome, setShowWelcome] = useState(true)
   const [activePage, setActivePage] = useState('landing')
   
   // User Session State
@@ -454,361 +456,380 @@ function App() {
   }
 
   return (
-    <>
-      {/* Background liquid elements */}
-      <div className="app-bg-container">
-        <div className="liquid-blob blob-1"></div>
-        <div className="liquid-blob blob-2"></div>
-        <div className="liquid-blob blob-3"></div>
-        <div className="liquid-blob blob-4"></div>
-        <div className="liquid-blob blob-5"></div>
-      </div>
-
-      {/* Main Glass Header */}
-      <header className="header-glass">
-        <div className="logo-container" onClick={() => setActivePage('landing')}>
-          <div className="logo-icon" style={{ padding: '6px' }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#ffffff" />
-                  <stop offset="100%" stopColor="rgba(255, 255, 255, 0.75)" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M5 18C5 18 8 6 10.5 6C12.5 6 12 13.5 13.5 13.5C15 13.5 16.5 7.5 19 7.5"
-                stroke="url(#logo-grad)"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="19" cy="7.5" r="2.2" fill="#ffffff" />
-              <circle cx="19" cy="7.5" r="4.5" stroke="rgba(255, 255, 255, 0.5)" strokeWidth="0.8" strokeDasharray="2 2" />
-            </svg>
+    <AnimatePresence mode="wait">
+      {showWelcome ? (
+        <WelcomeAnimation key="welcome" onComplete={() => setShowWelcome(false)} />
+      ) : (
+        <motion.div
+          key="main-app"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}
+        >
+          {/* Background liquid elements */}
+          <div className="app-bg-container">
+            <div className="liquid-blob blob-1"></div>
+            <div className="liquid-blob blob-2"></div>
+            <div className="liquid-blob blob-3"></div>
+            <div className="liquid-blob blob-4"></div>
+            <div className="liquid-blob blob-5"></div>
           </div>
-          <span>MIRO CANVAS</span>
-        </div>
 
-        <nav className="nav-links">
-          <button 
-            className={`nav-item ${activePage === 'landing' ? 'nav-item-active' : ''}`}
-            onClick={() => setActivePage('landing')}
-          >
-            <Home size={19} />
-            <span>Home</span>
-          </button>
-          <button 
-            className={`nav-item ${activePage === 'canvas' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
-            onClick={() => navigateTo('canvas')}
-            title={!user ? 'Sign in to access Canvas' : 'Canvas'}
-          >
-            <Palette size={19} />
-            <span>Canvas</span>
-            {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
-          </button>
-          <button 
-            className={`nav-item ${activePage === 'gallery' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
-            onClick={() => navigateTo('gallery')}
-            title={!user ? 'Sign in to access Gallery' : 'Gallery'}
-          >
-            <Image size={19} />
-            <span>Gallery</span>
-            {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
-          </button>
-          <button 
-            className={`nav-item ${showStencilGenModal ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
-            onClick={() => {
-              if (!user) {
-                alert("Please sign in to use the AI Stencil Generator.");
-                return;
-              }
-              setShowStencilGenModal(true);
-            }}
-            title={!user ? 'Sign in to generate AI stencils' : 'AI Stencil Generator'}
-          >
-            <Sparkles size={19} />
-            <span>AI Stencils</span>
-            {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
-          </button>
-          <button 
-            className={`nav-item ${activePage === 'settings' ? 'nav-item-active' : ''}`}
-            onClick={() => setActivePage('settings')}
-          >
-            <SettingsIcon size={19} />
-            <span>Settings</span>
-          </button>
-        </nav>
-
-        {/* User Session Nav Panel */}
-        <div style={styles.authPanel}>
-          {user ? (
-            <div style={styles.userInfoRow}>
-              <div className="user-badge-wrapper">
-                <div className="user-badge-clickable" onClick={handleProfileClick} title="Edit Profile">
-                  {user.profilePicture ? (
-                    <img src={user.profilePicture} style={styles.headerAvatar} alt="Profile" />
-                  ) : (
-                    <UserIcon size={18} color="var(--theme-color-2)" />
-                  )}
-                  <span>{user.username}</span>
-                </div>
-
-                {/* Profile Hover Card */}
-                <div className="profile-hover-card" onClick={handleProfileClick} title="Edit Profile">
-                  <div className="profile-hover-avatar">
-                    {user.profilePicture ? (
-                      <img src={user.profilePicture} className="profile-hover-img" alt="Profile" />
-                    ) : (
-                      <UserIcon size={24} color="var(--theme-color-2)" />
-                    )}
-                  </div>
-                  <div className="profile-hover-info">
-                    <div className="profile-hover-name">{user.username}</div>
-                    <div className="profile-hover-hint">Click to edit profile</div>
-                  </div>
-                </div>
+          {/* Main Glass Header */}
+          <header className="header-glass">
+            <div className="logo-container" onClick={() => setActivePage('landing')}>
+              <div className="logo-icon" style={{ padding: '6px' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#ffffff" />
+                      <stop offset="100%" stopColor="rgba(255, 255, 255, 0.75)" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d="M5 18C5 18 8 6 10.5 6C12.5 6 12 13.5 13.5 13.5C15 13.5 16.5 7.5 19 7.5"
+                    stroke="url(#logo-grad)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M19 3.5 Q19 7.5 23 7.5 Q19 7.5 19 11.5 Q19 7.5 15 7.5 Q19 7.5 19 3.5"
+                    fill="#ffffff"
+                  />
+                </svg>
               </div>
-              <button className="glass-btn" style={styles.authBtn} onClick={handleLogout} title="Log Out">
-                <LogOut size={16} />
-                <span>Log Out</span>
-              </button>
-            </div>
-          ) : (
-            <button className="glass-btn glass-btn-primary" style={styles.authBtn} onClick={() => setActivePage('auth')}>
-              <LogIn size={16} />
-              <span>Sign In</span>
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* Main Content Area */}
-      <main style={{ minHeight: 'calc(100vh - 73px)', padding: '24px', position: 'relative', overflowX: 'hidden' }}>
-        <AnimatePresence mode="wait">
-          {renderPage()}
-        </AnimatePresence>
-      </main>
-
-      {/* Profile Edit Modal */}
-      {showProfileModal && createPortal(
-        <div className="modal-backdrop-glass" onClick={() => setShowProfileModal(false)}>
-          <div className="glass-panel-heavy fade-in" style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <UserIcon size={20} color="var(--theme-color-2)" />
-                <h3 style={styles.modalTitle}>User Profile</h3>
-              </div>
-              <button style={styles.closeBtn} onClick={() => setShowProfileModal(false)}>
-                <X size={18} />
-              </button>
+              <span className="header-logo-text">
+                <span className="header-brand-mi">MI</span>
+                <span className="header-brand-ro">RO</span>
+                <span className="header-brand-canvas">CANVAS</span>
+              </span>
             </div>
 
-            <form onSubmit={handleUpdateProfile} style={styles.modalBody}>
-              <div style={styles.avatarSection}>
-                <div style={styles.avatarContainer}>
-                  {editProfilePicture ? (
-                    <img src={editProfilePicture} style={styles.profilePreview} alt="Preview" />
-                  ) : (
-                    <UserIcon size={36} color="var(--theme-color-2)" />
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <label className="glass-btn" style={styles.uploadBtn}>
-                    <span>Choose Photo</span>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      style={{ display: 'none' }} 
-                      onChange={handleFileChange}
-                    />
-                  </label>
-                  {editProfilePicture && (
-                    <button 
-                      type="button" 
-                      className="glass-btn" 
-                      style={styles.removeBtn}
-                      onClick={() => setEditProfilePicture('')}
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Username</label>
-                <input 
-                  type="text" 
-                  className="glass-input"
-                  style={styles.modalInput}
-                  value={editUsername}
-                  onChange={(e) => setEditUsername(e.target.value)}
-                  placeholder="Enter username"
-                  required
-                />
-              </div>
-
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>New Password (Optional)</label>
-                <input 
-                  type="password" 
-                  className="glass-input"
-                  style={styles.modalInput}
-                  value={editPassword}
-                  onChange={(e) => setEditPassword(e.target.value)}
-                  placeholder="Leave blank to keep current password"
-                />
-              </div>
-
-              {profileMessage && (
-                <div style={{
-                  ...styles.modalMessage,
-                  color: profileMessage.includes('successfully') ? '#10b981' : '#f43f5e'
-                }}>
-                  {profileMessage}
-                </div>
-              )}
-
+            <nav className="nav-links">
               <button 
-                type="submit" 
-                className="glass-btn glass-btn-primary" 
-                style={styles.modalSubmitBtn}
-                disabled={profileLoading}
+                className={`nav-item ${activePage === 'landing' ? 'nav-item-active' : ''}`}
+                onClick={() => setActivePage('landing')}
               >
-                {profileLoading ? 'Saving Changes...' : 'Save Profile'}
+                <Home size={19} />
+                <span>Home</span>
               </button>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* AI Stencil Generator Modal */}
-      {showStencilGenModal && createPortal(
-        <div className="modal-backdrop-glass" onClick={() => setShowStencilGenModal(false)}>
-          <div className="glass-panel-heavy fade-in" style={styles.stencilModalContent} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Sparkles size={22} color="var(--theme-color-2)" />
-                <h3 style={styles.modalTitle}>AI Stencil Generator</h3>
-              </div>
-              <button style={styles.closeBtn} onClick={() => setShowStencilGenModal(false)}>
-                <X size={18} />
+              <button 
+                className={`nav-item ${activePage === 'canvas' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
+                onClick={() => navigateTo('canvas')}
+                title={!user ? 'Sign in to access Canvas' : 'Canvas'}
+              >
+                <Palette size={19} />
+                <span>Canvas</span>
+                {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
               </button>
-            </div>
+              <button 
+                className={`nav-item ${activePage === 'gallery' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
+                onClick={() => navigateTo('gallery')}
+                title={!user ? 'Sign in to access Gallery' : 'Gallery'}
+              >
+                <Image size={19} />
+                <span>Gallery</span>
+                {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+              </button>
+              <button 
+                className={`nav-item ${showStencilGenModal ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
+                onClick={() => {
+                  if (!user) {
+                    alert("Please sign in to use the AI Stencil Generator.");
+                    return;
+                  }
+                  setShowStencilGenModal(true);
+                }}
+                title={!user ? 'Sign in to generate AI stencils' : 'AI Stencil Generator'}
+              >
+                <Sparkles size={19} />
+                <span>AI Stencils</span>
+                {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+              </button>
+              <button 
+                className={`nav-item ${activePage === 'settings' ? 'nav-item-active' : ''}`}
+                onClick={() => setActivePage('settings')}
+              >
+                <SettingsIcon size={19} />
+                <span>Settings</span>
+              </button>
+            </nav>
 
-            <form onSubmit={handleGenerateStencil} style={styles.modalBody}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={styles.label}>What would you like to paint?</label>
-                <span style={{ fontSize: '11px', color: stencilUsage.count >= stencilUsage.max ? '#ef4444' : 'rgba(255,255,255,0.6)', fontWeight: 'bold' }}>
-                  Usage: {stencilUsage.count} / {stencilUsage.max} gens
-                </span>
-              </div>
+            {/* User Session Nav Panel */}
+            <div style={styles.authPanel}>
+              {user ? (
+                <div style={styles.userInfoRow}>
+                  <div className="user-badge-wrapper">
+                    <div className="user-badge-clickable" onClick={handleProfileClick} title="Edit Profile">
+                      {user.profilePicture ? (
+                        <img src={user.profilePicture} style={styles.headerAvatar} alt="Profile" />
+                      ) : (
+                        <UserIcon size={18} color="var(--theme-color-2)" />
+                      )}
+                      <span>{user.username}</span>
+                    </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input
-                  type="text"
-                  placeholder="e.g. rocket, butterfly, heart, star..."
-                  value={stencilKeyword}
-                  onChange={(e) => setStencilKeyword(e.target.value)}
-                  className="glass-input"
-                  style={{
-                    ...styles.modalInput,
-                    flex: 1,
-                  }}
-                  disabled={stencilGenLoading || stencilUsage.count >= stencilUsage.max}
-                />
-                <button
-                  type="submit"
-                  className="glass-btn glass-btn-primary"
-                  style={{ minWidth: '110px', justifyContent: 'center' }}
-                  disabled={stencilGenLoading || !stencilKeyword.trim() || stencilUsage.count >= stencilUsage.max}
-                >
-                  {stencilGenLoading ? 'Generating...' : 'Generate'}
-                </button>
-              </div>
-
-              {stencilUsage.resetTime && (
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: '-8px' }}>
-                  Rolling 24h limit resets at {formatResetTime(stencilUsage.resetTime)}
-                </div>
-              )}
-
-              {stencilGenError && (
-                <div style={{ 
-                  background: 'rgba(244, 63, 94, 0.15)', 
-                  border: '1px solid rgba(244, 63, 94, 0.3)', 
-                  color: '#fda4af', 
-                  padding: '10px 14px', 
-                  borderRadius: '10px', 
-                  fontSize: '13px' 
-                }}>
-                  {stencilGenError}
-                </div>
-              )}
-
-              {stencilUsage.count >= stencilUsage.max && !stencilGenResult && (
-                <div style={{ 
-                  background: 'rgba(239, 68, 68, 0.15)', 
-                  border: '1px solid rgba(239, 68, 68, 0.3)', 
-                  color: '#f87171', 
-                  padding: '10px 14px', 
-                  borderRadius: '10px', 
-                  fontSize: '13px' 
-                }}>
-                  ⚠️ You have reached your limit of {stencilUsage.max} free AI stencil generations. Limit resets at {formatResetTime(stencilUsage.resetTime)}.
-                </div>
-              )}
-
-              {/* Stencil Result Preview */}
-              {stencilGenResult && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', marginTop: '10px' }}>
-                  <div style={{ 
-                    width: '100%', 
-                    height: '220px', 
-                    borderRadius: '14px', 
-                    border: '1px solid rgba(255,255,255,0.1)', 
-                    background: 'rgba(0,0,0,0.3)', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                    position: 'relative'
-                  }}>
-                    <img 
-                      src={stencilGenResult} 
-                      alt="Generated Stencil" 
-                      style={{ 
-                        maxHeight: '100%', 
-                        maxWidth: '100%', 
-                        objectFit: 'contain', 
-                        filter: 'invert(1) drop-shadow(0 0 8px rgba(6, 182, 212, 0.6))'
-                      }} 
-                    />
+                    {/* Profile Hover Card */}
+                    <div className="profile-hover-card" onClick={handleProfileClick} title="Edit Profile">
+                      <div className="profile-hover-avatar">
+                        {user.profilePicture ? (
+                          <img src={user.profilePicture} className="profile-hover-img" alt="Profile" />
+                        ) : (
+                          <UserIcon size={24} color="var(--theme-color-2)" />
+                        )}
+                      </div>
+                      <div className="profile-hover-info">
+                        <div className="profile-hover-name">{user.username}</div>
+                        <div className="profile-hover-hint">Click to edit profile</div>
+                      </div>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    className="glass-btn"
-                    style={{
-                      width: '100%',
-                      justifyContent: 'center',
-                      background: 'linear-gradient(135deg, var(--theme-color-2) 0%, var(--theme-color-1) 100%)',
-                      color: '#fff',
-                      border: 'none',
-                      boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)'
-                    }}
-                    onClick={handleApplyStencil}
-                  >
-                    <span>Apply Stencil to Canvas</span>
+                  <button className="glass-btn" style={styles.authBtn} onClick={handleLogout} title="Log Out">
+                    <LogOut size={16} />
+                    <span>Log Out</span>
                   </button>
                 </div>
+              ) : (
+                <button className="glass-btn glass-btn-primary" style={styles.authBtn} onClick={() => setActivePage('auth')}>
+                  <LogIn size={16} />
+                  <span>Sign In</span>
+                </button>
               )}
-            </form>
-          </div>
-        </div>,
-        document.body
+            </div>
+          </header>
+
+          {/* Main Content Area */}
+          <main style={{ minHeight: 'calc(100vh - 73px)', padding: '24px', position: 'relative', overflowX: 'hidden' }}>
+            <AnimatePresence mode="wait">
+              {renderPage()}
+            </AnimatePresence>
+          </main>
+
+          {/* Profile Edit Modal */}
+          {showProfileModal && createPortal(
+            <div className="modal-backdrop-glass" onClick={() => setShowProfileModal(false)}>
+              <div className="glass-panel-heavy fade-in" style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <UserIcon size={20} color="var(--theme-color-2)" />
+                    <h3 style={styles.modalTitle}>User Profile</h3>
+                  </div>
+                  <button style={styles.closeBtn} onClick={() => setShowProfileModal(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleUpdateProfile} style={styles.modalBody}>
+                  <div style={styles.avatarSection}>
+                    <div style={styles.avatarContainer}>
+                      {editProfilePicture ? (
+                        <img src={editProfilePicture} style={styles.profilePreview} alt="Preview" />
+                      ) : (
+                        <UserIcon size={36} color="var(--theme-color-2)" />
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <label className="glass-btn" style={styles.uploadBtn}>
+                        <span>Choose Photo</span>
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          style={{ display: 'none' }} 
+                          onChange={handleFileChange}
+                        />
+                      </label>
+                      {editProfilePicture && (
+                        <button 
+                          type="button" 
+                          className="glass-btn" 
+                          style={styles.removeBtn}
+                          onClick={() => setEditProfilePicture('')}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>Username</label>
+                    <input 
+                      type="text" 
+                      className="glass-input"
+                      style={styles.modalInput}
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      placeholder="Enter username"
+                      required
+                    />
+                  </div>
+
+                  <div style={styles.inputGroup}>
+                    <label style={styles.label}>New Password (Optional)</label>
+                    <input 
+                      type="password" 
+                      className="glass-input"
+                      style={styles.modalInput}
+                      value={editPassword}
+                      onChange={(e) => setEditPassword(e.target.value)}
+                      placeholder="Leave blank to keep current password"
+                    />
+                  </div>
+
+                  {profileMessage && (
+                    <div style={{
+                      ...styles.modalMessage,
+                      color: profileMessage.includes('successfully') ? '#10b981' : '#f43f5e'
+                    }}>
+                      {profileMessage}
+                    </div>
+                  )}
+
+                  <button 
+                    type="submit" 
+                    className="glass-btn glass-btn-primary" 
+                    style={styles.modalSubmitBtn}
+                    disabled={profileLoading}
+                  >
+                    {profileLoading ? 'Saving Changes...' : 'Save Profile'}
+                  </button>
+                </form>
+              </div>
+            </div>,
+            document.body
+          )}
+
+          {/* AI Stencil Generator Modal */}
+          {showStencilGenModal && createPortal(
+            <div className="modal-backdrop-glass" onClick={() => setShowStencilGenModal(false)}>
+              <div className="glass-panel-heavy fade-in" style={styles.stencilModalContent} onClick={(e) => e.stopPropagation()}>
+                <div style={styles.modalHeader}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <Sparkles size={22} color="var(--theme-color-2)" />
+                    <h3 style={styles.modalTitle}>AI Stencil Generator</h3>
+                  </div>
+                  <button style={styles.closeBtn} onClick={() => setShowStencilGenModal(false)}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleGenerateStencil} style={styles.modalBody}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={styles.label}>What would you like to paint?</label>
+                    <span style={{ fontSize: '11px', color: stencilUsage.count >= stencilUsage.max ? '#ef4444' : 'rgba(255,255,255,0.6)', fontWeight: 'bold' }}>
+                      Usage: {stencilUsage.count} / {stencilUsage.max} gens
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. rocket, butterfly, heart, star..."
+                      value={stencilKeyword}
+                      onChange={(e) => setStencilKeyword(e.target.value)}
+                      className="glass-input"
+                      style={{
+                        ...styles.modalInput,
+                        flex: 1,
+                      }}
+                      disabled={stencilGenLoading || stencilUsage.count >= stencilUsage.max}
+                    />
+                    <button
+                      type="submit"
+                      className="glass-btn glass-btn-primary"
+                      style={{ minWidth: '110px', justifyContent: 'center' }}
+                      disabled={stencilGenLoading || !stencilKeyword.trim() || stencilUsage.count >= stencilUsage.max}
+                    >
+                      {stencilGenLoading ? 'Generating...' : 'Generate'}
+                    </button>
+                  </div>
+
+                  {stencilUsage.resetTime && (
+                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', textAlign: 'right', marginTop: '-8px' }}>
+                      Rolling 24h limit resets at {formatResetTime(stencilUsage.resetTime)}
+                    </div>
+                  )}
+
+                  {stencilGenError && (
+                    <div style={{ 
+                      background: 'rgba(244, 63, 94, 0.15)', 
+                      border: '1px solid rgba(244, 63, 94, 0.3)', 
+                      color: '#fda4af', 
+                      padding: '10px 14px', 
+                      borderRadius: '10px', 
+                      fontSize: '13px' 
+                    }}>
+                      {stencilGenError}
+                    </div>
+                  )}
+
+                  {stencilUsage.count >= stencilUsage.max && !stencilGenResult && (
+                    <div style={{ 
+                      background: 'rgba(239, 68, 68, 0.15)', 
+                      border: '1px solid rgba(239, 68, 68, 0.3)', 
+                      color: '#f87171', 
+                      padding: '10px 14px', 
+                      borderRadius: '10px', 
+                      fontSize: '13px' 
+                    }}>
+                      ⚠️ You have reached your limit of {stencilUsage.max} free AI stencil generations. Limit resets at {formatResetTime(stencilUsage.resetTime)}.
+                    </div>
+                  )}
+
+                  {/* Stencil Result Preview */}
+                  {stencilGenResult && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', alignItems: 'center', marginTop: '10px' }}>
+                      <div style={{ 
+                        width: '100%', 
+                        height: '220px', 
+                        borderRadius: '14px', 
+                        border: '1px solid rgba(255, 255, 255, 0.1)', 
+                        background: 'rgba(0,0,0,0.3)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        position: 'relative'
+                      }}>
+                        <img 
+                          src={stencilGenResult} 
+                          alt="Generated Stencil" 
+                          style={{ 
+                            maxHeight: '100%', 
+                            maxWidth: '100%', 
+                            objectFit: 'contain', 
+                            filter: 'invert(1) drop-shadow(0 0 8px rgba(6, 182, 212, 0.6))'
+                          }} 
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="glass-btn"
+                        style={{
+                          width: '100%',
+                          justifyContent: 'center',
+                          background: 'linear-gradient(135deg, var(--theme-color-2) 0%, var(--theme-color-1) 100%)',
+                          color: '#fff',
+                          border: 'none',
+                          boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)'
+                        }}
+                        onClick={handleApplyStencil}
+                      >
+                        <span>Apply Stencil to Canvas</span>
+                      </button>
+                    </div>
+                  )}
+                </form>
+              </div>
+            </div>,
+            document.body
+          )}
+        </motion.div>
       )}
-    </>
+    </AnimatePresence>
   )
 }
 
