@@ -103,174 +103,184 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
   }, [initialStencil, onClearInitialStencil])
 
-  const handleApplyStencil = ({ previewUrl, contours, grayscale, width, height, scale, mode3D }) => {
+  const handleApplyStencil = ({ previewUrl, contours, grayscale, width, height, scale, mode3D, targetCanvas }) => {
     if (!previewUrl) return
 
-    // Apply to 2D Canvas
-    const canvas = canvasRef.current
-    if (canvas && contours.length > 0) {
-      const ctx = canvas.getContext('2d')
-      
-      ctx.save()
-      ctx.strokeStyle = color || '#06b6d4'
-      ctx.lineWidth = Math.max(2, brushSize / 2)
-      ctx.lineCap = 'round'
-      ctx.lineJoin = 'round'
-      ctx.globalAlpha = brushOpacity
-      
-      const scale2D = scale * 1.5
-      const offsetX = (canvas.width - width * scale2D) / 2
-      const offsetY = (canvas.height - height * scale2D) / 2
-      
-      contours.forEach(path => {
-        if (path.length < 2) return
-        ctx.beginPath()
-        ctx.moveTo(offsetX + path[0].x * scale2D, offsetY + path[0].y * scale2D)
-        for (let i = 1; i < path.length; i++) {
-          ctx.lineTo(offsetX + path[i].x * scale2D, offsetY + path[i].y * scale2D)
-        }
-        ctx.stroke()
-      })
-      
-      ctx.restore()
-      saveCanvasState()
-    }
+    const target = targetCanvas || '2d'
 
-    // Apply to 3D Canvas
-    if (mode3D === 'heightmap' && grayscale) {
-      const scale3D = (250 / Math.max(width, height)) * scale
-      const depth3D = 60 * scale
-      
-      const gridW = 35
-      const gridH = 35
-      const stepX = width / (gridW - 1)
-      const stepY = height / (gridH - 1)
-      
-      const pointsGrid = []
-      
-      for (let r = 0; r < gridH; r++) {
-        const rowPoints = []
-        for (let c = 0; c < gridW; c++) {
-          const px = Math.min(width - 1, Math.round(c * stepX))
-          const py = Math.min(height - 1, Math.round(r * stepY))
-          const idx = py * width + px
-          const val = grayscale[idx] || 0
-          
-          const z3d = (val / 255 - 0.5) * depth3D
-          
-          rowPoints.push({
-            x: (px - width / 2) * scale3D,
-            y: (py - height / 2) * scale3D,
-            z: z3d
-          })
-        }
-        pointsGrid.push(rowPoints)
-      }
-      
-      const new3DStrokes = []
-      for (let r = 0; r < gridH; r++) {
-        new3DStrokes.push({
-          type: 'stroke',
-          points: pointsGrid[r],
-          color: color || '#38bdf8',
-          opacity: 0.4,
-          size: 1.5
+    if (target === '2d') {
+      // Switch to 2D view mode
+      handleModeSwitch('2d')
+
+      // Apply to 2D Canvas
+      const canvas = canvasRef.current
+      if (canvas && contours.length > 0) {
+        const ctx = canvas.getContext('2d')
+        
+        ctx.save()
+        ctx.strokeStyle = color || '#06b6d4'
+        ctx.lineWidth = Math.max(2, brushSize / 2)
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        ctx.globalAlpha = brushOpacity
+        
+        const scale2D = scale * 1.5
+        const offsetX = (canvas.width - width * scale2D) / 2
+        const offsetY = (canvas.height - height * scale2D) / 2
+        
+        contours.forEach(path => {
+          if (path.length < 2) return
+          ctx.beginPath()
+          ctx.moveTo(offsetX + path[0].x * scale2D, offsetY + path[0].y * scale2D)
+          for (let i = 1; i < path.length; i++) {
+            ctx.lineTo(offsetX + path[i].x * scale2D, offsetY + path[i].y * scale2D)
+          }
+          ctx.stroke()
         })
+        
+        ctx.restore()
+        saveCanvasState()
       }
-      for (let c = 0; c < gridW; c++) {
-        const colPoints = []
+    } else if (target === '3d') {
+      // Switch to 3D view mode
+      handleModeSwitch('3d')
+
+      // Apply to 3D Canvas
+      if (mode3D === 'heightmap' && grayscale) {
+        const scale3D = (250 / Math.max(width, height)) * scale
+        const depth3D = 60 * scale
+        
+        const gridW = 35
+        const gridH = 35
+        const stepX = width / (gridW - 1)
+        const stepY = height / (gridH - 1)
+        
+        const pointsGrid = []
+        
         for (let r = 0; r < gridH; r++) {
-          colPoints.push(pointsGrid[r][c])
+          const rowPoints = []
+          for (let c = 0; c < gridW; c++) {
+            const px = Math.min(width - 1, Math.round(c * stepX))
+            const py = Math.min(height - 1, Math.round(r * stepY))
+            const idx = py * width + px
+            const val = grayscale[idx] || 0
+            
+            const z3d = (val / 255 - 0.5) * depth3D
+            
+            rowPoints.push({
+              x: (px - width / 2) * scale3D,
+              y: (py - height / 2) * scale3D,
+              z: z3d
+            })
+          }
+          pointsGrid.push(rowPoints)
         }
-        new3DStrokes.push({
-          type: 'stroke',
-          points: colPoints,
-          color: color || '#38bdf8',
-          opacity: 0.4,
-          size: 1.5
+        
+        const new3DStrokes = []
+        for (let r = 0; r < gridH; r++) {
+          new3DStrokes.push({
+            type: 'stroke',
+            points: pointsGrid[r],
+            color: color || '#38bdf8',
+            opacity: 0.4,
+            size: 1.5
+          })
+        }
+        for (let c = 0; c < gridW; c++) {
+          const colPoints = []
+          for (let r = 0; r < gridH; r++) {
+            colPoints.push(pointsGrid[r][c])
+          }
+          new3DStrokes.push({
+            type: 'stroke',
+            points: colPoints,
+            color: color || '#38bdf8',
+            opacity: 0.4,
+            size: 1.5
+          })
+        }
+        
+        stamped3DObjectsRef.current = [
+          ...stamped3DObjectsRef.current,
+          ...new3DStrokes
+        ]
+        save3DState()
+      } else if (contours.length > 0) {
+        const scale3D = (250 / Math.max(width, height)) * scale
+        const depth3D = 40 * scale
+        
+        const new3DStrokes = []
+
+        contours.forEach(path => {
+          const backPoints = path.map(pt => ({
+            x: (pt.x - width / 2) * scale3D,
+            y: (pt.y - height / 2) * scale3D,
+            z: -depth3D / 2
+          }))
+
+          const frontPoints = path.map(pt => ({
+            x: (pt.x - width / 2) * scale3D,
+            y: (pt.y - height / 2) * scale3D,
+            z: depth3D / 2
+          }))
+
+          new3DStrokes.push({
+            type: 'stroke',
+            points: backPoints,
+            color: color || '#38bdf8',
+            opacity: 0.8,
+            size: 2
+          })
+
+          new3DStrokes.push({
+            type: 'stroke',
+            points: frontPoints,
+            color: color || '#38bdf8',
+            opacity: 0.8,
+            size: 2
+          })
+
+          const step = Math.max(4, Math.floor(path.length / 12))
+          for (let i = 0; i < path.length; i += step) {
+            const pt = path[i]
+            const x3d = (pt.x - width / 2) * scale3D
+            const y3d = (pt.y - height / 2) * scale3D
+            
+            new3DStrokes.push({
+              type: 'stroke',
+              points: [
+                { x: x3d, y: y3d, z: -depth3D / 2 },
+                { x: x3d, y: y3d, z: depth3D / 2 }
+              ],
+              color: color || '#38bdf8',
+              opacity: 0.5,
+              size: 1.5
+            })
+          }
+
+          if (path.length > 0) {
+            const pt = path[path.length - 1]
+            const x3d = (pt.x - width / 2) * scale3D
+            const y3d = (pt.y - height / 2) * scale3D
+            new3DStrokes.push({
+              type: 'stroke',
+              points: [
+                { x: x3d, y: y3d, z: -depth3D / 2 },
+                { x: x3d, y: y3d, z: depth3D / 2 }
+              ],
+              color: color || '#38bdf8',
+              opacity: 0.5,
+              size: 1.5
+            })
+          }
         })
+
+        stamped3DObjectsRef.current = [
+          ...stamped3DObjectsRef.current,
+          ...new3DStrokes
+        ]
+        save3DState()
       }
-      
-      stamped3DObjectsRef.current = [
-        ...stamped3DObjectsRef.current,
-        ...new3DStrokes
-      ]
-      save3DState()
-    } else if (contours.length > 0) {
-      const scale3D = (250 / Math.max(width, height)) * scale
-      const depth3D = 40 * scale
-      
-      const new3DStrokes = []
-
-      contours.forEach(path => {
-        const backPoints = path.map(pt => ({
-          x: (pt.x - width / 2) * scale3D,
-          y: (pt.y - height / 2) * scale3D,
-          z: -depth3D / 2
-        }))
-
-        const frontPoints = path.map(pt => ({
-          x: (pt.x - width / 2) * scale3D,
-          y: (pt.y - height / 2) * scale3D,
-          z: depth3D / 2
-        }))
-
-        new3DStrokes.push({
-          type: 'stroke',
-          points: backPoints,
-          color: color || '#38bdf8',
-          opacity: 0.8,
-          size: 2
-        })
-
-        new3DStrokes.push({
-          type: 'stroke',
-          points: frontPoints,
-          color: color || '#38bdf8',
-          opacity: 0.8,
-          size: 2
-        })
-
-        const step = Math.max(4, Math.floor(path.length / 12))
-        for (let i = 0; i < path.length; i += step) {
-          const pt = path[i]
-          const x3d = (pt.x - width / 2) * scale3D
-          const y3d = (pt.y - height / 2) * scale3D
-          
-          new3DStrokes.push({
-            type: 'stroke',
-            points: [
-              { x: x3d, y: y3d, z: -depth3D / 2 },
-              { x: x3d, y: y3d, z: depth3D / 2 }
-            ],
-            color: color || '#38bdf8',
-            opacity: 0.5,
-            size: 1.5
-          })
-        }
-
-        if (path.length > 0) {
-          const pt = path[path.length - 1]
-          const x3d = (pt.x - width / 2) * scale3D
-          const y3d = (pt.y - height / 2) * scale3D
-          new3DStrokes.push({
-            type: 'stroke',
-            points: [
-              { x: x3d, y: y3d, z: -depth3D / 2 },
-              { x: x3d, y: y3d, z: depth3D / 2 }
-            ],
-            color: color || '#38bdf8',
-            opacity: 0.5,
-            size: 1.5
-          })
-        }
-      })
-
-      stamped3DObjectsRef.current = [
-        ...stamped3DObjectsRef.current,
-        ...new3DStrokes
-      ]
-      save3DState()
     }
   }
 

@@ -22,6 +22,7 @@ export default function StencilConverterModal({
   const [stencilWidth, setStencilWidth] = useState(0)
   const [stencilHeight, setStencilHeight] = useState(0)
   const [stencilMode3D, setStencilMode3D] = useState('extrusion') // extrusion, heightmap
+  const [targetCanvas, setTargetCanvas] = useState('2d') // 2d, 3d
 
   // Sync state transitions during render to avoid useEffect state update warnings
   if (isOpen !== prevIsOpen) {
@@ -35,6 +36,7 @@ export default function StencilConverterModal({
       setStencilPreviewUrl('')
       setExtractedContours([])
       setExtractedGrayscale(null)
+      setTargetCanvas('2d')
     }
   }
 
@@ -73,7 +75,8 @@ export default function StencilConverterModal({
       width: stencilWidth,
       height: stencilHeight,
       scale: stencilScale,
-      mode3D: stencilMode3D
+      mode3D: stencilMode3D,
+      targetCanvas: targetCanvas
     })
     onClose()
   }
@@ -233,10 +236,10 @@ export default function StencilConverterModal({
               padding: '16px',
               borderRadius: '10px'
             }}>
-              {/* Stencil 3D Mode Selector */}
+              {/* Target Canvas Selector */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
-                  3D Model Extraction Mode
+                  Target Canvas
                 </span>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button
@@ -245,9 +248,9 @@ export default function StencilConverterModal({
                       flex: 1,
                       padding: '8px 12px',
                       borderRadius: '8px',
-                      border: '1px solid ' + (stencilMode3D === 'extrusion' ? '#06b6d4' : 'rgba(255,255,255,0.15)'),
-                      background: stencilMode3D === 'extrusion' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                      color: stencilMode3D === 'extrusion' ? '#06b6d4' : 'rgba(255,255,255,0.7)',
+                      border: '1px solid ' + (targetCanvas === '2d' ? '#06b6d4' : 'rgba(255,255,255,0.15)'),
+                      background: targetCanvas === '2d' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                      color: targetCanvas === '2d' ? '#06b6d4' : 'rgba(255,255,255,0.7)',
                       cursor: 'pointer',
                       fontSize: '12px',
                       fontWeight: 'bold',
@@ -257,10 +260,10 @@ export default function StencilConverterModal({
                       alignItems: 'center',
                       gap: '4px'
                     }}
-                    onClick={() => setStencilMode3D('extrusion')}
+                    onClick={() => setTargetCanvas('2d')}
                   >
-                    <span>3D Extruded Outline</span>
-                    <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7 }}>Best for outline stencils</span>
+                    <span>2D Canvas</span>
+                    <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7 }}>Apply as 2D lines/shapes</span>
                   </button>
                   <button
                     type="button"
@@ -268,9 +271,9 @@ export default function StencilConverterModal({
                       flex: 1,
                       padding: '8px 12px',
                       borderRadius: '8px',
-                      border: '1px solid ' + (stencilMode3D === 'heightmap' ? '#06b6d4' : 'rgba(255,255,255,0.15)'),
-                      background: stencilMode3D === 'heightmap' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
-                      color: stencilMode3D === 'heightmap' ? '#06b6d4' : 'rgba(255,255,255,0.7)',
+                      border: '1px solid ' + (targetCanvas === '3d' ? '#06b6d4' : 'rgba(255,255,255,0.15)'),
+                      background: targetCanvas === '3d' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                      color: targetCanvas === '3d' ? '#06b6d4' : 'rgba(255,255,255,0.7)',
                       cursor: 'pointer',
                       fontSize: '12px',
                       fontWeight: 'bold',
@@ -280,13 +283,70 @@ export default function StencilConverterModal({
                       alignItems: 'center',
                       gap: '4px'
                     }}
-                    onClick={() => setStencilMode3D('heightmap')}
+                    onClick={() => setTargetCanvas('3d')}
                   >
-                    <span>3D Volumetric Mesh</span>
-                    <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7 }}>Best for photos & shading</span>
+                    <span>3D Canvas</span>
+                    <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7 }}>Apply as 3D extruded mesh/heightmap</span>
                   </button>
                 </div>
               </div>
+
+              {/* Stencil 3D Mode Selector */}
+              {targetCanvas === '3d' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+                    3D Model Extraction Mode
+                  </span>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid ' + (stencilMode3D === 'extrusion' ? '#06b6d4' : 'rgba(255,255,255,0.15)'),
+                        background: stencilMode3D === 'extrusion' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                        color: stencilMode3D === 'extrusion' ? '#06b6d4' : 'rgba(255,255,255,0.7)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      onClick={() => setStencilMode3D('extrusion')}
+                    >
+                      <span>3D Extruded Outline</span>
+                      <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7 }}>Best for outline stencils</span>
+                    </button>
+                    <button
+                      type="button"
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid ' + (stencilMode3D === 'heightmap' ? '#06b6d4' : 'rgba(255,255,255,0.15)'),
+                        background: stencilMode3D === 'heightmap' ? 'rgba(6, 182, 212, 0.15)' : 'transparent',
+                        color: stencilMode3D === 'heightmap' ? '#06b6d4' : 'rgba(255,255,255,0.7)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s ease',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}
+                      onClick={() => setStencilMode3D('heightmap')}
+                    >
+                      <span>3D Volumetric Mesh</span>
+                      <span style={{ fontSize: '10px', fontWeight: 'normal', opacity: 0.7 }}>Best for photos & shading</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Threshold Slider */}
               <SmoothSlider 
