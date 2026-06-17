@@ -2,7 +2,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { 
   Palette, Eraser, Circle as CircleIcon, Trash2, Undo, Redo, Download, Save, Camera, CameraOff, Video, Crosshair, Zap, Triangle,
-  Pencil, ChevronDown, Box, Image as ImageIcon
+  Pencil, ChevronDown, Box, Image as ImageIcon, Paintbrush, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import { 
@@ -92,6 +92,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const [uploadedImage, setUploadedImage] = useState(null)
   const [show3DDownloadModal, setShow3DDownloadModal] = useState(false)
   const [downloaded3DModelData, setDownloaded3DModelData] = useState(null)
+
+  // Drawer visibility states
+  const [leftDrawerOpen, setLeftDrawerOpen] = useState(true)
+  const [rightDrawerOpen, setRightDrawerOpen] = useState(true)
 
   useEffect(() => {
     if (initialStencil) {
@@ -1755,6 +1759,15 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       {/* Top action bar */}
       <div style={styles.topBar}>
         <div style={styles.gestureStatus}>
+          <button 
+            className={`glass-btn ${leftDrawerOpen ? 'glass-btn-active' : ''}`}
+            onClick={() => setLeftDrawerOpen(!leftDrawerOpen)}
+            title={leftDrawerOpen ? "Collapse Tools" : "Expand Tools"}
+            style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', height: '38px', borderRadius: '10px', marginRight: '8px' }}
+          >
+            <Paintbrush size={16} />
+          </button>
+
           <div style={styles.gestureIndicator}>
             <div ref={gestureIndicatorDotRef} style={styles.gestureIndicatorDot}></div>
             <span>Gesture: <strong ref={gestureIndicatorRef}>None</strong></span>
@@ -1816,30 +1829,45 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             <Save size={16} />
             <span>Save to files</span>
           </button>
+          <button 
+            className={`glass-btn ${rightDrawerOpen ? 'glass-btn-active' : ''}`}
+            onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
+            title={rightDrawerOpen ? "Collapse Camera & Guide" : "Expand Camera & Guide"}
+            style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', height: '38px', borderRadius: '10px' }}
+          >
+            <Video size={16} />
+          </button>
         </div>
       </div>
 
-      <div style={styles.workspace}>
-        {/* Center Canvas Column (Controls + Canvas) */}
-        <div style={styles.canvasColumn}>
-          {/* Top Canvas Controls Panel */}
-          <div className="glass-panel" style={styles.canvasControls}>
+      <div className="aircanvas-workspace">
+        {/* Left Drawer (Tools & Brush Settings) */}
+        <div className={`glass-panel drawer-panel drawer-left ${leftDrawerOpen ? 'open' : 'collapsed'}`}>
+          <div className="drawer-content" style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
+            <div style={styles.drawerSectionHeader}>
+              <Paintbrush size={16} color="var(--theme-color-2)" />
+              <span style={styles.drawerTitle}>Drawing Tools</span>
+            </div>
+
+            <div className="active-tool-banner">
+              <span>Active Tool:</span>
+              <strong>{canvasMode === '3d' ? active3DTool.replace('3d-', '') : getActiveToolName(tool)}</strong>
+            </div>
+
             {canvasMode === '3d' ? (
-              <>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '700', color: 'rgba(255, 255, 255, 0.4)', textTransform: 'uppercase', marginRight: '6px' }}>3D Tools:</span>
+              <div style={styles.drawerGroup}>
+                <span style={styles.drawerSubTitle}>3D Geometry</span>
+                <div className="tool-grid-3d">
                   <button 
-                    className={`glass-btn ${active3DTool === 'orbit' ? 'glass-btn-active' : ''}`}
-                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    className={`glass-btn tool-grid-item ${active3DTool === 'orbit' ? 'glass-btn-active' : ''}`}
                     onClick={() => set3DTool('orbit')}
                     title="Orbit View: Drag mouse or raise index & middle fingers to rotate, scroll wheel or pinch to zoom"
                   >
                     <Crosshair size={14} />
-                    <span>Orbit View</span>
+                    <span>Orbit</span>
                   </button>
                   <button 
-                    className={`glass-btn ${active3DTool === '3d-freehand' ? 'glass-btn-active' : ''}`}
-                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-freehand' ? 'glass-btn-active' : ''}`}
                     onClick={() => set3DTool('3d-freehand')}
                     title="3D Freehand Sketch: Drag mouse or raise index finger to sketch in 3D"
                   >
@@ -1847,8 +1875,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                     <span>3D Sketch</span>
                   </button>
                   <button 
-                    className={`glass-btn ${active3DTool === '3d-cube' ? 'glass-btn-active' : ''}`}
-                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-cube' ? 'glass-btn-active' : ''}`}
                     onClick={() => set3DTool('3d-cube')}
                     title="Cube Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
                   >
@@ -1856,8 +1883,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                     <span>Cube</span>
                   </button>
                   <button 
-                    className={`glass-btn ${active3DTool === '3d-sphere' ? 'glass-btn-active' : ''}`}
-                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-sphere' ? 'glass-btn-active' : ''}`}
                     onClick={() => set3DTool('3d-sphere')}
                     title="Sphere Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
                   >
@@ -1865,8 +1891,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                     <span>Sphere</span>
                   </button>
                   <button 
-                    className={`glass-btn ${active3DTool === '3d-cylinder' ? 'glass-btn-active' : ''}`}
-                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-cylinder' ? 'glass-btn-active' : ''}`}
                     onClick={() => set3DTool('3d-cylinder')}
                     title="Cylinder Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
                   >
@@ -1874,8 +1899,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                     <span>Cylinder</span>
                   </button>
                   <button 
-                    className={`glass-btn ${active3DTool === '3d-pyramid' ? 'glass-btn-active' : ''}`}
-                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-pyramid' ? 'glass-btn-active' : ''}`}
                     onClick={() => set3DTool('3d-pyramid')}
                     title="Pyramid Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
                   >
@@ -1883,8 +1907,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                     <span>Pyramid</span>
                   </button>
                   <button 
-                    className={`glass-btn ${active3DTool === '3d-cone' ? 'glass-btn-active' : ''}`}
-                    style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-cone' ? 'glass-btn-active' : ''}`}
                     onClick={() => set3DTool('3d-cone')}
                     title="Cone Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
                   >
@@ -1892,244 +1915,122 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                     <span>Cone</span>
                   </button>
                 </div>
-                
-                {/* Color Palette Dropdown */}
-                <div 
-                  style={{ ...styles.dropdownContainer, marginLeft: 'auto' }}
-                  onMouseLeave={() => setColorDropdownOpen(false)}
-                >
-                  <button 
-                    className="glass-btn" 
-                    style={styles.controlDropdownBtn}
-                    onClick={() => {
-                      setColorDropdownOpen(!colorDropdownOpen)
-                      setToolDropdownOpen(false)
-                    }}
-                  >
-                    <span style={{
-                      display: 'inline-block',
-                      width: '14px',
-                      height: '14px',
-                      borderRadius: '50%',
-                      backgroundColor: color,
-                      border: '1px solid rgba(255,255,255,0.3)',
-                      boxShadow: `0 0 6px ${color}`,
-                      marginRight: '6px'
-                    }} />
-                    <span style={{ marginRight: '8px', fontWeight: '600' }}>Color</span>
-                    <ChevronDown size={14} />
-                  </button>
-
-                  {colorDropdownOpen && (
-                    <div className="glass-panel-heavy" style={styles.colorDropdownMenu}>
-                      <div style={styles.colorPaletteGrid}>
-                        {PRESET_COLORS.map(c => (
-                          <button 
-                            key={c}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              backgroundColor: c,
-                              border: color === c ? '2px solid #fff' : '1px solid rgba(255, 255, 255, 0.2)',
-                              boxShadow: color === c ? `0 0 8px ${c}` : 'none',
-                              cursor: 'pointer',
-                              padding: 0
-                            }}
-                            onClick={() => {
-                              setColor(c)
-                              setColorDropdownOpen(false)
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Custom:</span>
-                        <input 
-                          type="color" 
-                          value={color}
-                          onChange={(e) => setColor(e.target.value)}
-                          style={{
-                            border: 'none',
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            background: 'none'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <SmoothSlider 
-                  label="Size"
-                  min="1"
-                  max="30"
-                  value={brushSize}
-                  onChange={(val) => { stateRef.current.brushSize = val; }}
-                  onRelease={(val) => setBrushSize(val)}
-                  formatValue={(v) => `${v}px`}
-                  isInline={true}
-                  inlineSliderStyle={styles.inlineSlider}
-                />
-              </>
+              </div>
             ) : (
-              <>
-                {/* Tool Selection Dropdown */}
-                <div 
-                  style={styles.dropdownContainer}
-                  onMouseLeave={() => setToolDropdownOpen(false)}
-                >
-                  <button 
-                    className="glass-btn" 
-                    style={styles.controlDropdownBtn}
-                    onClick={() => {
-                      setToolDropdownOpen(!toolDropdownOpen)
-                      setColorDropdownOpen(false)
-                    }}
-                  >
-                    <RenderIcon iconName={getActiveToolIcon(tool)} size={16} />
-                    <span style={{ margin: '0 8px 0 6px', fontWeight: '600' }}>{getActiveToolName(tool)}</span>
-                    <ChevronDown size={14} />
-                  </button>
-                  
-                  {toolDropdownOpen && (
-                    <div className="glass-panel-heavy" style={styles.toolDropdownMenu}>
-                      {TOOL_GROUPS.map(group => (
-                        <div key={group.name} style={styles.dropdownGroup}>
-                          <div style={styles.dropdownGroupTitle}>{group.name}</div>
-                          <div style={styles.dropdownGroupGrid}>
-                            {group.tools.map(t => (
-                              <button
-                                key={t.id}
-                                className={`glass-btn dropdown-item ${tool === t.id ? 'glass-btn-active' : ''}`}
-                                style={styles.dropdownItemBtn}
-                                onClick={() => {
-                                  setTool(t.id)
-                                  setToolDropdownOpen(false)
-                                }}
-                              >
-                                <RenderIcon iconName={t.icon} size={14} />
-                                <span style={{ marginLeft: '6px' }}>{t.name}</span>
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              TOOL_GROUPS.map(group => (
+                <div key={group.name} style={styles.drawerGroup}>
+                  <span style={styles.drawerSubTitle}>{group.name}</span>
+                  <div className="tool-grid">
+                    {group.tools.map(t => {
+                      const isActive = tool === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          className={`glass-btn tool-grid-item ${isActive ? 'glass-btn-active' : ''}`}
+                          onClick={() => setTool(t.id)}
+                          title={t.name}
+                        >
+                          <RenderIcon iconName={t.icon} size={14} />
+                          <span>{t.name.replace('Straight ', '').replace('Single ', '').replace('Double ', '').replace('5-Point ', '').replace('6-Point ', '').replace('8-Point ', '').replace('Plus ', '').replace('Crescent ', '')}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+              ))
+            )}
 
-                {/* Color Palette Dropdown */}
-                <div 
-                  style={styles.dropdownContainer}
-                  onMouseLeave={() => setColorDropdownOpen(false)}
-                >
+            {/* Color Palette */}
+            <div style={styles.drawerGroup}>
+              <span style={styles.drawerSubTitle}>Color Palette</span>
+              <div style={styles.colorPaletteGrid}>
+                {PRESET_COLORS.map(c => (
                   <button 
-                    className="glass-btn" 
-                    style={styles.controlDropdownBtn}
-                    onClick={() => {
-                      setColorDropdownOpen(!colorDropdownOpen)
-                      setToolDropdownOpen(false)
-                    }}
-                  >
-                    <span style={{
-                      display: 'inline-block',
-                      width: '14px',
-                      height: '14px',
+                    key={c}
+                    style={{
+                      width: '24px',
+                      height: '24px',
                       borderRadius: '50%',
-                      backgroundColor: color,
-                      border: '1px solid rgba(255,255,255,0.3)',
-                      boxShadow: `0 0 6px ${color}`,
-                      marginRight: '6px'
-                    }} />
-                    <span style={{ marginRight: '8px', fontWeight: '600' }}>Color</span>
-                    <ChevronDown size={14} />
-                  </button>
+                      backgroundColor: c,
+                      border: color === c ? '2px solid #fff' : '1px solid rgba(255, 255, 255, 0.2)',
+                      boxShadow: color === c ? `0 0 8px ${c}` : 'none',
+                      cursor: 'pointer',
+                      padding: 0
+                    }}
+                    onClick={() => setColor(c)}
+                  />
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' }}>
+                <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Custom Color:</span>
+                <input 
+                  type="color" 
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  style={{
+                    border: 'none',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    background: 'none'
+                  }}
+                />
+              </div>
+            </div>
 
-                  {colorDropdownOpen && (
-                    <div className="glass-panel-heavy" style={styles.colorDropdownMenu}>
-                      <div style={styles.colorPaletteGrid}>
-                        {PRESET_COLORS.map(c => (
-                          <button 
-                            key={c}
-                            style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              backgroundColor: c,
-                              border: color === c ? '2px solid #fff' : '1px solid rgba(255, 255, 255, 0.2)',
-                              boxShadow: color === c ? `0 0 8px ${c}` : 'none',
-                              cursor: 'pointer',
-                              padding: 0
-                            }}
-                            onClick={() => {
-                              setColor(c)
-                              setColorDropdownOpen(false)
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>Custom:</span>
-                        <input 
-                          type="color" 
-                          value={color}
-                          onChange={(e) => setColor(e.target.value)}
-                          style={{
-                            border: 'none',
-                            width: '24px',
-                            height: '24px',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            background: 'none'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
+            {/* Brush Settings */}
+            <div style={styles.drawerGroup}>
+              <span style={styles.drawerSubTitle}>Brush Settings</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <SmoothSlider 
                   label="Size"
                   min="1"
-                  max="100"
+                  max={canvasMode === '3d' ? "30" : "100"}
                   value={brushSize}
                   onChange={(val) => { stateRef.current.brushSize = val; }}
                   onRelease={(val) => setBrushSize(val)}
                   formatValue={(v) => `${v}px`}
-                  isInline={true}
-                  inlineSliderStyle={styles.inlineSlider}
                 />
 
-                <SmoothSlider 
-                  label="Opacity"
-                  min="0.1"
-                  max="1.0"
-                  step="0.05"
-                  value={brushOpacity}
-                  onChange={(val) => { stateRef.current.brushOpacity = val; }}
-                  onRelease={(val) => setBrushOpacity(val)}
-                  formatValue={(v) => `${Math.round(v * 100)}%`}
-                  isInline={true}
-                  inlineSliderStyle={styles.inlineSlider}
-                />
+                {canvasMode !== '3d' && (
+                  <SmoothSlider 
+                    label="Opacity"
+                    min="0.1"
+                    max="1.0"
+                    step="0.05"
+                    value={brushOpacity}
+                    onChange={(val) => { stateRef.current.brushOpacity = val; }}
+                    onRelease={(val) => setBrushOpacity(val)}
+                    formatValue={(v) => `${Math.round(v * 100)}%`}
+                  />
+                )}
 
                 <button 
                   className={`glass-btn ${stabilizeEnabled ? 'glass-btn-active' : ''}`}
-                  style={{ padding: '6px 12px', fontSize: '13px', height: '34px' }}
+                  style={{ padding: '8px 12px', fontSize: '13px', width: '100%', justifyContent: 'center' }}
                   onClick={() => setStabilizeEnabled(!stabilizeEnabled)}
                   title="Enhance drawing stability and snap lines/rectangles to perfect orientations"
                 >
                   <Crosshair size={14} style={{ marginRight: '6px' }} />
                   <span>{stabilizeEnabled ? 'Stabilizer ON' : 'Stabilizer OFF'}</span>
                 </button>
-              </>
-            )}
+              </div>
+            </div>
           </div>
+        </div>
 
+        {/* Floating Left Drawer Toggle Button handle */}
+        <button 
+          className={`drawer-toggle-handle toggle-left ${leftDrawerOpen ? 'open' : 'collapsed'}`}
+          onClick={() => setLeftDrawerOpen(!leftDrawerOpen)}
+          title={leftDrawerOpen ? "Collapse Tools" : "Expand Tools"}
+        >
+          {leftDrawerOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+        </button>
+
+        {/* Center Canvas Column */}
+        <div className="canvas-main-column">
           {/* Main Drawing Canvas Container */}
           <div className="glass-panel" style={styles.canvasContainer}>
             <canvas 
@@ -2146,10 +2047,20 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           </div>
         </div>
 
-        {/* Right Side: Camera Overlay controls */}
-        <div style={styles.sidebar}>
-          <div className="glass-panel" style={styles.videoCard}>
-            <div style={styles.videoHeader}>
+        {/* Floating Right Drawer Toggle Button handle */}
+        <button 
+          className={`drawer-toggle-handle toggle-right ${rightDrawerOpen ? 'open' : 'collapsed'}`}
+          onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
+          title={rightDrawerOpen ? "Collapse Camera & Guide" : "Expand Camera & Guide"}
+        >
+          {rightDrawerOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+
+        {/* Right Column (Drawer Shell for Camera & Help) */}
+        <div className={`drawer-right-column ${rightDrawerOpen ? 'open' : 'collapsed'}`}>
+          {/* Camera Feed Card */}
+          <div className={`glass-panel camera-feed-card ${rightDrawerOpen ? 'in-drawer' : 'in-pip'}`}>
+            <div style={styles.videoHeader} className="video-header-pip">
               <Video size={16} />
               <span>Camera Tracking Feed</span>
             </div>
@@ -2186,7 +2097,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             </div>
 
             <button 
-              className={`glass-btn ${isCameraOn ? 'glass-btn-danger' : 'glass-btn-primary'}`}
+              className={`glass-btn cam-toggle-btn-pip ${isCameraOn ? 'glass-btn-danger' : 'glass-btn-primary'}`}
               style={styles.camToggleBtn}
               onClick={() => setIsCameraOn(!isCameraOn)}
             >
@@ -2194,8 +2105,19 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
               <span>{isCameraOn ? 'Stop Camera Tracking' : 'Enable Gesture Canvas'}</span>
             </button>
           </div>
-
-          <GestureHelpCard canvasMode={canvasMode} styles={styles} />
+          
+          {/* Help Drawer Panel */}
+          {rightDrawerOpen && (
+            <div className="glass-panel help-drawer-panel">
+              <div className="drawer-content" style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
+                <div style={styles.drawerSectionHeader}>
+                  <Video size={16} color="var(--theme-color-2)" />
+                  <span style={styles.drawerTitle}>User Guide</span>
+                </div>
+                <GestureHelpCard canvasMode={canvasMode} styles={styles} />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

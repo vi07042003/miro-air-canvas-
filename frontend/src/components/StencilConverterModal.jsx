@@ -85,7 +85,7 @@ export default function StencilConverterModal({
 
   return createPortal(
     <div className="modal-backdrop-glass" onClick={onClose}>
-      <div className="glass-panel-heavy" style={{ ...styles.modalContent, maxWidth: '750px' }} onClick={e => e.stopPropagation()}>
+      <div className="glass-panel-heavy modal-content-scroll" style={{ ...styles.modalContent, maxWidth: '750px' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
           <h2 style={styles.modalTitle}>Image to Stencil Converter</h2>
           <button 

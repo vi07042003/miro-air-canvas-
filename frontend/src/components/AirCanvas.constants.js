@@ -60,9 +60,9 @@ export const TOOL_GROUPS = [
 
 export const styles = {
   container: {
-    maxWidth: '1600px',
+    maxWidth: '100%',
     margin: '0 auto',
-    padding: '10px 0',
+    padding: '10px 40px',
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
@@ -236,7 +236,7 @@ export const styles = {
     background: '#0a0518',
     padding: '0',
     border: '1px solid rgba(255,255,255,0.1)',
-    height: '702px',
+    height: '830px',
     borderRadius: '12px',
   },
   canvas: {
@@ -372,6 +372,8 @@ export const styles = {
     flexDirection: 'column',
     gap: '20px',
     margin: 'auto',
+    maxHeight: '85vh',
+    overflowY: 'auto',
   },
   modalTitle: {
     fontFamily: 'var(--font-title)',
@@ -453,5 +455,33 @@ export const styles = {
     cursor: 'pointer',
     transition: 'all 0.2s ease',
     boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+  },
+  drawerSectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '20px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+    paddingBottom: '12px',
+  },
+  drawerTitle: {
+    fontSize: '16px',
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: '0.5px',
+  },
+  drawerGroup: {
+    marginBottom: '20px',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+    paddingBottom: '16px',
+  },
+  drawerSubTitle: {
+    display: 'block',
+    fontSize: '11px',
+    fontWeight: '800',
+    color: 'rgba(255, 255, 255, 0.45)',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    marginBottom: '10px',
   }
 }

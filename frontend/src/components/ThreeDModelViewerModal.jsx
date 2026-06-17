@@ -59,7 +59,7 @@ export default function ThreeDModelViewerModal({ isOpen, onClose, objects, onDow
   return createPortal(
     <div className="modal-backdrop-glass" onClick={onClose}>
       <div 
-        className="glass-panel-heavy fade-in" 
+        className="glass-panel-heavy fade-in modal-content-scroll" 
         style={{
           ...styles.modalContent,
           maxWidth: '900px',
@@ -68,7 +68,9 @@ export default function ThreeDModelViewerModal({ isOpen, onClose, objects, onDow
           flexDirection: 'column',
           gap: '16px',
           padding: '24px',
-          margin: 'auto'
+          margin: 'auto',
+          maxHeight: '90vh',
+          overflowY: 'auto'
         }} 
         onClick={e => e.stopPropagation()}
       >

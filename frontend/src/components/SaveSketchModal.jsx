@@ -15,7 +15,7 @@ export default function SaveSketchModal({
 
   return createPortal(
     <div className="modal-backdrop-glass" onClick={onClose}>
-      <div className="glass-panel-heavy" style={styles.modalContent} onClick={e => e.stopPropagation()}>
+      <div className="glass-panel-heavy modal-content-scroll" style={styles.modalContent} onClick={e => e.stopPropagation()}>
         <h2 style={styles.modalTitle}>{initialDrawing ? 'Update Sketch in Database' : 'Save Sketch to Database'}</h2>
         <form onSubmit={onSubmit} style={styles.modalForm}>
           <div style={styles.inputGroup}>
