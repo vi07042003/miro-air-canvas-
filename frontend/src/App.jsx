@@ -11,7 +11,7 @@ import AIStencils from './components/AIStencils'
 import { AnimatePresence, motion } from 'framer-motion'
 
 // Backend URL configuration
-export const BACKEND_URL = 'http://localhost:8000'
+export const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 function App() {
   const [showWelcome, setShowWelcome] = useState(true)
