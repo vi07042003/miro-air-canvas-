@@ -26,6 +26,7 @@
   --glass-highlight: rgba(255, 255, 255, calc(var(--glass-opacity-val) * 3));
 
   --text-primary: #ffffff;
+  --text-primary-dynamic: rgba(255, 255, 255, var(--text-opacity, 1));
   --text-secondary: #a1a1aa;
   --text-muted: #6b7280;
 }

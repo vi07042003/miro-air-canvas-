@@ -59,6 +59,12 @@ function App() {
     // Calculate alpha factor from transparency percentage (e.g. 80% transparency -> 0.06 alpha)
     const glassOpacityVal = 0.3 * (1 - glassOpacity / 100)
     root.style.setProperty('--glass-opacity-val', glassOpacityVal)
+    
+    // Dynamically adjust text opacity: when glass background is 0% transparent (solid),
+    // text is 1.0 (fully solid). When glass is 100% transparent (clear), text is 0.85
+    // (semi-transparent for style, yet still bright and readable).
+    const textOpacityVal = 0.85 + (1 - glassOpacity / 100) * 0.15
+    root.style.setProperty('--text-opacity', textOpacityVal)
   }, [glassOpacity])
 
   // Apply theme variables dynamically to :root

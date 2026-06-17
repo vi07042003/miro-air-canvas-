@@ -98,7 +98,7 @@ export const styles = {
   },
   coordsText: {
     fontFamily: 'monospace',
-    color: 'var(--text-muted)',
+    color: 'var(--text-primary-dynamic)',
     fontSize: '13px',
     minWidth: '70px'
   },
@@ -264,7 +264,7 @@ export const styles = {
     gap: '8px',
     fontSize: '14px',
     fontWeight: '600',
-    color: 'var(--text-secondary)',
+    color: 'var(--text-primary-dynamic)',
   },
   videoWrapper: {
     position: 'relative',
@@ -301,7 +301,7 @@ export const styles = {
     justifyContent: 'center',
     gap: '10px',
     fontSize: '13px',
-    color: 'var(--text-secondary)',
+    color: 'var(--text-primary-dynamic)',
     zIndex: 2,
   },
   miniSpinner: {
@@ -324,7 +324,7 @@ export const styles = {
     justifyContent: 'center',
     gap: '8px',
     fontSize: '13px',
-    color: 'var(--text-muted)',
+    color: 'var(--text-primary-dynamic)',
   },
   camToggleBtn: {
     width: '100%',
@@ -339,11 +339,11 @@ export const styles = {
   helpTitle: {
     fontSize: '15px',
     fontWeight: '700',
-    color: '#fff',
+    color: 'var(--text-primary-dynamic)',
   },
   helpList: {
     fontSize: '13px',
-    color: 'var(--text-secondary)',
+    color: 'var(--text-primary-dynamic)',
     paddingLeft: '18px',
     display: 'flex',
     flexDirection: 'column',
@@ -467,7 +467,7 @@ export const styles = {
   drawerTitle: {
     fontSize: '16px',
     fontWeight: '700',
-    color: '#fff',
+    color: 'var(--text-primary-dynamic)',
     letterSpacing: '0.5px',
   },
   drawerGroup: {
@@ -479,7 +479,7 @@ export const styles = {
     display: 'block',
     fontSize: '11px',
     fontWeight: '800',
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: 'var(--text-primary-dynamic)',
     textTransform: 'uppercase',
     letterSpacing: '1px',
     marginBottom: '10px',
