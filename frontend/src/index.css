@@ -85,7 +85,7 @@ body::before {
 .liquid-blob {
   position: absolute;
   border-radius: 50%;
-  opacity: 0.75;
+  opacity: 0.99;
   mix-blend-mode: screen;
   pointer-events: none;
   transform-origin: center;
