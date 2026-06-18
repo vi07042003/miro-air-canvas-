@@ -28,7 +28,7 @@ export const TOOL_GROUPS = [
       { id: 'double-arrow', name: 'Double Arrow', icon: 'Move' },
       { id: 'rect', name: 'Rectangle', icon: 'Square' },
       { id: 'circle', name: 'Circle', icon: 'CircleIcon' },
-      { id: 'ellipse', name: 'Ellipse', icon: 'CircleIcon' },
+      { id: 'ellipse', name: 'Ellipse', icon: 'Ellipse' },
       { id: 'ring', name: 'Ring/Donut', icon: 'CircleDot' }
     ]
   },
@@ -36,10 +36,10 @@ export const TOOL_GROUPS = [
     name: 'Polygons & Stars',
     tools: [
       { id: 'triangle', name: 'Triangle', icon: 'Triangle' },
-      { id: 'diamond', name: 'Diamond', icon: 'Triangle' },
-      { id: 'pentagon', name: 'Pentagon', icon: 'Hexagon' },
+      { id: 'diamond', name: 'Diamond', icon: 'Diamond' },
+      { id: 'pentagon', name: 'Pentagon', icon: 'Pentagon' },
       { id: 'hexagon', name: 'Hexagon', icon: 'Hexagon' },
-      { id: 'octagon', name: 'Octagon', icon: 'Hexagon' },
+      { id: 'octagon', name: 'Octagon', icon: 'Octagon' },
       { id: 'star', name: '5-Point Star', icon: 'Star' },
       { id: 'star6', name: '6-Point Star', icon: 'Star' },
       { id: 'star8', name: '8-Point Star', icon: 'Star' }
@@ -52,7 +52,7 @@ export const TOOL_GROUPS = [
       { id: 'crescent', name: 'Crescent Moon', icon: 'Moon' },
       { id: 'cross', name: 'Plus Cross', icon: 'Plus' },
       { id: 'cloud', name: 'Cloud', icon: 'Cloud' },
-      { id: 'cylinder', name: 'Cylinder', icon: 'Box' },
+      { id: 'cylinder', name: 'Cylinder', icon: 'Cylinder' },
       { id: 'cube', name: 'Cube', icon: 'Box' }
     ]
   }

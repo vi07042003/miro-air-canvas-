@@ -22,7 +22,8 @@ import { PRESET_COLORS, TOOL_GROUPS, styles } from './AirCanvas.constants'
 
 // Lucide icon helper mapping
 import { 
-  Square, Slash, Star, Highlighter, Sparkles, ArrowUpRight, Move, CircleDot, Heart, Moon, Cloud, Plus, Hexagon
+  Square, Slash, Star, Highlighter, Sparkles, ArrowUpRight, Move, CircleDot, Heart, Moon, Cloud, Plus, Hexagon,
+  Diamond, Pentagon, Octagon, Ellipse, Cylinder, Pyramid, Pill
 } from 'lucide-react'
 
 const ICON_MAP = {
@@ -44,13 +45,22 @@ const ICON_MAP = {
   Cloud,
   Plus,
   Box,
-  Hexagon
+  Hexagon,
+  Diamond,
+  Pentagon,
+  Octagon,
+  Ellipse,
+  Cylinder,
+  Pyramid,
+  Pill
 }
 
 const RenderIcon = ({ iconName, size = 18 }) => {
   const IconComp = ICON_MAP[iconName] || Palette
   return <IconComp size={size} />
 }
+
+const PRIMITIVE_3D_TOOLS = ['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone', '3d-prism', '3d-torus', '3d-octahedron', '3d-capsule']
 
 export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved, initialStencil, onClearInitialStencil }) {
   const canvasRef = useRef(null)
@@ -450,6 +460,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     if (initialId !== loadedDrawingIdRef.current) {
       loadedDrawingIdRef.current = initialId
       
+      ctx.globalAlpha = 1.0
       ctx.fillStyle = '#0a0518'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
@@ -509,6 +520,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         if (canvas2DDataRef.current) {
           ctx2.putImageData(canvas2DDataRef.current, 0, 0)
         } else {
+          ctx2.globalAlpha = 1.0
           ctx2.fillStyle = '#0a0518'
           ctx2.fillRect(0, 0, canvas2.width, canvas2.height)
         }
@@ -585,6 +597,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       onConfirm: () => {
         const canvas = canvasRef.current
         const ctx = canvas.getContext('2d')
+        ctx.globalAlpha = 1.0
         ctx.fillStyle = '#0a0518'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
         saveCanvasState(true)
@@ -630,7 +643,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       drawingRef.current.isDrawing3D = true
       const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
       active3DStrokeRef.current = [pt]
-    } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+    } else if (PRIMITIVE_3D_TOOLS.includes(tool3d)) {
       drawingRef.current.isSizing3D = true
       drawingRef.current.sizingStartX = sx
       drawingRef.current.sizingStartY = sy
@@ -665,7 +678,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       const dist = Math.sqrt(dx * dx + dy * dy)
       previewSize3DRef.current = Math.max(10, dist * 0.5)
     } else {
-      if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+      if (PRIMITIVE_3D_TOOLS.includes(tool3d)) {
         const pt = unprojectPoint(sx, sy, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
         previewPos3DRef.current = pt
       }
@@ -927,6 +940,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     
+    ctx.globalAlpha = 1.0
     ctx.fillStyle = '#0a0518'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
@@ -981,7 +995,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
     
     const tool3d = active3DToolRef.current
-    if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+    if (PRIMITIVE_3D_TOOLS.includes(tool3d)) {
       const shapeType = tool3d.replace('3d-', '')
       const previewPos = previewPos3DRef.current
       const previewSize = previewSize3DRef.current
@@ -1060,6 +1074,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           save3DState()
           currentMode = 'Canvas Cleared'
           
+          hCtx.globalAlpha = 1.0
           hCtx.fillStyle = 'rgba(239, 68, 68, 0.3)'
           hCtx.fillRect(0, 0, hCtx.canvas.width, hCtx.canvas.height)
           hCtx.fillStyle = '#ffffff'
@@ -1112,7 +1127,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           drawState.lastOrbitX = x
           drawState.lastOrbitY = y
         }
-      } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+      } else if (PRIMITIVE_3D_TOOLS.includes(tool3d)) {
         currentMode = '3D Placing Shape'
         drawState.isOrbitingGest = false
         previewPos3DRef.current = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
@@ -1142,7 +1157,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         if (tool3d === 'orbit') {
           currentMode = '3D View Zooming'
           camera3DRef.current.scale = Math.max(0.1, Math.min(5.0, pinchDist * 7.0))
-        } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+        } else if (PRIMITIVE_3D_TOOLS.includes(tool3d)) {
           currentMode = '3D Sizing Shape'
           previewPos3DRef.current = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
           previewSize3DRef.current = pinchDist * canvas.width * 0.4
@@ -1161,7 +1176,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             const pt = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
             active3DStrokeRef.current = [...(active3DStrokeRef.current || []), pt]
           }
-        } else if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+        } else if (PRIMITIVE_3D_TOOLS.includes(tool3d)) {
           if (drawState.wasSizing3D) {
             currentMode = '3D Shape Size Locked'
             previewPos3DRef.current = unprojectPoint(x, y, camera3DRef.current.rx, camera3DRef.current.ry, camera3DRef.current.scale, canvas.width, canvas.height)
@@ -1175,7 +1190,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     } else {
       drawState.isOrbitingGest = false
       
-      if (['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone'].includes(tool3d)) {
+      if (PRIMITIVE_3D_TOOLS.includes(tool3d)) {
         if (drawState.wasSizing3D) {
           const shapeType = tool3d.replace('3d-', '')
           stamped3DObjectsRef.current.push({
@@ -1399,6 +1414,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
     const hCtx = handCanvas.getContext('2d')
     hCtx.clearRect(0, 0, handCanvas.width, handCanvas.height)
+    hCtx.globalAlpha = 1.0
 
     hCtx.save()
     hCtx.globalCompositeOperation = 'screen'
@@ -1500,6 +1516,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             drawState.waveHistory = []
             
             const mainCtx = canvas.getContext('2d')
+            mainCtx.globalAlpha = 1.0
             mainCtx.fillStyle = '#0a0518'
             mainCtx.fillRect(0, 0, canvas.width, canvas.height)
             saveCanvasState(true)
@@ -1895,7 +1912,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                     onClick={() => set3DTool('3d-cylinder')}
                     title="Cylinder Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
                   >
-                    <Box size={14} />
+                    <Cylinder size={14} />
                     <span>Cylinder</span>
                   </button>
                   <button 
@@ -1903,7 +1920,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                     onClick={() => set3DTool('3d-pyramid')}
                     title="Pyramid Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
                   >
-                    <Triangle size={14} />
+                    <Pyramid size={14} />
                     <span>Pyramid</span>
                   </button>
                   <button 
@@ -1913,6 +1930,38 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                   >
                     <Triangle size={14} />
                     <span>Cone</span>
+                  </button>
+                  <button 
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-prism' ? 'glass-btn-active' : ''}`}
+                    onClick={() => set3DTool('3d-prism')}
+                    title="Prism Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <Triangle size={14} />
+                    <span>Prism</span>
+                  </button>
+                  <button 
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-torus' ? 'glass-btn-active' : ''}`}
+                    onClick={() => set3DTool('3d-torus')}
+                    title="Torus Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <CircleDot size={14} />
+                    <span>Torus</span>
+                  </button>
+                  <button 
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-octahedron' ? 'glass-btn-active' : ''}`}
+                    onClick={() => set3DTool('3d-octahedron')}
+                    title="Octahedron Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <Diamond size={14} />
+                    <span>Octahedron</span>
+                  </button>
+                  <button 
+                    className={`glass-btn tool-grid-item ${active3DTool === '3d-capsule' ? 'glass-btn-active' : ''}`}
+                    onClick={() => set3DTool('3d-capsule')}
+                    title="Capsule Primitive: Drag to resize, raise index & thumb to resize, fist to stamp"
+                  >
+                    <Pill size={14} />
+                    <span>Capsule</span>
                   </button>
                 </div>
               </div>

@@ -311,6 +311,88 @@ export const getMesh = (type, size) => {
         edges.push([current, nextLat]);
       }
     }
+  } else if (type === 'prism') {
+    const r = size;
+    const h = size * 1.8;
+    const segments = 3;
+    for (let i = 0; i < segments; i++) {
+      const angle = (i * 2 * Math.PI) / segments;
+      vertices.push({x: r * Math.cos(angle), y: -h/2, z: r * Math.sin(angle)});
+      vertices.push({x: r * Math.cos(angle), y: h/2, z: r * Math.sin(angle)});
+    }
+    for (let i = 0; i < segments; i++) {
+      const next = (i + 1) % segments;
+      edges.push([i*2, next*2]);
+      edges.push([i*2+1, next*2+1]);
+      edges.push([i*2, i*2+1]);
+    }
+  } else if (type === 'torus') {
+    const rRing = size;
+    const rTube = size * 0.35;
+    const ringSegments = 12;
+    const tubeSegments = 8;
+    for (let i = 0; i < ringSegments; i++) {
+      const u = (i * 2 * Math.PI) / ringSegments;
+      const cosU = Math.cos(u);
+      const sinU = Math.sin(u);
+      for (let j = 0; j < tubeSegments; j++) {
+        const v = (j * 2 * Math.PI) / tubeSegments;
+        const cosV = Math.cos(v);
+        const sinV = Math.sin(v);
+        
+        const x = (rRing + rTube * cosV) * cosU;
+        const y = rTube * sinV;
+        const z = (rRing + rTube * cosV) * sinU;
+        vertices.push({ x, y, z });
+      }
+    }
+    for (let i = 0; i < ringSegments; i++) {
+      const nextI = (i + 1) % ringSegments;
+      for (let j = 0; j < tubeSegments; j++) {
+        const nextJ = (j + 1) % tubeSegments;
+        const current = i * tubeSegments + j;
+        edges.push([current, nextI * tubeSegments + j]);
+        edges.push([current, i * tubeSegments + nextJ]);
+      }
+    }
+  } else if (type === 'octahedron') {
+    const s = size * 1.3;
+    vertices.push({x: 0, y: -s, z: 0});
+    vertices.push({x: 0, y: s, z: 0});
+    vertices.push({x: -s, y: 0, z: -s});
+    vertices.push({x: s, y: 0, z: -s});
+    vertices.push({x: s, y: 0, z: s});
+    vertices.push({x: -s, y: 0, z: s});
+    
+    edges.push([2, 3], [3, 4], [4, 5], [5, 2]);
+    edges.push([0, 2], [0, 3], [0, 4], [0, 5]);
+    edges.push([1, 2], [1, 3], [1, 4], [1, 5]);
+  } else if (type === 'capsule') {
+    const r = size;
+    const h = size * 1.2;
+    const stacks = 8;
+    const slices = 10;
+    for (let lat = 0; lat <= stacks; lat++) {
+      const phi = (lat * Math.PI) / stacks;
+      const yOffset = lat < stacks / 2 ? -h/2 : h/2;
+      for (let lon = 0; lon < slices; lon++) {
+        const theta = (lon * 2 * Math.PI) / slices;
+        vertices.push({
+          x: r * Math.sin(phi) * Math.cos(theta),
+          y: r * Math.cos(phi) + yOffset,
+          z: r * Math.sin(phi) * Math.sin(theta)
+        });
+      }
+    }
+    for (let lat = 0; lat < stacks; lat++) {
+      for (let lon = 0; lon < slices; lon++) {
+        const current = lat * slices + lon;
+        const nextLon = lat * slices + ((lon + 1) % slices);
+        const nextLat = (lat + 1) * slices + lon;
+        edges.push([current, nextLon]);
+        edges.push([current, nextLat]);
+      }
+    }
   }
   
   return { vertices, edges };
@@ -334,11 +416,11 @@ export const drawMesh = (ctx, mesh, pos, rotation, rx, ry, zoom, baseScale, widt
   avgZ /= Math.max(1, projectedVertices.length);
   
   const k = (avgZ + 300) / 600;
-  const depthCue = Math.max(0.15, Math.min(1.2, 1.2 - k * 0.95));
+  const depthCue = Math.max(0.45, Math.min(1.2, 1.2 - k * 0.75));
   
   ctx.strokeStyle = color;
-  ctx.globalAlpha = opacity * depthCue;
-  ctx.lineWidth = (size || 2) * depthCue;
+  ctx.globalAlpha = Math.max(0.45, opacity * depthCue);
+  ctx.lineWidth = Math.max(1.8, (size || 2) * depthCue * 1.5);
   
   mesh.edges.forEach(([s, e]) => {
     if (projectedVertices[s] && projectedVertices[e]) {
@@ -350,9 +432,11 @@ export const drawMesh = (ctx, mesh, pos, rotation, rx, ry, zoom, baseScale, widt
   });
   
   ctx.fillStyle = color;
-  ctx.globalAlpha = opacity * depthCue * 0.9;
+  ctx.globalAlpha = Math.max(0.5, opacity * depthCue * 0.9);
   projectedVertices.forEach(pv => {
-    ctx.fillRect(pv.x - 2, pv.y - 2, 4, 4);
+    ctx.beginPath();
+    ctx.arc(pv.x, pv.y, 3.5, 0, 2 * Math.PI);
+    ctx.fill();
   });
   
   ctx.restore();
@@ -371,12 +455,12 @@ export const draw3DStroke = (ctx, strokePoints, rx, ry, zoom, baseScale, width, 
   avgZ /= strokePoints.length;
   
   const k = (avgZ + 300) / 600;
-  const depthCue = Math.max(0.15, Math.min(1.2, 1.2 - k * 0.95));
+  const depthCue = Math.max(0.45, Math.min(1.2, 1.2 - k * 0.75));
   
   ctx.save();
   ctx.strokeStyle = color;
-  ctx.globalAlpha = opacity * depthCue;
-  ctx.lineWidth = (size || 3) * depthCue;
+  ctx.globalAlpha = Math.max(0.45, opacity * depthCue);
+  ctx.lineWidth = Math.max(2.0, (size || 3) * depthCue * 1.5);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   
@@ -390,84 +474,9 @@ export const draw3DStroke = (ctx, strokePoints, rx, ry, zoom, baseScale, width, 
 };
 
 export const getPrimitiveFaces = (type, offset) => {
-  const localFaces = [];
-  if (type === 'cube') {
-    localFaces.push(
-      [4, 5, 6, 7], // Front
-      [1, 0, 3, 2], // Back
-      [0, 1, 5, 4], // Top
-      [3, 7, 6, 2], // Bottom
-      [0, 4, 7, 3], // Left
-      [1, 2, 6, 5]  // Right
-    );
-  } else if (type === 'pyramid') {
-    localFaces.push(
-      [0, 3, 2, 1], // Base
-      [0, 1, 4],    // Sides
-      [1, 2, 4],
-      [2, 3, 4],
-      [3, 0, 4]
-    );
-  } else if (type === 'cylinder') {
-    const segments = 12;
-    // Top cap (odd indices)
-    const topCap = [];
-    for (let i = 0; i < segments; i++) {
-      topCap.push(i * 2 + 1);
-    }
-    localFaces.push(topCap);
-    
-    // Bottom cap (even indices, reversed)
-    const bottomCap = [];
-    for (let i = segments - 1; i >= 0; i--) {
-      bottomCap.push(i * 2);
-    }
-    localFaces.push(bottomCap);
-    
-    // Sides
-    for (let i = 0; i < segments; i++) {
-      const next = (i + 1) % segments;
-      localFaces.push([
-        i * 2,
-        next * 2,
-        next * 2 + 1,
-        i * 2 + 1
-      ]);
-    }
-  } else if (type === 'cone') {
-    const segments = 12;
-    // Base cap
-    const baseCap = [];
-    for (let i = segments - 1; i >= 0; i--) {
-      baseCap.push(i);
-    }
-    localFaces.push(baseCap);
-    
-    // Sides
-    for (let i = 0; i < segments; i++) {
-      const next = (i + 1) % segments;
-      localFaces.push([i, next, segments]);
-    }
-  } else if (type === 'sphere') {
-    const stacks = 6;
-    const slices = 10;
-    for (let lat = 0; lat < stacks; lat++) {
-      for (let lon = 0; lon < slices; lon++) {
-        const current = lat * slices + lon;
-        const nextLon = lat * slices + ((lon + 1) % slices);
-        const nextLat = (lat + 1) * slices + lon;
-        const nextLatLon = (lat + 1) * slices + ((lon + 1) % slices);
-        
-        localFaces.push([
-          current,
-          nextLon,
-          nextLatLon,
-          nextLat
-        ]);
-      }
-    }
-  }
-  return localFaces.map(face => face.map(idx => offset + idx));
+  const geom = getSolidGeometry(type, 1.0);
+  if (!geom || !geom.faces) return [];
+  return geom.faces.map(face => face.map(idx => offset + idx));
 };
 
 export const getSolidGeometry = (type, size) => {
@@ -572,6 +581,119 @@ export const getSolidGeometry = (type, size) => {
         vertices.push({
           x: r * Math.sin(phi) * Math.cos(theta),
           y: r * Math.cos(phi),
+          z: r * Math.sin(phi) * Math.sin(theta)
+        });
+      }
+    }
+    for (let lat = 0; lat < stacks; lat++) {
+      for (let lon = 0; lon < slices; lon++) {
+        const current = lat * slices + lon;
+        const nextLon = lat * slices + ((lon + 1) % slices);
+        const nextLat = (lat + 1) * slices + lon;
+        const nextLatLon = (lat + 1) * slices + ((lon + 1) % slices);
+        faces.push([
+          current,
+          nextLon,
+          nextLatLon,
+          nextLat
+        ]);
+      }
+    }
+  } else if (type === 'prism') {
+    const r = size;
+    const h = size * 1.8;
+    const segments = 3;
+    for (let i = 0; i < segments; i++) {
+      const angle = (i * 2 * Math.PI) / segments;
+      vertices.push({x: r * Math.cos(angle), y: -h/2, z: r * Math.sin(angle)});
+      vertices.push({x: r * Math.cos(angle), y: h/2, z: r * Math.sin(angle)});
+    }
+    const topCap = [];
+    for (let i = 0; i < segments; i++) {
+      topCap.push(i * 2 + 1);
+    }
+    faces.push(topCap);
+    
+    const bottomCap = [];
+    for (let i = segments - 1; i >= 0; i--) {
+      bottomCap.push(i * 2);
+    }
+    faces.push(bottomCap);
+    
+    for (let i = 0; i < segments; i++) {
+      const next = (i + 1) % segments;
+      faces.push([
+        i * 2,
+        next * 2,
+        next * 2 + 1,
+        i * 2 + 1
+      ]);
+    }
+  } else if (type === 'torus') {
+    const rRing = size;
+    const rTube = size * 0.35;
+    const ringSegments = 12;
+    const tubeSegments = 8;
+    for (let i = 0; i < ringSegments; i++) {
+      const u = (i * 2 * Math.PI) / ringSegments;
+      const cosU = Math.cos(u);
+      const sinU = Math.sin(u);
+      for (let j = 0; j < tubeSegments; j++) {
+        const v = (j * 2 * Math.PI) / tubeSegments;
+        const cosV = Math.cos(v);
+        const sinV = Math.sin(v);
+        
+        const x = (rRing + rTube * cosV) * cosU;
+        const y = rTube * sinV;
+        const z = (rRing + rTube * cosV) * sinU;
+        vertices.push({ x, y, z });
+      }
+    }
+    for (let i = 0; i < ringSegments; i++) {
+      const nextI = (i + 1) % ringSegments;
+      for (let j = 0; j < tubeSegments; j++) {
+        const nextJ = (j + 1) % tubeSegments;
+        faces.push([
+          i * tubeSegments + j,
+          nextI * tubeSegments + j,
+          nextI * tubeSegments + nextJ,
+          i * tubeSegments + nextJ
+        ]);
+      }
+    }
+  } else if (type === 'octahedron') {
+    const s = size * 1.3;
+    vertices.push(
+      {x: 0, y: -s, z: 0},
+      {x: 0, y: s, z: 0},
+      {x: -s, y: 0, z: -s},
+      {x: s, y: 0, z: -s},
+      {x: s, y: 0, z: s},
+      {x: -s, y: 0, z: s}
+    );
+    faces.push(
+      [0, 3, 2],
+      [0, 4, 3],
+      [0, 5, 4],
+      [0, 2, 5],
+      [1, 2, 3],
+      [1, 3, 4],
+      [1, 4, 5],
+      [1, 5, 2]
+    );
+  } else if (type === 'capsule') {
+    const r = size;
+    const h = size * 1.2;
+    const stacks = 8;
+    const slices = 10;
+    for (let lat = 0; lat <= stacks; lat++) {
+      const phi = (lat * Math.PI) / stacks;
+      const yOffset = lat < stacks / 2 ? -h/2 : h/2;
+      for (let lon = 0; lon < slices; lon++) {
+        const theta = (lon * 2 * Math.PI) / slices;
+        vertices.push({
+          x: r * Math.sin(phi) * Math.cos(theta),
+          y: r * Math.cos(phi) + yOffset,
           z: r * Math.sin(phi) * Math.sin(theta)
         });
       }
@@ -947,11 +1069,11 @@ export const drawModel = (canvas, objects, cameraState, renderMode, lightAngle) 
     } else if (item.type === 'line') {
       ctx.save();
       ctx.strokeStyle = item.color;
-      ctx.globalAlpha = item.opacity;
       
       const k = (item.z + 300) / 600;
-      const depthCue = Math.max(0.15, Math.min(1.2, 1.2 - k * 0.95));
-      ctx.lineWidth = item.width * depthCue;
+      const depthCue = Math.max(0.45, Math.min(1.2, 1.2 - k * 0.75));
+      ctx.globalAlpha = Math.max(0.45, item.opacity * depthCue);
+      ctx.lineWidth = Math.max(1.8, item.width * depthCue * 1.5);
       
       ctx.beginPath();
       ctx.moveTo(item.p1.x, item.p1.y);
@@ -973,8 +1095,8 @@ export const drawModel = (canvas, objects, cameraState, renderMode, lightAngle) 
 
       // Sharp glass outline/rim
       ctx.strokeStyle = item.outlineColor;
-      ctx.globalAlpha = item.opacity * 0.8;
-      ctx.lineWidth = 0.8;
+      ctx.globalAlpha = Math.max(0.65, item.opacity * 0.9);
+      ctx.lineWidth = 1.8;
       ctx.stroke();
       ctx.restore();
     }
