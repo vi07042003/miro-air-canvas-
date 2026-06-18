@@ -144,7 +144,7 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
         {/* Main Column: App Settings */}
         <div style={styles.mainColumn}>
           {/* Canvas Defaults Card */}
-          <div className="glass-panel" style={styles.card}>
+          <div className="glass-panel-heavy" style={styles.card}>
             <div style={styles.cardHeader}>
               <Camera size={20} color="var(--theme-color-1)" />
               <h2 style={styles.cardTitle}>Camera & Gesture Defaults</h2>
@@ -238,7 +238,7 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
 
         {/* Right Column: Theme picker */}
         <div style={styles.sidebar}>
-          <div className="glass-panel" style={styles.card}>
+          <div className="glass-panel-heavy" style={styles.card}>
             <div style={styles.cardHeader}>
               <Palette size={20} color="var(--primary-pink)" />
               <h2 style={styles.cardTitle}>Liquid Glass Themes</h2>

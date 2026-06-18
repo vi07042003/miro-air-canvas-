@@ -128,7 +128,7 @@ export default function AIStencils({ user, onApplyStencil }) {
       <div style={styles.contentGrid}>
         {/* Left Column - Forms & Limits */}
         <div style={styles.leftColumn}>
-          <div className="glass-panel" style={styles.panel}>
+          <div className="glass-panel-heavy" style={styles.panel}>
             <h3 style={styles.panelTitle}>Describe Stencil</h3>
             <form onSubmit={handleGenerate} style={styles.form}>
               <div style={styles.inputContainer}>
@@ -186,7 +186,7 @@ export default function AIStencils({ user, onApplyStencil }) {
           </div>
 
           {/* Usage Limit Tracker */}
-          <div className="glass-panel" style={styles.panel}>
+          <div className="glass-panel-heavy" style={styles.panel}>
             <div style={styles.usageHeader}>
               <h3 style={{ ...styles.panelTitle, marginBottom: 0 }}>Generations Limit</h3>
               <span style={styles.usageCounter}>{usage.count} / {usage.max} used</span>
@@ -222,7 +222,7 @@ export default function AIStencils({ user, onApplyStencil }) {
 
         {/* Right Column - Preview & Actions */}
         <div style={styles.rightColumn}>
-          <div className="glass-panel" style={{ ...styles.panel, flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div className="glass-panel-heavy" style={{ ...styles.panel, flex: 1, display: 'flex', flexDirection: 'column' }}>
             <h3 style={styles.panelTitle}>Stencil Preview</h3>
             
             <div style={styles.previewViewport}>

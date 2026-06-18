@@ -380,26 +380,33 @@ function App() {
   }
 
   return (
-    <AnimatePresence mode="wait">
-      {showWelcome ? (
-        <WelcomeAnimation key="welcome" onComplete={() => setShowWelcome(false)} />
-      ) : (
-        <motion.div
-          key="main-app"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-          style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}
-        >
-          {/* Background liquid elements */}
-          <div className="app-bg-container">
-            <div className="liquid-blob blob-1"></div>
-            <div className="liquid-blob blob-2"></div>
-            <div className="liquid-blob blob-3"></div>
-            <div className="liquid-blob blob-4"></div>
-            <div className="liquid-blob blob-5"></div>
-          </div>
+    <>
+      {/* Background liquid elements */}
+      <div className="app-bg-container">
+        <div className="liquid-blob blob-1"></div>
+        <div className="liquid-blob blob-2"></div>
+        <div className="liquid-blob blob-3"></div>
+        <div className="liquid-blob blob-4"></div>
+        <div className="liquid-blob blob-5"></div>
+        <div className="liquid-blob blob-6"></div>
+        <div className="liquid-blob blob-7"></div>
+        <div className="liquid-blob blob-8"></div>
+        <div className="liquid-blob blob-9"></div>
+        <div className="liquid-blob blob-10"></div>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {showWelcome ? (
+          <WelcomeAnimation key="welcome" onComplete={() => setShowWelcome(false)} />
+        ) : (
+          <motion.div
+            key="main-app"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%' }}
+          >
 
           {/* Main Glass Header */}
           <header className="header-glass">
@@ -621,7 +628,8 @@ function App() {
           )}
         </motion.div>
       )}
-    </AnimatePresence>
+      </AnimatePresence>
+    </>
   )
 }
 
