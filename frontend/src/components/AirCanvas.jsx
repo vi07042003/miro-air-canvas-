@@ -17,6 +17,8 @@ import GlassDialog from './GlassDialog'
 // Split components & constants
 import SmoothSlider from './SmoothSlider'
 import StencilConverterModal from './StencilConverterModal'
+import { processImageToStencil } from '../utils/stencilUtils'
+import AISketchModal from './AISketchModal'
 import SaveSketchModal from './SaveSketchModal'
 import GestureHelpCard from './GestureHelpCard'
 import { PRESET_COLORS, TOOL_GROUPS, styles } from './AirCanvas.constants'
@@ -62,6 +64,235 @@ const RenderIcon = ({ iconName, size = 18 }) => {
   return <IconComp size={size} />
 }
 
+const fitContoursToCanvas = (contours, canvasWidth, canvasHeight) => {
+  if (!contours || contours.length === 0) return { contours, w: canvasWidth, h: canvasHeight };
+
+  let minX = Infinity, maxX = -Infinity;
+  let minY = Infinity, maxY = -Infinity;
+
+  contours.forEach(path => {
+    path.forEach(pt => {
+      if (pt.x < minX) minX = pt.x;
+      if (pt.x > maxX) maxX = pt.x;
+      if (pt.y < minY) minY = pt.y;
+      if (pt.y > maxY) maxY = pt.y;
+    });
+  });
+
+  const bboxW = maxX - minX;
+  const bboxH = maxY - minY;
+
+  if (bboxW <= 0 || bboxH <= 0) return { contours, w: canvasWidth, h: canvasHeight };
+
+  // Add a nice 8% margin around the canvas boundary for breathing room
+  const paddingX = canvasWidth * 0.08;
+  const paddingY = canvasHeight * 0.08;
+  const targetW = canvasWidth - paddingX * 2;
+  const targetH = canvasHeight - paddingY * 2;
+
+  // Scale factor to fill the canvas
+  const scale = Math.min(targetW / bboxW, targetH / bboxH);
+
+  // Offset to center the bounding box
+  const offsetX = (canvasWidth - bboxW * scale) / 2;
+  const offsetY = (canvasHeight - bboxH * scale) / 2;
+
+  const fittedContours = contours.map(path => 
+    path.map(pt => ({
+      x: (pt.x - minX) * scale + offsetX,
+      y: (pt.y - minY) * scale + offsetY
+    }))
+  );
+
+  return {
+    contours: fittedContours,
+    w: canvasWidth,
+    h: canvasHeight
+  };
+};
+
+const smoothContour = (path) => {
+  if (path.length < 3) return path;
+  const result = [path[0]];
+  let lastPt = path[0];
+  for (let i = 1; i < path.length - 1; i++) {
+    const pt = path[i];
+    const dist = Math.hypot(pt.x - lastPt.x, pt.y - lastPt.y);
+    if (dist >= 2.0) { // Keep points at least 2.0 pixels apart to smooth Sobel noise
+      result.push(pt);
+      lastPt = pt;
+    }
+  }
+  result.push(path[path.length - 1]);
+  return result;
+};
+
+const drawPartialContours = (ctx, contours, progress, color, size, opacity, width, height, scale, canvasWidth, canvasHeight, activeTool = 'brush') => {
+  ctx.save()
+  ctx.strokeStyle = color || '#06b6d4'
+  ctx.lineWidth = Math.max(2, size / 2)
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.globalAlpha = opacity
+  
+  // Adapt to active 2D paint tools
+  if (activeTool === 'pencil') {
+    ctx.lineWidth = 2
+    ctx.globalAlpha = 1.0
+  } else if (activeTool === 'highlighter') {
+    ctx.globalAlpha = 0.35
+    ctx.lineWidth = Math.max(12, size * 2.5)
+    ctx.lineCap = 'square'
+    ctx.lineJoin = 'miter'
+  } else if (activeTool === 'spray') {
+    ctx.lineWidth = Math.max(3, size)
+    ctx.setLineDash([2, 5])
+  } else if (activeTool === 'eraser') {
+    ctx.globalCompositeOperation = 'destination-out'
+    ctx.lineWidth = Math.max(15, size * 2)
+  }
+  
+  const totalPoints = contours.reduce((sum, p) => sum + p.length, 0)
+  const targetPoints = Math.floor(progress * totalPoints)
+  
+  let pointsProcessed = 0
+  
+  for (let c = 0; c < contours.length; c++) {
+    const path = contours[c]
+    if (path.length < 2) continue
+    
+    const remaining = targetPoints - pointsProcessed
+    if (remaining <= 0) break
+    
+    const pointsToDraw = Math.min(path.length, remaining)
+    if (pointsToDraw < 2) continue
+    
+    ctx.beginPath()
+    ctx.moveTo(path[0].x, path[0].y)
+    for (let i = 1; i < pointsToDraw; i++) {
+      ctx.lineTo(path[i].x, path[i].y)
+    }
+    ctx.stroke()
+    
+    pointsProcessed += pointsToDraw
+  }
+  ctx.restore()
+}
+
+const generate3DStrokesFromContours = (contours, width, height, scale, color, brushSizeVal = 8, activeTool = 'orbit') => {
+  const scale3D = (250 / Math.max(width, height)) * scale
+  const depth3D = 40 * scale
+  const new3DStrokes = []
+  
+  // If the drawing is detailed/complex (multiple contours), draw a single clean layer at z=0 
+  // to avoid a dense, cluttered double-outline cage with hundreds of vertical struts.
+  const isComplex = contours.length > 8;
+
+  // Adapt stroke size and opacity to active tool
+  let strokeSize = 2;
+  let strokeOpacity = 0.9;
+  
+  if (activeTool === 'pencil') {
+    strokeSize = 1.2;
+    strokeOpacity = 1.0;
+  } else if (activeTool === 'highlighter') {
+    strokeSize = Math.max(5, brushSizeVal / 1.5);
+    strokeOpacity = 0.4;
+  } else {
+    strokeSize = Math.max(1.5, brushSizeVal / 3.5);
+  }
+
+  contours.forEach(path => {
+    if (path.length < 2) return;
+
+    if (isComplex) {
+      const points = path.map(pt => ({
+        x: (pt.x - width / 2) * scale3D,
+        y: (pt.y - height / 2) * scale3D,
+        z: 0
+      }))
+      new3DStrokes.push({
+        type: 'stroke',
+        points: points,
+        color: color || '#38bdf8',
+        opacity: strokeOpacity,
+        size: strokeSize
+      })
+    } else {
+      const backPoints = path.map(pt => ({
+        x: (pt.x - width / 2) * scale3D,
+        y: (pt.y - height / 2) * scale3D,
+        z: -depth3D / 2
+      }))
+
+      const frontPoints = path.map(pt => ({
+        x: (pt.x - width / 2) * scale3D,
+        y: (pt.y - height / 2) * scale3D,
+        z: depth3D / 2
+      }))
+
+      new3DStrokes.push({
+        type: 'stroke',
+        points: backPoints,
+        color: color || '#38bdf8',
+        opacity: strokeOpacity,
+        size: strokeSize
+      })
+
+      new3DStrokes.push({
+        type: 'stroke',
+        points: frontPoints,
+        color: color || '#38bdf8',
+        opacity: strokeOpacity,
+        size: strokeSize
+      })
+
+      const step = Math.max(4, Math.floor(path.length / 12))
+      for (let i = 0; i < path.length; i += step) {
+        const pt = path[i]
+        const x3d = (pt.x - width / 2) * scale3D
+        const y3d = (pt.y - height / 2) * scale3D
+        
+        new3DStrokes.push({
+          type: 'stroke',
+          points: [
+            { x: x3d, y: y3d, z: -depth3D / 2 },
+            { x: x3d, y: y3d, z: depth3D / 2 }
+          ],
+          color: color || '#38bdf8',
+          opacity: strokeOpacity * 0.6,
+          size: strokeSize * 0.75
+        })
+      }
+    }
+  })
+  return new3DStrokes
+}
+
+const getPartial3DStrokes = (strokes, progress) => {
+  const totalPoints = strokes.reduce((sum, s) => sum + s.points.length, 0)
+  const targetPoints = Math.floor(progress * totalPoints)
+  
+  let pointsProcessed = 0
+  const result = []
+  
+  for (let i = 0; i < strokes.length; i++) {
+    const stroke = strokes[i]
+    const remaining = targetPoints - pointsProcessed
+    if (remaining <= 0) break
+    
+    const pointsToDraw = Math.min(stroke.points.length, remaining)
+    if (pointsToDraw < 2) continue
+    
+    result.push({
+      ...stroke,
+      points: stroke.points.slice(0, pointsToDraw)
+    })
+    pointsProcessed += pointsToDraw
+  }
+  return result
+}
+
 const PRIMITIVE_3D_TOOLS = ['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone', '3d-prism', '3d-torus', '3d-octahedron', '3d-capsule']
 
 export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved, initialStencil, onClearInitialStencil }) {
@@ -104,6 +335,14 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const [uploadedImage, setUploadedImage] = useState(null)
   const [show3DDownloadModal, setShow3DDownloadModal] = useState(false)
   const [downloaded3DModelData, setDownloaded3DModelData] = useState(null)
+
+  // AI Sketcher States & Refs
+  const [showAISketchModal, setShowAISketchModal] = useState(false)
+  const [showAiSketchLoader, setShowAiSketchLoader] = useState(false)
+  const aiSketchingRef = useRef(null)
+  const aiSketchingProgressRef = useRef(0)
+  const preSketchImageDataRef = useRef(null)
+  const preSketch3DObjectsRef = useRef(null)
 
   const [textInput, setTextInputState] = useState(null) // { cssX, cssY, canvasX, canvasY, value }
   const textInputRef = useRef(null)
@@ -306,6 +545,218 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       }
     }
   }
+
+  const handleApplyAISketch = ({ imageUrl, targetCanvas, prompt }) => {
+    if (!imageUrl) return
+
+    const img = new Image()
+    img.src = imageUrl
+    img.onload = () => {
+      const { contours, w, h } = processImageToStencil(img, 50, false)
+      if (!contours || contours.length === 0) {
+        alert("The AI generated a blank sketch or could not detect clear outlines. Please try again with a different prompt.")
+        return
+      }
+
+      // Filter out small speckles/noise contours (< 6 points) and apply path smoothing
+      const cleanContours = contours
+        .filter(c => c.length >= 6)
+        .map(smoothContour)
+        .filter(c => c.length >= 2);
+
+      if (cleanContours.length === 0) {
+        alert("The AI generated a blank sketch or could not detect clear outlines. Please try again with a different prompt.")
+        return
+      }
+
+      // Dynamically fit contours to the full dimensions of the active canvas to make the sketch large and clear
+      const canvas = canvasRef.current;
+      const canvasW = canvas ? canvas.width : w;
+      const canvasH = canvas ? canvas.height : h;
+      const { contours: fittedContours, w: fittedW, h: fittedH } = fitContoursToCanvas(cleanContours, canvasW, canvasH);
+
+      if (targetCanvas !== canvasMode) {
+        handleModeSwitch(targetCanvas)
+      }
+
+      startAISketching(fittedContours, fittedW, fittedH, targetCanvas, prompt)
+    }
+  }
+
+  const startAISketching = (contours, w, h, targetCanvas, promptStr) => {
+    cancelAISketching()
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+
+    aiSketchingProgressRef.current = 0
+
+    if (targetCanvas === '2d') {
+      preSketchImageDataRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    } else {
+      preSketch3DObjectsRef.current = [...stamped3DObjectsRef.current]
+    }
+
+    // Dynamic duration based on complexity (total point count)
+    // 12ms per point. Min 15 seconds, max 1.5 minutes (90s).
+    const totalPoints = contours.reduce((sum, p) => sum + p.length, 0)
+    const dynamicDuration = Math.min(90000, Math.max(15000, totalPoints * 12))
+
+    aiSketchingRef.current = {
+      startTime: performance.now(),
+      duration: dynamicDuration,
+      prompt: promptStr,
+      targetCanvas: targetCanvas,
+      contours: contours,
+      strokes: targetCanvas === '3d' ? generate3DStrokesFromContours(contours, w, h, 1.0, color, brushSize, active3DToolRef.current) : null,
+      w: w,
+      h: h,
+      scale: 1.0,
+      color: color,
+      tool: targetCanvas === '2d' ? tool : active3DToolRef.current
+    }
+
+    setShowAiSketchLoader(true)
+  }
+
+  const cancelAISketching = () => {
+    if (!aiSketchingRef.current) return
+
+    const targetCanvas = aiSketchingRef.current.targetCanvas
+    if (targetCanvas === '2d' && preSketchImageDataRef.current) {
+      const canvas = canvasRef.current
+      if (canvas) {
+        const ctx = canvas.getContext('2d')
+        ctx.putImageData(preSketchImageDataRef.current, 0, 0)
+      }
+    }
+    
+    aiSketchingRef.current = null
+    aiSketchingProgressRef.current = 0
+    preSketchImageDataRef.current = null
+    preSketch3DObjectsRef.current = null
+
+    setShowAiSketchLoader(false)
+  }
+
+  const completeAISketching = () => {
+    if (!aiSketchingRef.current) return
+
+    const targetCanvas = aiSketchingRef.current.targetCanvas
+    const { contours, w, h, color: sketchColor, strokes } = aiSketchingRef.current
+
+    if (targetCanvas === '2d') {
+      const canvas = canvasRef.current
+      if (canvas) {
+        const ctx = canvas.getContext('2d')
+        if (preSketchImageDataRef.current) {
+          ctx.putImageData(preSketchImageDataRef.current, 0, 0)
+        }
+        drawPartialContours(ctx, contours, 1.0, sketchColor, brushSize, brushOpacity, w, h, 1.0, canvas.width, canvas.height, aiSketchingRef.current.tool)
+        saveCanvasState()
+      }
+    } else {
+      if (strokes) {
+        stamped3DObjectsRef.current = [
+          ...stamped3DObjectsRef.current,
+          ...strokes
+        ]
+        save3DState()
+      }
+    }
+
+    aiSketchingRef.current = null
+    aiSketchingProgressRef.current = 0
+    preSketchImageDataRef.current = null
+    preSketch3DObjectsRef.current = null
+
+    setShowAiSketchLoader(false)
+  }
+
+  useEffect(() => {
+    if (!showAiSketchLoader) return
+
+    let animId
+    const loop = () => {
+      if (!aiSketchingRef.current) return
+
+      const now = performance.now()
+      const elapsed = now - aiSketchingRef.current.startTime
+      const duration = aiSketchingRef.current.duration
+      const progress = Math.min(1.0, elapsed / duration)
+      aiSketchingProgressRef.current = progress
+
+      const progressBar = document.getElementById('ai-sketch-progress-bar')
+      const timeText = document.getElementById('ai-sketch-time-text')
+      const percentText = document.getElementById('ai-sketch-percent-text')
+      const statusText = document.getElementById('ai-sketch-status-text')
+
+      if (progressBar) {
+        progressBar.style.width = `${progress * 100}%`
+      }
+      if (percentText) {
+        percentText.innerText = `${Math.round(progress * 100)}%`
+      }
+      if (timeText) {
+        const elapsedSec = Math.floor(elapsed / 1000)
+        const totalSec = Math.floor(duration / 1000)
+        const elapsedMinStr = `${Math.floor(elapsedSec / 60)}m ${elapsedSec % 60}s`
+        const totalMinStr = `${Math.floor(totalSec / 60)}m ${totalSec % 60}s`
+        timeText.innerText = `${elapsedMinStr} / ${totalMinStr}`
+      }
+      if (statusText) {
+        if (progress < 0.20) {
+          statusText.innerText = 'Analyzing prompt & outlines...'
+        } else if (progress < 0.55) {
+          statusText.innerText = 'Sketching main outlines...'
+        } else if (progress < 0.85) {
+          statusText.innerText = 'Drawing fine details...'
+        } else {
+          statusText.innerText = 'Finalizing and polishing...'
+        }
+      }
+
+      if (aiSketchingRef.current.targetCanvas === '2d') {
+        const canvas = canvasRef.current
+        if (canvas && preSketchImageDataRef.current) {
+          const ctx = canvas.getContext('2d')
+          ctx.putImageData(preSketchImageDataRef.current, 0, 0)
+          drawPartialContours(
+            ctx,
+            aiSketchingRef.current.contours,
+            progress,
+            aiSketchingRef.current.color,
+            brushSize,
+            brushOpacity,
+            aiSketchingRef.current.w,
+            aiSketchingRef.current.h,
+            aiSketchingRef.current.scale,
+            canvas.width,
+            canvas.height,
+            aiSketchingRef.current.tool
+          )
+        }
+      }
+
+      if (progress >= 1.0) {
+        completeAISketching()
+      } else {
+        animId = requestAnimationFrame(loop)
+      }
+    }
+
+    animId = requestAnimationFrame(loop)
+
+    const cancelBtn = document.getElementById('ai-sketch-cancel-btn')
+    if (cancelBtn) {
+      cancelBtn.onclick = cancelAISketching
+    }
+
+    return () => {
+      cancelAnimationFrame(animId)
+    }
+  }, [showAiSketchLoader])
 
   // Keep saveTitle synced with initialDrawing
   useEffect(() => {
@@ -1117,7 +1568,11 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     drawViewportGrid(ctx, rx, ry, scale, canvas.width, canvas.height)
     drawAxisHelper(ctx, rx, ry)
     
-    const stampedObjects = [...stamped3DObjectsRef.current]
+    let stampedObjects = [...stamped3DObjectsRef.current]
+    if (aiSketchingRef.current && aiSketchingRef.current.targetCanvas === '3d' && aiSketchingRef.current.strokes) {
+      const partial = getPartial3DStrokes(aiSketchingRef.current.strokes, aiSketchingProgressRef.current)
+      stampedObjects = [...stampedObjects, ...partial]
+    }
     const objectsWithDepth = stampedObjects.map(obj => {
       let depth = 0
       if (obj.type === 'stroke') {
@@ -1986,6 +2441,20 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           </div>
 
           <button 
+            className="glass-btn" 
+            onClick={() => setShowAISketchModal(true)}
+            title="Generate drawing/sketch using AI prompts"
+            style={{
+              background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(99, 102, 241, 0.25) 100%)',
+              borderColor: 'rgba(139, 92, 246, 0.45)',
+              boxShadow: '0 4px 15px rgba(139, 92, 246, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.35)'
+            }}
+          >
+            <Sparkles size={16} className="spin-animation" style={{ animationDuration: '3s', color: '#c084fc' }} />
+            <span>Sketch With AI</span>
+          </button>
+
+          <button 
             className="glass-btn glass-btn-primary" 
             onClick={() => setShowStencilModal(true)}
             title="Convert image to stencil outline for 2D & 3D canvases"
@@ -2429,6 +2898,181 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           URL.revokeObjectURL(url)
         }}
       />
+
+      <AISketchModal
+        isOpen={showAISketchModal}
+        onClose={() => setShowAISketchModal(false)}
+        onApply={handleApplyAISketch}
+        currentCanvasMode={canvasMode}
+        styles={styles}
+      />
+
+      {showAiSketchLoader && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(5, 2, 12, 0.85)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          fontFamily: 'var(--font-body)'
+        }}>
+          <style>{`
+            @keyframes ai-pulse-glow {
+              0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.4)) drop-shadow(0 0 15px rgba(139, 92, 246, 0.2)); }
+              50% { transform: scale(1.05); filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.7)) drop-shadow(0 0 35px rgba(139, 92, 246, 0.5)); }
+            }
+            @keyframes ai-spin-ring-cw {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            @keyframes ai-spin-ring-ccw {
+              0% { transform: rotate(360deg); }
+              100% { transform: rotate(0deg); }
+            }
+            @keyframes ai-sparkle-float-1 {
+              0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+              50% { transform: translate(12px, -12px) scale(1.3); opacity: 1; }
+            }
+            @keyframes ai-sparkle-float-2 {
+              0%, 100% { transform: translate(0, 0) scale(1.2); opacity: 0.9; }
+              50% { transform: translate(-12px, 12px) scale(0.8); opacity: 0.5; }
+            }
+          `}</style>
+          <div style={{
+            background: 'rgba(13, 8, 28, 0.75)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
+            padding: '40px 30px',
+            borderRadius: '24px',
+            textAlign: 'center',
+            maxWidth: '440px',
+            width: '90%',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            position: 'relative'
+          }}>
+            {/* Premium AI Star loading animation container */}
+            <div style={{
+              position: 'relative',
+              width: '100px',
+              height: '100px',
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              animation: 'ai-pulse-glow 2.5s ease-in-out infinite'
+            }}>
+              {/* Outer Neon Ring */}
+              <div style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                borderRadius: '50%',
+                border: '3px solid transparent',
+                borderTopColor: 'var(--theme-color-1)',
+                borderBottomColor: 'var(--theme-color-1)',
+                animation: 'ai-spin-ring-cw 4s linear infinite',
+                opacity: 0.8
+              }}></div>
+              
+              {/* Inner Neon Ring */}
+              <div style={{
+                position: 'absolute',
+                width: '80%',
+                height: '80%',
+                borderRadius: '50%',
+                border: '3px solid transparent',
+                borderLeftColor: 'var(--theme-color-2)',
+                borderRightColor: 'var(--theme-color-2)',
+                animation: 'ai-spin-ring-ccw 3s linear infinite',
+                opacity: 0.8
+              }}></div>
+
+              {/* Floating sparkles/stars around the core */}
+              <div style={{
+                position: 'absolute',
+                top: '10px',
+                right: '10px',
+                animation: 'ai-sparkle-float-1 3s ease-in-out infinite'
+              }}>
+                <Sparkles size={16} color="#38bdf8" />
+              </div>
+              <div style={{
+                position: 'absolute',
+                bottom: '10px',
+                left: '10px',
+                animation: 'ai-sparkle-float-2 3.5s ease-in-out infinite'
+              }}>
+                <Sparkles size={14} color="#c084fc" />
+              </div>
+
+              {/* Glowing Core with central Star/Sparkle */}
+              <div style={{
+                width: '50px',
+                height: '50px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, rgba(56, 189, 248, 0.1) 70%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)'
+              }}>
+                <Sparkles size={28} color="#fff" />
+              </div>
+            </div>
+
+            <h3 style={{ margin: '0 0 4px 0', color: '#fff', fontSize: '20px', fontWeight: '700', letterSpacing: '-0.3px' }}>AI is Sketching...</h3>
+            <p id="ai-sketch-status-text" style={{ margin: '0 0 12px 0', fontSize: '13px', color: 'var(--theme-color-2)', fontWeight: '600' }}>
+              Analyzing prompt & outlines...
+            </p>
+            <p id="ai-sketch-prompt-text" style={{ margin: '0 0 24px 0', fontSize: '13px', color: 'rgba(255,255,255,0.5)', fontStyle: 'italic', wordBreak: 'break-word', maxWidth: '320px', lineHeight: '1.4' }}>
+              "{aiSketchingRef.current?.prompt || 'Loading...'}"
+            </p>
+
+            <div style={{
+              width: '100%',
+              height: '8px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '99px',
+              overflow: 'hidden',
+              border: '1px solid rgba(255, 255, 255, 0.05)',
+            }}>
+              <div id="ai-sketch-progress-bar" style={{
+                height: '100%',
+                width: '0%',
+                background: 'linear-gradient(90deg, var(--theme-color-1) 0%, var(--theme-color-2) 100%)',
+                borderRadius: '99px'
+              }}></div>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '8px', fontFamily: 'monospace' }}>
+              <span id="ai-sketch-time-text">0m 0s / 0m 0s</span>
+              <span id="ai-sketch-percent-text">0%</span>
+            </div>
+            <button 
+              id="ai-sketch-cancel-btn" 
+              className="glass-btn" 
+              style={{ 
+                marginTop: '28px', 
+                width: '100%', 
+                justifyContent: 'center', 
+                background: 'rgba(239, 68, 68, 0.1)', 
+                borderColor: 'rgba(239, 68, 68, 0.25)', 
+                color: '#f87171' 
+              }}
+            >
+              Cancel AI Sketching
+            </button>
+          </div>
+        </div>
+      )}
 
       <GlassDialog
         isOpen={dialog.isOpen}

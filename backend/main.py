@@ -363,6 +363,174 @@ def update_settings(settings_data: Dict[str, str], db: Session = Depends(databas
 
 # --- AI Stencil Generation API ---
 
+def generate_hf_image(prompt: str, model_id: str, hf_token: str = None) -> bytes:
+    import urllib.request
+    import urllib.parse
+    import json
+    import ssl
+    
+    if not model_id:
+        model_id = "stabilityai/stable-diffusion-xl-base-1.0"
+        
+    url = f"https://api-inference.huggingface.co/models/{model_id}"
+    
+    # Format the prompt to generate a high-contrast black outline / line-art sketch on a pure white background
+    enhanced_prompt = f"minimalist black line art sketch of {prompt}, pure white background, black lines, vector outline shape, high contrast, clean edges, drawing"
+    
+    data = json.dumps({"inputs": enhanced_prompt}).encode('utf-8')
+    
+    headers = {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    }
+    if hf_token:
+        headers["Authorization"] = f"Bearer {hf_token}"
+        
+    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+    context = ssl._create_unverified_context()
+    
+    try:
+        with urllib.request.urlopen(req, context=context, timeout=40) as response:
+            return response.read()
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode('utf-8', errors='ignore')
+        try:
+            err_json = json.loads(err_body)
+            err_msg = err_json.get("error", "Hugging Face API error")
+            if "loading" in err_msg.lower() and "estimated_time" in err_json:
+                raise HTTPException(status_code=503, detail=f"Hugging Face model is loading. Estimated time: {err_json['estimated_time']:.1f}s. Please retry shortly.")
+            raise HTTPException(status_code=e.code, detail=err_msg)
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=e.code, detail=f"HF API returned error code {e.code}: {err_body[:200]}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to connect to Hugging Face: {str(e)}")
+
+MAX_AI_SKETCH_USAGE = 5
+
+def check_and_reset_ai_sketch_limit(user, db):
+    from datetime import datetime, timedelta
+    now = datetime.utcnow()
+    if not user.ai_sketch_reset_time or now > user.ai_sketch_reset_time:
+        user.ai_sketch_reset_time = now + timedelta(hours=1)
+        user.ai_sketch_usage_count = 0
+        db.commit()
+
+@app.post("/api/ai-sketch/generate")
+def generate_ai_sketch(
+    payload: Dict[str, Optional[str]],
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    from datetime import datetime
+    
+    prompt = (payload.get("prompt") or "").strip()
+    hf_token = (payload.get("hf_token") or "").strip()
+    model_id = (payload.get("model_id") or "stabilityai/stable-diffusion-xl-base-1.0").strip()
+    use_fallback = payload.get("use_fallback") == "true" or payload.get("use_fallback") is True
+    
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Prompt is required")
+        
+    check_and_reset_ai_sketch_limit(current_user, db)
+    
+    if current_user.ai_sketch_usage_count >= MAX_AI_SKETCH_USAGE:
+        remaining = (current_user.ai_sketch_reset_time - datetime.utcnow()).total_seconds()
+        remaining = max(0, int(remaining))
+        mins = remaining // 60
+        secs = remaining % 60
+        time_str = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. You can generate {MAX_AI_SKETCH_USAGE} sketches per hour. Try again in {time_str}."
+        )
+        
+    image_bytes = None
+    service_used = "Hugging Face"
+    error_detail = ""
+    
+    try:
+        image_bytes = generate_hf_image(prompt, model_id, hf_token)
+    except HTTPException as h_err:
+        error_detail = h_err.detail
+        if use_fallback:
+            try:
+                import urllib.request
+                import ssl
+                import urllib.parse
+                import random
+                seed = random.randint(1, 100000)
+                enhanced_prompt = f"minimalist black line art sketch of {prompt}, pure white background, black lines, vector outline shape, high contrast, clean edges, drawing"
+                encoded_prompt = urllib.parse.quote(enhanced_prompt)
+                url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed={seed}&model=sana"
+                
+                req = urllib.request.Request(
+                    url, 
+                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                )
+                context = ssl._create_unverified_context()
+                with urllib.request.urlopen(req, context=context, timeout=25) as response:
+                    image_bytes = response.read()
+                service_used = f"Pollinations AI (HF failed: {error_detail})"
+            except Exception as fallback_err:
+                raise HTTPException(status_code=500, detail=f"HF failed: {error_detail}. Fallback failed: {str(fallback_err)}")
+        else:
+            raise h_err
+    except Exception as e:
+        error_detail = str(e)
+        if use_fallback:
+            try:
+                import urllib.request
+                import ssl
+                import urllib.parse
+                import random
+                seed = random.randint(1, 100000)
+                enhanced_prompt = f"minimalist black line art sketch of {prompt}, pure white background, black lines, vector outline shape, high contrast, clean edges, drawing"
+                encoded_prompt = urllib.parse.quote(enhanced_prompt)
+                url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed={seed}&model=sana"
+                req = urllib.request.Request(
+                    url, 
+                    headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+                )
+                context = ssl._create_unverified_context()
+                with urllib.request.urlopen(req, context=context, timeout=25) as response:
+                    image_bytes = response.read()
+                service_used = f"Pollinations AI (HF failed: {error_detail})"
+            except Exception as fallback_err:
+                raise HTTPException(status_code=500, detail=f"HF failed: {error_detail}. Fallback failed: {str(fallback_err)}")
+        else:
+            raise HTTPException(status_code=500, detail=f"Failed to connect to Hugging Face: {str(e)}")
+            
+    if not image_bytes:
+        raise HTTPException(status_code=500, detail="Generated image data was empty")
+        
+    current_user.ai_sketch_usage_count += 1
+    db.commit()
+    db.refresh(current_user)
+    
+    img_str = base64.b64encode(image_bytes).decode('utf-8')
+    return {
+        "image_data": f"data:image/png;base64,{img_str}",
+        "service_used": service_used,
+        "usage_count": current_user.ai_sketch_usage_count,
+        "max_usage": MAX_AI_SKETCH_USAGE,
+        "reset_time": current_user.ai_sketch_reset_time.isoformat() if current_user.ai_sketch_reset_time else None
+    }
+
+@app.get("/api/ai-sketch/usage")
+def get_ai_sketch_usage(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    check_and_reset_ai_sketch_limit(current_user, db)
+    return {
+        "usage_count": current_user.ai_sketch_usage_count,
+        "max_usage": MAX_AI_SKETCH_USAGE,
+        "reset_time": current_user.ai_sketch_reset_time.isoformat() if current_user.ai_sketch_reset_time else None
+    }
+
+
 MAX_STENCIL_USAGE = 10
 
 def generate_ai_stencil(keyword: str) -> str:

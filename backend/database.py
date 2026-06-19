@@ -62,6 +62,22 @@ def init_db():
                     conn.execute(text("ALTER TABLE users ADD COLUMN stencil_reset_time TIMESTAMP;"))
                 except Exception:
                     pass
+
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_sketch_usage_count INTEGER DEFAULT 0;"))
+            except Exception:
+                try:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN ai_sketch_usage_count INTEGER DEFAULT 0;"))
+                except Exception:
+                    pass
+
+            try:
+                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_sketch_reset_time TIMESTAMP;"))
+            except Exception:
+                try:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN ai_sketch_reset_time TIMESTAMP;"))
+                except Exception:
+                    pass
         print("[SUCCESS] Database tables ready.")
     except Exception as e:
         print(f"[ERROR] Failed to initialize database: {e}")
