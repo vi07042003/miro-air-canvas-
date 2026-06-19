@@ -17,6 +17,7 @@ export const TOOL_GROUPS = [
       { id: 'pencil', name: 'Sharp Pencil', icon: 'Pencil' },
       { id: 'highlighter', name: 'Highlighter', icon: 'Highlighter' },
       { id: 'spray', name: 'Spray Can', icon: 'Sparkles' },
+      { id: 'text', name: 'Text Tool', icon: 'Type' },
       { id: 'eraser', name: 'Eraser', icon: 'Eraser' }
     ]
   },

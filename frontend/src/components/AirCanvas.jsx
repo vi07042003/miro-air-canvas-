@@ -2,7 +2,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { 
   Palette, Eraser, Circle as CircleIcon, Trash2, Undo, Redo, Download, Save, Camera, CameraOff, Video, Crosshair, Zap, Triangle,
-  Pencil, ChevronDown, Box, Image as ImageIcon, Paintbrush, ChevronLeft, ChevronRight
+  Pencil, ChevronDown, Box, Image as ImageIcon, Paintbrush, ChevronLeft, ChevronRight, Type
 } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import { 
@@ -10,6 +10,7 @@ import {
   getMesh, drawMesh, draw3DStroke, generateOBJString 
 } from '../utils/3dUtils'
 import { drawShapePath } from '../utils/canvasUtils'
+import { detectAndFitShape } from '../utils/shapeSnapper'
 import ThreeDModelViewerModal from './ThreeDModelViewerModal'
 import GlassDialog from './GlassDialog'
 
@@ -52,7 +53,8 @@ const ICON_MAP = {
   Ellipse,
   Cylinder,
   Pyramid,
-  Pill
+  Pill,
+  Type
 }
 
 const RenderIcon = ({ iconName, size = 18 }) => {
@@ -102,6 +104,13 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const [uploadedImage, setUploadedImage] = useState(null)
   const [show3DDownloadModal, setShow3DDownloadModal] = useState(false)
   const [downloaded3DModelData, setDownloaded3DModelData] = useState(null)
+
+  const [textInput, setTextInputState] = useState(null) // { cssX, cssY, canvasX, canvasY, value }
+  const textInputRef = useRef(null)
+  const setTextInput = (val) => {
+    textInputRef.current = val
+    setTextInputState(val)
+  }
 
   // Drawer visibility states
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(true)
@@ -327,6 +336,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   }
   
   const [stabilizeEnabled, setStabilizeEnabled] = useState(true)
+  const [autoCorrectShapes, setAutoCorrectShapes] = useState(false)
 
   // Undo/Redo Stacks
   const [undoStack, setUndoStack] = useState([])
@@ -375,6 +385,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     wasSizing: false,
     sizingRadius: 0,
     waveHistory: [],
+    points: [],
     // 3D tracking states
     isOrbiting: false,
     isOrbitingGest: false,
@@ -401,6 +412,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     brushSize,
     brushOpacity,
     stabilizeEnabled,
+    autoCorrectShapes,
     settings,
     isCameraOn,
     canvasMode: '2d'
@@ -413,11 +425,12 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       brushSize,
       brushOpacity,
       stabilizeEnabled,
+      autoCorrectShapes,
       settings,
       isCameraOn,
       canvasMode
     }
-  }, [color, tool, brushSize, brushOpacity, stabilizeEnabled, settings, isCameraOn, canvasMode])
+  }, [color, tool, brushSize, brushOpacity, stabilizeEnabled, autoCorrectShapes, settings, isCameraOn, canvasMode])
 
   // Particles Trail System Reference
   const particlesRef = useRef([])
@@ -771,16 +784,77 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     endDraw()
   }
 
+  const commitTextInput = () => {
+    const currentInput = textInputRef.current
+    if (!currentInput) return
+    
+    // Protect against instant blur caused by browser click event cycle
+    const age = Date.now() - (currentInput.createdAt || 0)
+    if (age < 300) {
+      setTimeout(() => {
+        const inputEl = document.getElementById('canvas-text-input')
+        if (inputEl) inputEl.focus()
+      }, 10)
+      return
+    }
+    
+    setTextInput(null)
+    
+    const { canvasX, canvasY, value } = currentInput
+    if (!value.trim()) return
+    
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    
+    const { color: currentColor, brushSize: currentBrushSize, brushOpacity: currentBrushOpacity } = stateRef.current
+    
+    ctx.save()
+    ctx.fillStyle = currentColor
+    ctx.globalAlpha = currentBrushOpacity
+    const fontSize = Math.max(16, currentBrushSize * 2.5)
+    ctx.font = `bold ${fontSize}px Inter, Roboto, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(value, canvasX, canvasY)
+    ctx.restore()
+    
+    saveCanvasState()
+  }
+
   const startDraw = (x, y) => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
+    
+    if (stateRef.current.tool === 'text') {
+      const rect = canvas.getBoundingClientRect()
+      const scaleX = canvas.width / rect.width
+      const scaleY = canvas.height / rect.height
+      const cssX = x / scaleX
+      const cssY = y / scaleY
+      
+      if (textInputRef.current) {
+        commitTextInput()
+      }
+      
+      setTextInput({
+        cssX,
+        cssY,
+        canvasX: x,
+        canvasY: y,
+        value: '',
+        createdAt: Date.now()
+      })
+      return
+    }
     
     drawingRef.current.isDrawing = true
     drawingRef.current.startX = x
     drawingRef.current.startY = y
     drawingRef.current.lastX = x
     drawingRef.current.lastY = y
+    drawingRef.current.points = [{ x, y }]
     
     drawingRef.current.savedImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
   }
@@ -828,10 +902,13 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       }
     }
 
-    const paintTools = ['brush', 'pencil', 'highlighter', 'spray', 'eraser']
+    const paintTools = ['brush', 'pencil', 'highlighter', 'spray', 'eraser', 'text']
     const isPainting = paintTools.includes(currentTool)
 
     if (isPainting) {
+      if (drawState.points) {
+        drawState.points.push({ x: drawX, y: drawY })
+      }
       ctx.beginPath()
       if (currentTool === 'spray') {
         const radius = Math.max(10, currentBrushSize * 2.5)
@@ -870,10 +947,101 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
   }
 
-  const endDraw = () => {
-    drawingRef.current.isDrawing = false
-    drawingRef.current.savedImageData = null
+  const applySnappedShape = (canvas, savedData, detected, colorVal, sizeVal, opacityVal, toolVal) => {
+    if (!canvas || !detected) return
+    const ctx = canvas.getContext('2d')
+    ctx.putImageData(savedData, 0, 0)
+    
+    ctx.save()
+    ctx.strokeStyle = colorVal
+    ctx.lineWidth = sizeVal
+    ctx.globalAlpha = opacityVal
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    
+    if (toolVal === 'pencil') {
+      ctx.lineWidth = 2
+      ctx.globalAlpha = 1.0
+    } else if (toolVal === 'highlighter') {
+      ctx.globalAlpha = 0.35
+      ctx.lineWidth = Math.max(12, sizeVal * 2.5)
+      ctx.lineCap = 'square'
+      ctx.lineJoin = 'miter'
+    }
+    
+    ctx.beginPath()
+    if (detected.type === 'line') {
+      ctx.moveTo(detected.params.startX, detected.params.startY)
+      ctx.lineTo(detected.params.endX, detected.params.endY)
+      ctx.stroke()
+    } else if (detected.type === 'circle') {
+      ctx.arc(detected.params.cx, detected.params.cy, detected.params.r, 0, 2 * Math.PI)
+      ctx.stroke()
+    } else if (detected.type === 'rect') {
+      ctx.rect(detected.params.startX, detected.params.startY, detected.params.w, detected.params.h)
+      ctx.stroke()
+    } else if (detected.type === 'triangle') {
+      ctx.moveTo(detected.params.p1.x, detected.params.p1.y)
+      ctx.lineTo(detected.params.p2.x, detected.params.p2.y)
+      ctx.lineTo(detected.params.p3.x, detected.params.p3.y)
+      ctx.closePath()
+      ctx.stroke()
+    } else if (detected.type === 'ellipse') {
+      ctx.ellipse(detected.params.cx, detected.params.cy, detected.params.rx, detected.params.ry, 0, 0, 2 * Math.PI)
+      ctx.stroke()
+    }
+    ctx.restore()
     saveCanvasState()
+  }
+
+  const endDraw = () => {
+    const drawState = drawingRef.current
+    drawState.isDrawing = false
+    
+    const { tool: currentTool, color: currentColor, brushSize: currentBrushSize, brushOpacity: currentBrushOpacity, autoCorrectShapes: currentAutoCorrect } = stateRef.current
+    
+    const paintTools = ['brush', 'pencil', 'highlighter']
+    const isPaintTool = paintTools.includes(currentTool)
+    
+    if (currentAutoCorrect && isPaintTool && drawState.points && drawState.points.length >= 12 && drawState.savedImageData) {
+      const canvas = canvasRef.current
+      const points = [...drawState.points]
+      const savedData = drawState.savedImageData
+      
+      const runLocalFallback = () => {
+        const localDetected = detectAndFitShape(points)
+        if (localDetected) {
+          applySnappedShape(canvas, savedData, localDetected, currentColor, currentBrushSize, currentBrushOpacity, currentTool)
+        } else {
+          saveCanvasState()
+        }
+      }
+
+      fetch(`${BACKEND_URL}/api/predict-shape`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ points })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('API error')
+        return res.json()
+      })
+      .then(detected => {
+        if (detected && detected.type !== 'unknown' && detected.confidence > 0.6) {
+          applySnappedShape(canvas, savedData, detected, currentColor, currentBrushSize, currentBrushOpacity, currentTool)
+        } else {
+          runLocalFallback()
+        }
+      })
+      .catch(() => {
+        runLocalFallback()
+      })
+    } else {
+      saveCanvasState()
+    }
+    
+    drawState.savedImageData = null
+    drawState.points = []
   }
 
   const stampShape = (x, y, radius, shapeType, colorVal, sizeVal, opacityVal) => {
@@ -1441,7 +1609,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       rawY = rawY * canvas.height
 
       const drawState = drawingRef.current
-      const currentAlpha = currentStabilizeEnabled && !['brush', 'pencil', 'highlighter', 'spray', 'eraser'].includes(currentTool) ? 0.85 : 0.55
+      const currentAlpha = currentStabilizeEnabled && !['brush', 'pencil', 'highlighter', 'spray', 'eraser', 'text'].includes(currentTool) ? 0.85 : 0.55
 
       if (drawState.smoothedX === 0) {
         drawState.smoothedX = rawX
@@ -1539,7 +1707,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       const isMiddleUp = middleTip.y < middlePip.y
 
       if (isIndexUp && !isMiddleUp) {
-        const isShapeTool = !['brush', 'pencil', 'highlighter', 'spray', 'eraser'].includes(currentTool)
+        const isShapeTool = !['brush', 'pencil', 'highlighter', 'spray', 'eraser', 'text'].includes(currentTool)
         
         if (isShapeTool) {
           const thumbTip = landmarks[4]
@@ -2064,6 +2232,18 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                   <Crosshair size={14} style={{ marginRight: '6px' }} />
                   <span>{stabilizeEnabled ? 'Stabilizer ON' : 'Stabilizer OFF'}</span>
                 </button>
+
+                {canvasMode !== '3d' && (
+                  <button 
+                    className={`glass-btn ${autoCorrectShapes ? 'glass-btn-active' : ''}`}
+                    style={{ padding: '8px 12px', fontSize: '13px', width: '100%', justifyContent: 'center', marginTop: '8px' }}
+                    onClick={() => setAutoCorrectShapes(!autoCorrectShapes)}
+                    title="Automatically detect circles, rectangles, triangles, ellipses, and lines from your freehand drawing and convert them to perfect geometric paths"
+                  >
+                    <Sparkles size={14} style={{ marginRight: '6px' }} />
+                    <span>{autoCorrectShapes ? 'Auto-Snap ON' : 'Auto-Snap OFF'}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -2082,17 +2262,56 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         <div className="canvas-main-column">
           {/* Main Drawing Canvas Container */}
           <div className="glass-panel" style={styles.canvasContainer}>
-            <canvas 
-              ref={canvasRef}
-              width="1200"
-              height="700"
-              style={styles.canvas}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onWheel={handleWheel3D}
-            />
+            <div style={{ position: 'relative' }}>
+              <canvas 
+                ref={canvasRef}
+                width="1200"
+                height="700"
+                style={styles.canvas}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                onWheel={handleWheel3D}
+              />
+              {textInput && (
+                <input
+                  type="text"
+                  value={textInput.value}
+                  onChange={(e) => setTextInput({ ...textInput, value: e.target.value })}
+                  onBlur={commitTextInput}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      commitTextInput()
+                    } else if (e.key === 'Escape') {
+                      setTextInput(null)
+                    }
+                  }}
+                  id="canvas-text-input"
+                  autoFocus
+                  placeholder="Type text here..."
+                  style={{
+                    position: 'absolute',
+                    left: `${textInput.cssX}px`,
+                    top: `${textInput.cssY}px`,
+                    background: 'rgba(10, 5, 24, 0.95)',
+                    border: `1px solid ${color}`,
+                    color: color,
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: `${Math.max(14, brushSize * 1.5)}px`,
+                    fontWeight: 'bold',
+                    outline: 'none',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    zIndex: 100,
+                    minWidth: '150px',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                    transform: 'translate(-50%, -50%)',
+                    backdropFilter: 'blur(8px)',
+                  }}
+                />
+              )}
+            </div>
           </div>
         </div>
 

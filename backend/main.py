@@ -450,3 +450,18 @@ def get_stencil_usage(
         "max_usage": MAX_STENCIL_USAGE,
         "reset_time": current_user.stencil_reset_time.isoformat() if current_user.stencil_reset_time else None
     }
+
+from pydantic import BaseModel
+from shape_recognizer import predict_shape
+
+class PointModel(BaseModel):
+    x: float
+    y: float
+
+class PredictShapeRequest(BaseModel):
+    points: List[PointModel]
+
+@app.post("/api/predict-shape")
+def api_predict_shape(payload: PredictShapeRequest):
+    pts = [(pt.x, pt.y) for pt in payload.points]
+    return predict_shape(pts)
