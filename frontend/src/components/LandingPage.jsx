@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand } from 'lucide-react'
+import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand, FileImage } from 'lucide-react'
 
 export default function LandingPage({ onStartCanvas }) {
   const [showManual, setShowManual] = useState(false)
@@ -55,6 +55,26 @@ export default function LandingPage({ onStartCanvas }) {
             <h3 style={styles.cardTitle}>Complete Vector Tools</h3>
             <p style={styles.cardText}>
               Draw lines, rectangles, perfect circles, or paint freehand. Control brush thickness, opacity, and neon-themed color choices.
+            </p>
+          </div>
+
+          <div className="glass-card" style={styles.card}>
+            <div style={styles.iconWrapper}>
+              <Sparkles size={24} color="#c084fc" className="spin-animation" style={{ animationDuration: '6s' }} />
+            </div>
+            <h3 style={styles.cardTitle}>Sketch With AI</h3>
+            <p style={styles.cardText}>
+              Describe anything you want to draw and watch our AI instantly trace and plot the outline onto your 2D canvas or 3D space.
+            </p>
+          </div>
+
+          <div className="glass-card" style={styles.card}>
+            <div style={styles.iconWrapper}>
+              <FileImage size={24} color="#10b981" />
+            </div>
+            <h3 style={styles.cardTitle}>AI Stencil Converter</h3>
+            <p style={styles.cardText}>
+              Upload any custom image or snapshot and let our Edge-Detection AI convert it into a trace stencil for guided 2D and 3D drawing.
             </p>
           </div>
 
