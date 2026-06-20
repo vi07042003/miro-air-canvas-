@@ -148,7 +148,7 @@ body::before {
 .blob-7 {
   width: 140px;
   height: 140px;
-  background: radial-gradient(circle, var(--primary-pink) 0%, rgba(236, 72, 153, 0.75) 50%, transparent 100%);
+  background: radial-gradient(circle, var(--primary-pink) 0%, rgba(var(--theme-color-2-rgb), 0.75) 50%, transparent 100%);
   bottom: 5%;
   left: 35%;
   animation: morph-blob-2 23s infinite ease-in-out alternate -7s;
