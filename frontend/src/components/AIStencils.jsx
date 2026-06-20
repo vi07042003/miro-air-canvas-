@@ -236,7 +236,85 @@ export default function AIStencils({ user, onApplyStencil }) {
                     style={styles.loadingState}
                   >
                     <div style={styles.scanLines} />
-                    <RefreshCw className="spin-animation" size={42} style={{ color: 'var(--theme-color-2)', marginBottom: '16px' }} />
+                    {/* Star Animation for AI */}
+                    <div style={{ position: 'relative', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
+                      {/* Outer rotating pulse ring */}
+                      <motion.div
+                        animate={{ rotate: 360, scale: [1, 1.08, 1] }}
+                        transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+                        style={{
+                          position: 'absolute',
+                          width: '74px',
+                          height: '74px',
+                          borderRadius: '50%',
+                          border: '2px dashed var(--theme-color-2)',
+                          opacity: 0.35,
+                        }}
+                      />
+                      {/* Inner glowing pulse ring */}
+                      <motion.div
+                        animate={{ scale: [1, 1.25, 1], opacity: [0.15, 0.35, 0.15] }}
+                        transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                        style={{
+                          position: 'absolute',
+                          width: '54px',
+                          height: '54px',
+                          borderRadius: '50%',
+                          background: 'radial-gradient(circle, var(--theme-color-2) 0%, transparent 75%)',
+                        }}
+                      />
+                      {/* Main Sparkles Icon */}
+                      <motion.div
+                        animate={{ 
+                          scale: [1, 1.15, 1],
+                          rotate: [0, 8, -8, 0]
+                        }}
+                        transition={{ 
+                          duration: 3, 
+                          repeat: Infinity, 
+                          ease: "easeInOut" 
+                        }}
+                        style={{ zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Sparkles size={42} style={{ color: 'var(--theme-color-2)', filter: 'drop-shadow(0 0 8px rgba(var(--theme-color-2-rgb), 0.5))' }} />
+                      </motion.div>
+                      {/* Tiny twinkling star 1 */}
+                      <motion.div
+                        animate={{ 
+                          scale: [0, 1.1, 0],
+                          x: [-24, -28, -24],
+                          y: [-18, -22, -18],
+                          opacity: [0, 0.9, 0]
+                        }}
+                        transition={{ 
+                          duration: 1.8, 
+                          repeat: Infinity, 
+                          delay: 0.2,
+                          ease: "easeInOut" 
+                        }}
+                        style={{ position: 'absolute', display: 'flex' }}
+                      >
+                        <Sparkles size={14} style={{ color: 'var(--theme-color-1)', filter: 'drop-shadow(0 0 4px rgba(var(--theme-color-1-rgb), 0.4))' }} />
+                      </motion.div>
+                      {/* Tiny twinkling star 2 */}
+                      <motion.div
+                        animate={{ 
+                          scale: [0, 1.1, 0],
+                          x: [24, 28, 24],
+                          y: [16, 20, 16],
+                          opacity: [0, 0.9, 0]
+                        }}
+                        transition={{ 
+                          duration: 2.2, 
+                          repeat: Infinity, 
+                          delay: 0.7,
+                          ease: "easeInOut" 
+                        }}
+                        style={{ position: 'absolute', display: 'flex' }}
+                      >
+                        <Sparkles size={16} style={{ color: 'var(--theme-color-1)', filter: 'drop-shadow(0 0 4px rgba(var(--theme-color-1-rgb), 0.4))' }} />
+                      </motion.div>
+                    </div>
                     <p style={styles.previewText}>AI is crafting your stencil...</p>
                     <p style={styles.previewSubtext}>This usually takes about 5-10 seconds</p>
                   </motion.div>
