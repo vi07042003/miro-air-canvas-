@@ -244,8 +244,8 @@ export const styles = {
     display: 'block',
     cursor: 'crosshair',
     background: 'transparent',
-    maxWidth: '100%',
-    maxHeight: '100%',
+    width: '100%',
+    height: '100%',
   },
   sidebar: {
     flex: '1.2 1 300px',

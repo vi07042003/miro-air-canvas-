@@ -301,6 +301,96 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const handCanvasRef = useRef(null)
   const loadedDrawingIdRef = useRef(null)
   
+  const safePutImageData = (ctx, imgData) => {
+    if (!ctx || !imgData) return
+    const canvas = ctx.canvas
+    if (imgData.width === canvas.width && imgData.height === canvas.height) {
+      ctx.putImageData(imgData, 0, 0)
+    } else {
+      const tempCanvas = document.createElement('canvas')
+      tempCanvas.width = imgData.width
+      tempCanvas.height = imgData.height
+      tempCanvas.getContext('2d').putImageData(imgData, 0, 0)
+      
+      ctx.save()
+      ctx.globalAlpha = 1.0
+      ctx.fillStyle = '#0a0518'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      
+      const scale = Math.min(canvas.width / imgData.width, canvas.height / imgData.height)
+      const dw = imgData.width * scale
+      const dh = imgData.height * scale
+      const dx = (canvas.width - dw) / 2
+      const dy = (canvas.height - dh) / 2
+      
+      ctx.drawImage(tempCanvas, dx, dy, dw, dh)
+      ctx.restore()
+    }
+  }
+
+  // Handle dynamic canvas resizing to fill the workspace container
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const container = canvas.closest('.glass-panel')
+    if (!container) return
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const { width, height } = entry.contentRect
+        if (width === 0 || height === 0) continue
+
+        const roundedWidth = Math.round(width)
+        const roundedHeight = Math.round(height)
+
+        if (canvas.width === roundedWidth && canvas.height === roundedHeight) continue
+
+        const ctx = canvas.getContext('2d')
+        
+        // Save current canvas contents
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = canvas.width
+        tempCanvas.height = canvas.height
+        const tempCtx = tempCanvas.getContext('2d')
+        tempCtx.drawImage(canvas, 0, 0)
+
+        // Set new resolution
+        canvas.width = roundedWidth
+        canvas.height = roundedHeight
+
+        // Re-apply context styles
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+
+        // Fill background
+        ctx.fillStyle = '#0a0518'
+        ctx.fillRect(0, 0, roundedWidth, roundedHeight)
+
+        // Scale old content uniformly to fit the new dimensions
+        const scale = Math.min(roundedWidth / tempCanvas.width, roundedHeight / tempCanvas.height)
+        const dw = tempCanvas.width * scale
+        const dh = tempCanvas.height * scale
+        const dx = (roundedWidth - dw) / 2
+        const dy = (roundedHeight - dh) / 2
+        ctx.drawImage(tempCanvas, dx, dy, dw, dh)
+
+        // Mirror resolution settings to hand overlay canvas
+        const handCanvas = handCanvasRef.current
+        if (handCanvas) {
+          handCanvas.width = roundedWidth
+          handCanvas.height = roundedHeight
+        }
+      }
+    })
+
+    resizeObserver.observe(container)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+  
   // DOM element references for 60 FPS direct updates (no React re-renders)
   const coordsTextRef = useRef(null)
   const gestureIndicatorRef = useRef(null)
@@ -628,7 +718,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       const canvas = canvasRef.current
       if (canvas) {
         const ctx = canvas.getContext('2d')
-        ctx.putImageData(preSketchImageDataRef.current, 0, 0)
+        safePutImageData(ctx, preSketchImageDataRef.current)
       }
     }
     
@@ -651,7 +741,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       if (canvas) {
         const ctx = canvas.getContext('2d')
         if (preSketchImageDataRef.current) {
-          ctx.putImageData(preSketchImageDataRef.current, 0, 0)
+          safePutImageData(ctx, preSketchImageDataRef.current)
         }
         drawPartialContours(ctx, contours, 1.0, sketchColor, brushSize, brushOpacity, w, h, 1.0, canvas.width, canvas.height, aiSketchingRef.current.tool)
         saveCanvasState()
@@ -721,7 +811,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         const canvas = canvasRef.current
         if (canvas && preSketchImageDataRef.current) {
           const ctx = canvas.getContext('2d')
-          ctx.putImageData(preSketchImageDataRef.current, 0, 0)
+          safePutImageData(ctx, preSketchImageDataRef.current)
           drawPartialContours(
             ctx,
             aiSketchingRef.current.contours,
@@ -982,7 +1072,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         ctx2.lineCap = 'round'
         ctx2.lineJoin = 'round'
         if (canvas2DDataRef.current) {
-          ctx2.putImageData(canvas2DDataRef.current, 0, 0)
+          safePutImageData(ctx2, canvas2DDataRef.current)
         } else {
           ctx2.globalAlpha = 1.0
           ctx2.fillStyle = '#0a0518'
@@ -1005,7 +1095,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     setRedoStack(prev => [...prev, current])
     
     const previous = undoStack[undoStack.length - 2]
-    ctx.putImageData(previous.imgData, 0, 0)
+    safePutImageData(ctx, previous.imgData)
     setUndoStack(prev => prev.slice(0, -1))
   }
 
@@ -1030,7 +1120,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const ctx = canvas.getContext('2d')
     
     const nextState = redoStack[redoStack.length - 1]
-    ctx.putImageData(nextState.imgData, 0, 0)
+    safePutImageData(ctx, nextState.imgData)
     
     setUndoStack(prev => [...prev, nextState])
     setRedoStack(prev => prev.slice(0, -1))
@@ -1389,7 +1479,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       drawState.lastY = drawY
     } else {
       if (drawState.savedImageData) {
-        ctx.putImageData(drawState.savedImageData, 0, 0)
+        safePutImageData(ctx, drawState.savedImageData)
       }
       
       ctx.beginPath()
@@ -1401,7 +1491,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const applySnappedShape = (canvas, savedData, detected, colorVal, sizeVal, opacityVal, toolVal) => {
     if (!canvas || !detected) return
     const ctx = canvas.getContext('2d')
-    ctx.putImageData(savedData, 0, 0)
+    safePutImageData(ctx, savedData)
     
     ctx.save()
     ctx.strokeStyle = colorVal
@@ -2731,11 +2821,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         <div className="canvas-main-column">
           {/* Main Drawing Canvas Container */}
           <div className="glass-panel" style={styles.canvasContainer}>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
               <canvas 
                 ref={canvasRef}
-                width="1200"
-                height="700"
                 style={styles.canvas}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
