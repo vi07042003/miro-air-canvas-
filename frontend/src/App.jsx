@@ -260,23 +260,7 @@ function App() {
 
     // Already logged in but ended up on auth page — go to canvas
     if (activePage === 'auth' && user) {
-      return (
-        <motion.div
-          key="canvas"
-          initial={{ opacity: 0, x: 15 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -15 }}
-          transition={{ duration: 0.22, ease: 'easeInOut' }}
-        >
-          <AirCanvas 
-            initialDrawing={editingDrawing} 
-            onDrawingCleared={() => setEditingDrawing(null)} 
-            onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
-            initialStencil={externalStencil}
-            onClearInitialStencil={() => setExternalStencil(null)}
-          />
-        </motion.div>
-      )
+      return null
     }
 
     switch (activePage) {
@@ -293,23 +277,7 @@ function App() {
           </motion.div>
         )
       case 'canvas':
-        return (
-          <motion.div
-            key="canvas"
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -15 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
-          >
-            <AirCanvas 
-              initialDrawing={editingDrawing} 
-              onDrawingCleared={() => setEditingDrawing(null)} 
-              onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
-              initialStencil={externalStencil}
-              onClearInitialStencil={() => setExternalStencil(null)}
-            />
-          </motion.div>
-        )
+        return null
       case 'gallery':
         return (
           <motion.div
@@ -531,6 +499,24 @@ function App() {
             <AnimatePresence mode="wait">
               {renderPage()}
             </AnimatePresence>
+            {user && (
+              <div 
+                style={{ 
+                  display: (activePage === 'canvas' || (activePage === 'auth' && user)) ? 'block' : 'none', 
+                  width: '100%' 
+                }}
+                className={(activePage === 'canvas' || (activePage === 'auth' && user)) ? 'fade-in' : ''}
+              >
+                <AirCanvas 
+                  initialDrawing={editingDrawing} 
+                  onDrawingCleared={() => setEditingDrawing(null)} 
+                  onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
+                  initialStencil={externalStencil}
+                  onClearInitialStencil={() => setExternalStencil(null)}
+                  isActivePage={activePage === 'canvas' || (activePage === 'auth' && user)}
+                />
+              </div>
+            )}
           </main>
 
           {/* Profile Edit Modal */}

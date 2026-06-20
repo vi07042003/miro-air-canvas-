@@ -295,7 +295,7 @@ const getPartial3DStrokes = (strokes, progress) => {
 
 const PRIMITIVE_3D_TOOLS = ['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone', '3d-prism', '3d-torus', '3d-octahedron', '3d-capsule']
 
-export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved, initialStencil, onClearInitialStencil }) {
+export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved, initialStencil, onClearInitialStencil, isActivePage }) {
   const canvasRef = useRef(null)
   const videoRef = useRef(null)
   const handCanvasRef = useRef(null)
@@ -865,7 +865,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     stabilizeEnabled,
     autoCorrectShapes,
     settings,
-    isCameraOn,
+    isCameraOn: isCameraOn && isActivePage,
     canvasMode: '2d'
   })
 
@@ -878,10 +878,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       stabilizeEnabled,
       autoCorrectShapes,
       settings,
-      isCameraOn,
+      isCameraOn: isCameraOn && isActivePage,
       canvasMode
     }
-  }, [color, tool, brushSize, brushOpacity, stabilizeEnabled, autoCorrectShapes, settings, isCameraOn, canvasMode])
+  }, [color, tool, brushSize, brushOpacity, stabilizeEnabled, autoCorrectShapes, settings, isCameraOn, isActivePage, canvasMode])
 
   // Particles Trail System Reference
   const particlesRef = useRef([])
@@ -1964,7 +1964,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     let active = true
 
     const initTracking = () => {
-      if (!isCameraOn) return
+      if (!isCameraOn || !isActivePage) return
       
       const HandsLib = window.Hands
       const CameraLib = window.Camera
@@ -2005,7 +2005,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       if (videoRef.current) {
         cameraInstance = new CameraLib(videoRef.current, {
           onFrame: async () => {
-            if (videoRef.current && isCameraOn) {
+            if (videoRef.current && isCameraOn && isActivePage) {
               await hands.send({ image: videoRef.current })
             }
           },
@@ -2028,7 +2028,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         }
       }
     }
-  }, [isCameraOn, settings.detectionConfidence])
+  }, [isCameraOn, settings.detectionConfidence, isActivePage])
 
   const processTrackingResults = (results) => {
     const canvas = canvasRef.current
