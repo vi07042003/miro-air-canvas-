@@ -375,9 +375,15 @@ def generate_hf_image(prompt: str, model_id: str, hf_token: str = None) -> bytes
     url = f"https://api-inference.huggingface.co/models/{model_id}"
     
     # Format the prompt to generate a high-contrast black outline / line-art sketch on a pure white background
-    enhanced_prompt = f"minimalist black line art sketch of {prompt}, pure white background, black lines, vector outline shape, high contrast, clean edges, drawing"
-    
-    data = json.dumps({"inputs": enhanced_prompt}).encode('utf-8')
+    enhanced_prompt = f"minimalist simple black outline drawing of {prompt}, pure white background, simple outline, no coloring, no shading, no shadow, no background, no details, no hatching, clean single stroke lineart"
+    negative_prompt = "color, shading, shadow, texture, fill, gradients, 3d, realistic, photo, complex, detailed, background patterns, sketch lines background, multiple lines, sketchy, scribble, colored, gray, grey"
+    payload = {
+        "inputs": enhanced_prompt,
+        "parameters": {
+            "negative_prompt": negative_prompt
+        }
+    }
+    data = json.dumps(payload).encode('utf-8')
     
     headers = {
         "Content-Type": "application/json",
@@ -461,9 +467,11 @@ def generate_ai_sketch(
                 import urllib.parse
                 import random
                 seed = random.randint(1, 100000)
-                enhanced_prompt = f"minimalist black line art sketch of {prompt}, pure white background, black lines, vector outline shape, high contrast, clean edges, drawing"
+                enhanced_prompt = f"minimalist simple black outline drawing of {prompt}, pure white background, simple outline, no coloring, no shading, no shadow, no background, no details, no hatching, clean single stroke lineart"
+                negative_prompt = "color, shading, shadow, texture, fill, gradients, 3d, realistic, photo, complex, detailed, background patterns, sketch lines background, multiple lines, sketchy, scribble, colored, gray, grey"
                 encoded_prompt = urllib.parse.quote(enhanced_prompt)
-                url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed={seed}&model=sana"
+                encoded_neg = urllib.parse.quote(negative_prompt)
+                url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed={seed}&model=sana&negative_prompt={encoded_neg}"
                 
                 req = urllib.request.Request(
                     url, 
@@ -486,9 +494,11 @@ def generate_ai_sketch(
                 import urllib.parse
                 import random
                 seed = random.randint(1, 100000)
-                enhanced_prompt = f"minimalist black line art sketch of {prompt}, pure white background, black lines, vector outline shape, high contrast, clean edges, drawing"
+                enhanced_prompt = f"minimalist simple black outline drawing of {prompt}, pure white background, simple outline, no coloring, no shading, no shadow, no background, no details, no hatching, clean single stroke lineart"
+                negative_prompt = "color, shading, shadow, texture, fill, gradients, 3d, realistic, photo, complex, detailed, background patterns, sketch lines background, multiple lines, sketchy, scribble, colored, gray, grey"
                 encoded_prompt = urllib.parse.quote(enhanced_prompt)
-                url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed={seed}&model=sana"
+                encoded_neg = urllib.parse.quote(negative_prompt)
+                url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed={seed}&model=sana&negative_prompt={encoded_neg}"
                 req = urllib.request.Request(
                     url, 
                     headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
