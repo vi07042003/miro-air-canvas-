@@ -226,7 +226,6 @@ function App() {
       setActivePage(page)
     }
   }
-
   const renderPage = () => {
     // Strict auth gate — canvas, gallery and stencils are ALWAYS blocked without a session
     if ((activePage === 'canvas' || activePage === 'gallery' || activePage === 'stencils') && !user) {
@@ -237,6 +236,7 @@ function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -15 }}
           transition={{ duration: 0.22, ease: 'easeInOut' }}
+          style={{ gridColumn: 1, gridRow: 1 }}
         >
           <Auth onLoginSuccess={handleLoginSuccess} />
         </motion.div>
@@ -252,6 +252,7 @@ function App() {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -15 }}
           transition={{ duration: 0.22, ease: 'easeInOut' }}
+          style={{ gridColumn: 1, gridRow: 1 }}
         >
           <Auth onLoginSuccess={handleLoginSuccess} />
         </motion.div>
@@ -272,6 +273,7 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -15 }}
             transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ gridColumn: 1, gridRow: 1 }}
           >
             <LandingPage onStartCanvas={() => navigateTo('canvas')} />
           </motion.div>
@@ -286,6 +288,7 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -15 }}
             transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ gridColumn: 1, gridRow: 1 }}
           >
             <Gallery onEditDrawing={(drawing) => {
               setEditingDrawing(drawing)
@@ -301,6 +304,7 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -15 }}
             transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ gridColumn: 1, gridRow: 1 }}
           >
             <Settings 
               onThemeChange={handleThemeChange} 
@@ -321,7 +325,7 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -15 }}
             transition={{ duration: 0.22, ease: 'easeInOut' }}
-            style={{ width: '100%', padding: '0 40px' }}
+            style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1 }}
           >
             <AIStencils 
               user={user}
@@ -340,6 +344,7 @@ function App() {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -15 }}
             transition={{ duration: 0.22, ease: 'easeInOut' }}
+            style={{ gridColumn: 1, gridRow: 1 }}
           >
             <LandingPage onStartCanvas={() => navigateTo('canvas')} />
           </motion.div>
@@ -411,43 +416,93 @@ function App() {
               <button 
                 className={`nav-item ${activePage === 'landing' ? 'nav-item-active' : ''}`}
                 onClick={() => setActivePage('landing')}
+                style={{ position: 'relative' }}
               >
-                <Home size={19} />
-                <span>Home</span>
+                {activePage === 'landing' && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="nav-item-active-bg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Home size={19} />
+                  <span>Home</span>
+                </span>
               </button>
               <button 
                 className={`nav-item ${activePage === 'canvas' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
                 onClick={() => navigateTo('canvas')}
                 title={!user ? 'Sign in to access Canvas' : 'Canvas'}
+                style={{ position: 'relative' }}
               >
-                <Palette size={19} />
-                <span>Canvas</span>
-                {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                {(activePage === 'canvas') && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="nav-item-active-bg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Palette size={19} />
+                  <span>Canvas</span>
+                  {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                </span>
               </button>
               <button 
                 className={`nav-item ${activePage === 'gallery' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
                 onClick={() => navigateTo('gallery')}
                 title={!user ? 'Sign in to access Gallery' : 'Gallery'}
+                style={{ position: 'relative' }}
               >
-                <Image size={19} />
-                <span>Gallery</span>
-                {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                {activePage === 'gallery' && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="nav-item-active-bg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Image size={19} />
+                  <span>Gallery</span>
+                  {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                </span>
               </button>
               <button 
                 className={`nav-item ${activePage === 'stencils' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
                 onClick={() => navigateTo('stencils')}
                 title={!user ? 'Sign in to generate AI stencils' : 'AI Stencil Generator'}
+                style={{ position: 'relative' }}
               >
-                <Sparkles size={19} />
-                <span>AI Stencils</span>
-                {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                {activePage === 'stencils' && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="nav-item-active-bg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles size={19} />
+                  <span>AI Stencils</span>
+                  {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                </span>
               </button>
               <button 
                 className={`nav-item ${activePage === 'settings' ? 'nav-item-active' : ''}`}
                 onClick={() => setActivePage('settings')}
+                style={{ position: 'relative' }}
               >
-                <SettingsIcon size={19} />
-                <span>Settings</span>
+                {activePage === 'settings' && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="nav-item-active-bg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <SettingsIcon size={19} />
+                  <span>Settings</span>
+                </span>
               </button>
             </nav>
 
@@ -495,17 +550,44 @@ function App() {
           </header>
 
           {/* Main Content Area */}
-          <main style={{ minHeight: 'calc(100vh - 73px)', padding: '24px', position: 'relative', overflowX: 'hidden' }}>
+          <main style={{ 
+            minHeight: 'calc(100vh - 73px)', 
+            padding: '24px', 
+            position: 'relative', 
+            overflowX: 'hidden',
+            display: 'grid',
+            gridTemplateColumns: '100%',
+            gridTemplateRows: 'auto'
+          }}>
             <AnimatePresence mode="wait">
               {renderPage()}
             </AnimatePresence>
             {user && (
-              <div 
-                style={{ 
-                  display: (activePage === 'canvas' || (activePage === 'auth' && user)) ? 'block' : 'none', 
-                  width: '100%' 
+              <motion.div 
+                initial={false}
+                animate={(activePage === 'canvas' || (activePage === 'auth' && user)) ? "visible" : "hidden"}
+                variants={{
+                  visible: { 
+                    opacity: 1, 
+                    x: 0, 
+                    scale: 1,
+                    display: 'block', 
+                    transition: { duration: 0.22, ease: 'easeInOut' } 
+                  },
+                  hidden: { 
+                    opacity: 0, 
+                    x: -15, 
+                    scale: 0.98,
+                    transitionEnd: { display: 'none' },
+                    transition: { duration: 0.22, ease: 'easeInOut' } 
+                  }
                 }}
-                className={(activePage === 'canvas' || (activePage === 'auth' && user)) ? 'fade-in' : ''}
+                style={{ 
+                  width: '100%',
+                  gridColumn: 1,
+                  gridRow: 1,
+                  pointerEvents: (activePage === 'canvas' || (activePage === 'auth' && user)) ? 'auto' : 'none'
+                }}
               >
                 <AirCanvas 
                   initialDrawing={editingDrawing} 
@@ -515,101 +597,156 @@ function App() {
                   onClearInitialStencil={() => setExternalStencil(null)}
                   isActivePage={activePage === 'canvas' || (activePage === 'auth' && user)}
                 />
-              </div>
+              </motion.div>
             )}
           </main>
 
           {/* Profile Edit Modal */}
-          {showProfileModal && createPortal(
-            <div className="modal-backdrop-glass" onClick={() => setShowProfileModal(false)}>
-              <div className="glass-panel-heavy fade-in" style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-                <div style={styles.modalHeader}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <UserIcon size={20} color="var(--theme-color-2)" />
-                    <h3 style={styles.modalTitle}>User Profile</h3>
-                  </div>
-                  <button style={styles.closeBtn} onClick={() => setShowProfileModal(false)}>
-                    <X size={18} />
-                  </button>
-                </div>
+          {createPortal(
+            <AnimatePresence>
+              {showProfileModal && (
+                <motion.div 
+                  initial="hidden"
+                  animate="visible"
+                  exit="hidden"
+                  variants={{
+                    hidden: { opacity: 0 },
+                    visible: { opacity: 1, transition: { duration: 0.2 } }
+                  }}
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    zIndex: 2000,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '20px',
+                    perspective: '1000px',
+                    pointerEvents: 'auto'
+                  }}
+                >
+                  {/* Backdrop blur overlay */}
+                  <motion.div 
+                    variants={{
+                      hidden: { opacity: 0 },
+                      visible: { opacity: 1 }
+                    }}
+                    transition={{ duration: 0.25 }}
+                    className="modal-backdrop-glass"
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      zIndex: -1
+                    }}
+                    onClick={() => setShowProfileModal(false)}
+                  />
 
-                <form onSubmit={handleUpdateProfile} style={styles.modalBody}>
-                  <div style={styles.avatarSection}>
-                    <div style={styles.avatarContainer}>
-                      {editProfilePicture ? (
-                        <img src={editProfilePicture} style={styles.profilePreview} alt="Preview" />
-                      ) : (
-                        <UserIcon size={36} color="var(--theme-color-2)" />
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <label className="glass-btn" style={styles.uploadBtn}>
-                        <span>Choose Photo</span>
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          style={{ display: 'none' }} 
-                          onChange={handleFileChange}
-                        />
-                      </label>
-                      {editProfilePicture && (
-                        <button 
-                          type="button" 
-                          className="glass-btn" 
-                          style={styles.removeBtn}
-                          onClick={() => setEditProfilePicture('')}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>Username</label>
-                    <input 
-                      type="text" 
-                      className="glass-input"
-                      style={styles.modalInput}
-                      value={editUsername}
-                      onChange={(e) => setEditUsername(e.target.value)}
-                      placeholder="Enter username"
-                      required
-                    />
-                  </div>
-
-                  <div style={styles.inputGroup}>
-                    <label style={styles.label}>New Password (Optional)</label>
-                    <input 
-                      type="password" 
-                      className="glass-input"
-                      style={styles.modalInput}
-                      value={editPassword}
-                      onChange={(e) => setEditPassword(e.target.value)}
-                      placeholder="Leave blank to keep current password"
-                    />
-                  </div>
-
-                  {profileMessage && (
-                    <div style={{
-                      ...styles.modalMessage,
-                      color: profileMessage.includes('successfully') ? '#10b981' : '#f43f5e'
-                    }}>
-                      {profileMessage}
-                    </div>
-                  )}
-
-                  <button 
-                    type="submit" 
-                    className="glass-btn glass-btn-primary" 
-                    style={styles.modalSubmitBtn}
-                    disabled={profileLoading}
+                  {/* Dialog Content Box */}
+                  <motion.div
+                    variants={{
+                      hidden: { opacity: 0, scale: 0.95, y: 15, rotateX: -5 },
+                      visible: { opacity: 1, scale: 1, y: 0, rotateX: 0 }
+                    }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                    className="glass-panel-heavy"
+                    style={{ ...styles.modalContent, transformStyle: 'preserve-3d' }}
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {profileLoading ? 'Saving Changes...' : 'Save Profile'}
-                  </button>
-                </form>
-              </div>
-            </div>,
+                    <div style={styles.modalHeader}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <UserIcon size={20} color="var(--theme-color-2)" />
+                        <h3 style={styles.modalTitle}>User Profile</h3>
+                      </div>
+                      <button style={styles.closeBtn} onClick={() => setShowProfileModal(false)}>
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleUpdateProfile} style={styles.modalBody}>
+                      <div style={styles.avatarSection}>
+                        <div style={styles.avatarContainer}>
+                          {editProfilePicture ? (
+                            <img src={editProfilePicture} style={styles.profilePreview} alt="Preview" />
+                          ) : (
+                            <UserIcon size={36} color="var(--theme-color-2)" />
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <label className="glass-btn" style={styles.uploadBtn}>
+                            <span>Choose Photo</span>
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              style={{ display: 'none' }} 
+                              onChange={handleFileChange}
+                            />
+                          </label>
+                          {editProfilePicture && (
+                            <button 
+                              type="button" 
+                              className="glass-btn" 
+                              style={styles.removeBtn}
+                              onClick={() => setEditProfilePicture('')}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={styles.inputGroup}>
+                        <label style={styles.label}>Username</label>
+                        <input 
+                          type="text" 
+                          className="glass-input"
+                          style={styles.modalInput}
+                          value={editUsername}
+                          onChange={(e) => setEditUsername(e.target.value)}
+                          placeholder="Enter username"
+                          required
+                        />
+                      </div>
+
+                      <div style={styles.inputGroup}>
+                        <label style={styles.label}>New Password (Optional)</label>
+                        <input 
+                          type="password" 
+                          className="glass-input"
+                          style={styles.modalInput}
+                          value={editPassword}
+                          onChange={(e) => setEditPassword(e.target.value)}
+                          placeholder="Leave blank to keep current password"
+                        />
+                      </div>
+
+                      {profileMessage && (
+                        <div style={{
+                          ...styles.modalMessage,
+                          color: profileMessage.includes('successfully') ? '#10b981' : '#f43f5e'
+                        }}>
+                          {profileMessage}
+                        </div>
+                      )}
+
+                      <button 
+                        type="submit" 
+                        className="glass-btn glass-btn-primary" 
+                        style={styles.modalSubmitBtn}
+                        disabled={profileLoading}
+                      >
+                        {profileLoading ? 'Saving Changes...' : 'Save Profile'}
+                      </button>
+                    </form>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>,
             document.body
           )}
         </motion.div>

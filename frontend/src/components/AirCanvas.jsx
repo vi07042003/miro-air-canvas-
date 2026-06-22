@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/purity, react-hooks/immutability, react-hooks/exhaustive-deps, no-unused-vars, react-hooks/set-state-in-effect */
 import { useRef, useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { 
   Palette, Eraser, Circle as CircleIcon, Trash2, Undo, Redo, Download, Save, Camera, CameraOff, Video, Crosshair, Zap, Triangle,
   Pencil, ChevronDown, Box, Image as ImageIcon, Paintbrush, ChevronLeft, ChevronRight, Type
@@ -1030,14 +1031,23 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       }
     }
 
-    startParticlesAnimationLoop()
+  }, [initialDrawing])
 
+  // Play or pause particles/3D rendering loop based on page activity
+  useEffect(() => {
+    if (isActivePage) {
+      startParticlesAnimationLoop()
+    } else {
+      if (animationFrameIdRef.current) {
+        cancelAnimationFrame(animationFrameIdRef.current)
+      }
+    }
     return () => {
       if (animationFrameIdRef.current) {
         cancelAnimationFrame(animationFrameIdRef.current)
       }
     }
-  }, [initialDrawing])
+  }, [isActivePage])
 
   const saveCanvasState = (isEmpty = false) => {
     const canvas = canvasRef.current
@@ -1957,6 +1967,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   }
 
   const startParticlesAnimationLoop = () => {
+    if (animationFrameIdRef.current) {
+      cancelAnimationFrame(animationFrameIdRef.current)
+    }
     const loop = () => {
       updateAndDrawParticles()
       trackFps()
@@ -2517,16 +2530,34 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
               onClick={() => handleModeSwitch('2d')}
               title="Switch to 2D Canvas"
             >
-              <Palette size={14} />
-              <span>2D Canvas</span>
+              {canvasMode === '2d' && (
+                <motion.div
+                  layoutId="active-canvas-mode-bg"
+                  style={styles.segmentedBtnActiveBg}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Palette size={14} />
+                <span>2D Canvas</span>
+              </span>
             </button>
             <button 
               style={canvasMode === '3d' ? styles.segmentedBtnActive : styles.segmentedBtn}
               onClick={() => handleModeSwitch('3d')}
               title="Switch to 3D digital wireframe canvas"
             >
-              <Box size={14} />
-              <span>3D Canvas</span>
+              {canvasMode === '3d' && (
+                <motion.div
+                  layoutId="active-canvas-mode-bg"
+                  style={styles.segmentedBtnActiveBg}
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Box size={14} />
+                <span>3D Canvas</span>
+              </span>
             </button>
           </div>
 
