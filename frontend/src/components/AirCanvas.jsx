@@ -2600,7 +2600,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             <Download size={16} />
             <span>Download</span>
           </button>
-          <button className="glass-btn glass-btn-primary" onClick={() => setShowSaveModal(true)} title="Save to database" disabled={isCanvasEmpty || canvasMode === '3d'}>
+          <button className="glass-btn glass-btn-primary" onClick={() => setShowSaveModal(true)} title="Save to database" disabled={isCanvasEmpty}>
             <Save size={16} />
             <span>Save to files</span>
           </button>

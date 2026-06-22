@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Image, Download, Trash2, Eye, Calendar, X, Edit } from 'lucide-react'
+import { Image, Download, Trash2, Eye, Calendar, X, Edit, ChevronLeft, ChevronRight } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import GlassDialog from './GlassDialog'
 
@@ -9,6 +9,19 @@ export default function Gallery({ onEditDrawing }) {
   const [loading, setLoading] = useState(true)
   const [selectedDrawing, setSelectedDrawing] = useState(null)
   const [errorMsg, setErrorMsg] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const pageSize = 8
+  const totalPages = Math.ceil(drawings.length / pageSize)
+  const startIndex = (currentPage - 1) * pageSize
+  const paginatedDrawings = drawings.slice(startIndex, startIndex + pageSize)
+
+  // Auto-correct page number if drawings are deleted
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages)
+    }
+  }, [drawings, totalPages, currentPage])
 
   // Custom Glass Dialog State
   const [dialog, setDialog] = useState({
@@ -136,64 +149,106 @@ export default function Gallery({ onEditDrawing }) {
             </p>
           </div>
         ) : (
-          <div style={styles.grid}>
-            {drawings.map((drawing) => (
-              <div 
-                key={drawing.id} 
-                className="glass-card" 
-                style={styles.card}
-                onClick={() => setSelectedDrawing(drawing)}
-              >
-                <div style={styles.imageWrapper}>
-                  <img src={drawing.image_data} alt={drawing.title} style={styles.image} />
-                  <div className="card-overlay" style={styles.cardOverlay}>
+          <>
+            <div style={styles.grid}>
+              {paginatedDrawings.map((drawing) => (
+                <div 
+                  key={drawing.id} 
+                  className="glass-card" 
+                  style={styles.card}
+                  onClick={() => setSelectedDrawing(drawing)}
+                >
+                  <div style={styles.imageWrapper}>
+                    <img src={drawing.image_data} alt={drawing.title} style={styles.image} />
+                    <div className="card-overlay" style={styles.cardOverlay}>
+                      <button 
+                        style={styles.overlayBtn} 
+                        onClick={() => setSelectedDrawing(drawing)}
+                        title="View Fullscreen"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      <button 
+                        style={styles.overlayBtn} 
+                        onClick={(e) => handleDownload(drawing, e)}
+                        title="Download Sketch"
+                      >
+                        <Download size={18} />
+                      </button>
+                    </div>
+                  </div>
+                  <div style={styles.cardInfo}>
+                    <h3 style={styles.cardTitle}>{drawing.title}</h3>
+                    <div style={styles.cardMeta}>
+                      <Calendar size={12} />
+                      <span>{drawing.created_at}</span>
+                    </div>
+                  </div>
+                  <div style={styles.cardActions}>
                     <button 
-                      style={styles.overlayBtn} 
-                      onClick={() => setSelectedDrawing(drawing)}
-                      title="View Fullscreen"
+                      className="glass-btn glass-btn-primary" 
+                      style={{ ...styles.actionBtn, marginRight: 'auto' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onEditDrawing(drawing)
+                      }}
                     >
-                      <Eye size={18} />
+                      <Edit size={14} />
+                      <span>Edit</span>
                     </button>
                     <button 
-                      style={styles.overlayBtn} 
-                      onClick={(e) => handleDownload(drawing, e)}
-                      title="Download Sketch"
+                      className="glass-btn" 
+                      style={{ ...styles.actionBtn, ...styles.deleteBtn }}
+                      onClick={(e) => handleDelete(drawing.id, e)}
                     >
-                      <Download size={18} />
+                      <Trash2 size={14} />
+                      <span>Delete</span>
                     </button>
                   </div>
                 </div>
-                <div style={styles.cardInfo}>
-                  <h3 style={styles.cardTitle}>{drawing.title}</h3>
-                  <div style={styles.cardMeta}>
-                    <Calendar size={12} />
-                    <span>{drawing.created_at}</span>
-                  </div>
-                </div>
-                <div style={styles.cardActions}>
-                  <button 
-                    className="glass-btn glass-btn-primary" 
-                    style={{ ...styles.actionBtn, marginRight: 'auto' }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onEditDrawing(drawing)
-                    }}
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div style={styles.paginationContainer}>
+                <button 
+                  style={{
+                    ...styles.paginationArrowBtn,
+                    ...(currentPage === 1 ? styles.paginationArrowBtnDisabled : {})
+                  }}
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="glass-btn"
+                >
+                  <ChevronLeft size={16} />
+                  <span>Prev</span>
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    style={currentPage === pageNum ? styles.paginationBtnActive : styles.paginationBtn}
+                    onClick={() => setCurrentPage(pageNum)}
                   >
-                    <Edit size={14} />
-                    <span>Edit</span>
+                    {pageNum}
                   </button>
-                  <button 
-                    className="glass-btn" 
-                    style={{ ...styles.actionBtn, ...styles.deleteBtn }}
-                    onClick={(e) => handleDelete(drawing.id, e)}
-                  >
-                    <Trash2 size={14} />
-                    <span>Delete</span>
-                  </button>
-                </div>
+                ))}
+
+                <button 
+                  style={{
+                    ...styles.paginationArrowBtn,
+                    ...(currentPage === totalPages ? styles.paginationArrowBtnDisabled : {})
+                  }}
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="glass-btn"
+                >
+                  <span>Next</span>
+                  <ChevronRight size={16} />
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
@@ -270,7 +325,9 @@ const styles = {
   container: {
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '20px 0',
+    padding: '20px 0 100px 0',
+    minHeight: 'calc(100vh - 180px)',
+    position: 'relative',
   },
   title: {
     fontFamily: 'var(--font-title)',
@@ -492,6 +549,75 @@ const styles = {
     background: 'rgba(244, 63, 94, 0.1)',
     borderColor: 'rgba(244, 63, 94, 0.2)',
     color: '#fda4af',
+  },
+  paginationContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '8px',
+    position: 'absolute',
+    bottom: '24px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 100,
+    background: 'rgba(15, 10, 30, 0.65)',
+    backdropFilter: 'blur(16px)',
+    WebkitBackdropFilter: 'blur(16px)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    padding: '8px 16px',
+    borderRadius: '16px',
+    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+  },
+  paginationBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '44px',
+    height: '44px',
+    borderRadius: '12px',
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    fontSize: '15px',
+    fontWeight: '600',
+    transition: 'all 0.2s ease',
+  },
+  paginationBtnActive: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '44px',
+    height: '44px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%)',
+    border: '1px solid rgba(255, 255, 255, 0.18)',
+    color: '#ffffff',
+    cursor: 'pointer',
+    fontSize: '15px',
+    fontWeight: '700',
+    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 10px rgba(0, 0, 0, 0.15)',
+  },
+  paginationArrowBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 16px',
+    height: '44px',
+    borderRadius: '12px',
+    background: 'rgba(255, 255, 255, 0.03)',
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600',
+    transition: 'all 0.2s ease',
+    gap: '6px',
+  },
+  paginationArrowBtnDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+    pointerEvents: 'none',
   }
 }
 
