@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -643,3 +643,74 @@ class PredictShapeRequest(BaseModel):
 def api_predict_shape(payload: PredictShapeRequest):
     pts = [(pt.x, pt.y) for pt in payload.points]
     return predict_shape(pts)
+
+
+# --- Backend OpenCV & MediaPipe Hand Tracking WebSocket ---
+
+@app.websocket("/api/ws/hand-tracking")
+async def websocket_hand_tracking(websocket: WebSocket, confidence: float = 0.5):
+    """
+    Accepts raw binary images from the client, processes them using OpenCV and MediaPipe,
+    and returns detected hand landmarks.
+    """
+    await websocket.accept()
+    
+    # Lazily import opencv and mediapipe to keep startup fast
+    import cv2
+    import numpy as np
+    import mediapipe as mp
+    
+    mp_hands = mp.solutions.hands
+    
+    # Initialize MediaPipe Hands inside a context manager for proper cleanup
+    with mp_hands.Hands(
+        static_image_mode=False,
+        max_num_hands=1,
+        model_complexity=1,
+        min_detection_confidence=confidence,
+        min_tracking_confidence=confidence
+    ) as hands:
+        try:
+            while True:
+                # Receive binary frame from client
+                data = await websocket.receive_bytes()
+                if not data:
+                    break
+                    
+                # Decode the frame using OpenCV
+                nparr = np.frombuffer(data, np.uint8)
+                img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                if img is None:
+                    await websocket.send_json({"error": "Failed to decode frame", "multiHandLandmarks": []})
+                    continue
+                
+                # Convert the BGR image to RGB (MediaPipe requires RGB)
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                
+                # Process the image with MediaPipe
+                results = hands.process(img_rgb)
+                
+                # Build the response landmarks
+                response = {"multiHandLandmarks": []}
+                if results.multi_hand_landmarks:
+                    for hand_landmarks in results.multi_hand_landmarks:
+                        landmarks_list = []
+                        for lm in hand_landmarks.landmark:
+                            landmarks_list.append({
+                                "x": lm.x,
+                                "y": lm.y,
+                                "z": lm.z
+                            })
+                        response["multiHandLandmarks"].append(landmarks_list)
+                
+                # Send the landmarks back to the client
+                await websocket.send_json(response)
+                
+        except WebSocketDisconnect:
+            pass
+        except Exception as e:
+            # Send error details and close cleanly
+            try:
+                await websocket.send_json({"error": str(e), "multiHandLandmarks": []})
+            except Exception:
+                pass

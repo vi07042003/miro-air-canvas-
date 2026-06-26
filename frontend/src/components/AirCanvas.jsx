@@ -977,6 +977,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   // Particles Trail System Reference
   const particlesRef = useRef([])
   const animationFrameIdRef = useRef(null)
+  const wsRef = useRef(null)
   
   // FPS tracker references
   const fpsTrackerRef = useRef({
@@ -2066,18 +2067,21 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     let cameraInstance = null
     let active = true
 
+    // If camera is turned off or page is inactive, reset loader immediately and stop
+    if (!isCameraOn || !isActivePage) {
+      setCameraLoading(false)
+      return
+    }
+
     const initTracking = () => {
-      if (!isCameraOn || !isActivePage) return
-      
-      const HandsLib = window.Hands
       const CameraLib = window.Camera
 
-      if (!HandsLib || !CameraLib) {
+      if (!CameraLib) {
         setDialog({
           isOpen: true,
           type: 'alert',
-          title: 'MediaPipe Load Error',
-          message: 'MediaPipe tracking script libraries failed to load. Please check your network connection and reload.',
+          title: 'Camera Library Load Error',
+          message: 'Camera utility script libraries failed to load. Please check your network connection and reload.',
           confirmText: 'OK',
           onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
         })
@@ -2086,30 +2090,75 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       }
 
       setCameraLoading(true)
-
-      const hands = new HandsLib({
-        locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-      })
-
-      const confidence = parseFloat(settings.detectionConfidence) || 0.5
-      hands.setOptions({
-        maxNumHands: 1,
-        modelComplexity: 1,
-        minDetectionConfidence: confidence,
-        minTrackingConfidence: confidence
-      })
-
-      hands.onResults((results) => {
+      
+      // Initialize WebSocket for backend hand tracking with dynamic confidence
+      const wsProtocol = BACKEND_URL.startsWith('https') ? 'wss' : 'ws'
+      const wsHost = BACKEND_URL.replace(/^https?:\/\//, '')
+      const confidence = settings.detectionConfidence || '0.5'
+      const wsUrl = `${wsProtocol}://${wsHost}/api/ws/hand-tracking?confidence=${confidence}`
+      
+      console.log("Connecting hand tracking WebSocket:", wsUrl)
+      const ws = new WebSocket(wsUrl)
+      wsRef.current = ws
+      
+      let isProcessingFrame = false
+      
+      ws.onopen = () => {
+        console.log("Backend hand tracking WebSocket connected.")
+      }
+      
+      ws.onmessage = (event) => {
         if (!active) return
         setCameraLoading(false)
-        processTrackingResults(results)
-      })
-
+        isProcessingFrame = false
+        
+        try {
+          const results = JSON.parse(event.data)
+          if (results.error) {
+            console.error("Backend hand tracking error:", results.error)
+            return
+          }
+          processTrackingResults(results)
+        } catch (e) {
+          console.error("Failed to parse backend hand tracking results:", e)
+        }
+      }
+      
+      ws.onerror = (err) => {
+        console.error("WebSocket hand tracking error:", err)
+        if (active) setCameraLoading(false)
+      }
+      
+      ws.onclose = () => {
+        console.log("WebSocket hand tracking closed.")
+        if (active) setCameraLoading(false)
+      }
+      
+      // Offscreen canvas to capture and compress frame to send
+      const offscreenCanvas = document.createElement('canvas')
+      offscreenCanvas.width = 320
+      offscreenCanvas.height = 240
+      const offscreenCtx = offscreenCanvas.getContext('2d')
+      
       if (videoRef.current) {
         cameraInstance = new CameraLib(videoRef.current, {
           onFrame: async () => {
-            if (videoRef.current && isCameraOn && isActivePage) {
-              await hands.send({ image: videoRef.current })
+            if (!active || !isCameraOn || !isActivePage) return
+            
+            if (ws.readyState === WebSocket.OPEN && !isProcessingFrame) {
+              isProcessingFrame = true
+              
+              // Draw current video frame to offscreen canvas
+              offscreenCtx.drawImage(videoRef.current, 0, 0, offscreenCanvas.width, offscreenCanvas.height)
+              
+              // Convert to JPEG blob and send to backend
+              offscreenCanvas.toBlob((blob) => {
+                if (blob && ws.readyState === WebSocket.OPEN) {
+                  ws.send(blob)
+                } else {
+                  isProcessingFrame = false
+                }
+              }, 'image/jpeg', 0.6)
             }
           },
           width: 320,
@@ -2129,6 +2178,14 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         } catch (e) {
           console.error(e)
         }
+      }
+      if (wsRef.current) {
+        try {
+          wsRef.current.close()
+        } catch (e) {
+          console.error(e)
+        }
+        wsRef.current = null
       }
     }
   }, [isCameraOn, settings.detectionConfidence, isActivePage])
