@@ -13,6 +13,7 @@ export const TOOL_GROUPS = [
   {
     name: 'Drawing & Painting',
     tools: [
+      { id: 'select', name: 'Select & Move', icon: 'Move' },
       { id: 'brush', name: 'Paint Brush', icon: 'Palette' },
       { id: 'pencil', name: 'Sharp Pencil', icon: 'Pencil' },
       { id: 'highlighter', name: 'Highlighter', icon: 'Highlighter' },

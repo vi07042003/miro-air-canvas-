@@ -898,6 +898,123 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const previewSize3DRef = useRef(40)
   const canvas2DDataRef = useRef(null)
 
+  const selectionRef = useRef({
+    active: false,
+    rect: null, // { x, y, w, h }
+    pixels: null, // ImageData
+    backgroundData: null, // ImageData
+    originalCanvasData: null, // ImageData
+    isSelecting: false,
+    isMoving: false,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0
+  })
+
+  const drawMarqueeOutline = (ctx, rect) => {
+    if (!rect) return
+    ctx.save()
+    ctx.strokeStyle = '#38bdf8'
+    ctx.lineWidth = 2
+    ctx.setLineDash([6, 4])
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)'
+    ctx.shadowBlur = 4
+    
+    // Draw outer boundary
+    ctx.strokeRect(rect.x, rect.y, rect.w, rect.h)
+    
+    // Draw little handles at corners
+    ctx.fillStyle = '#38bdf8'
+    const handleSize = 6
+    ctx.fillRect(rect.x - handleSize/2, rect.y - handleSize/2, handleSize, handleSize)
+    ctx.fillRect(rect.x + rect.w - handleSize/2, rect.y - handleSize/2, handleSize, handleSize)
+    ctx.fillRect(rect.x - handleSize/2, rect.y + rect.h - handleSize/2, handleSize, handleSize)
+    ctx.fillRect(rect.x + rect.w - handleSize/2, rect.y + rect.h - handleSize/2, handleSize, handleSize)
+    
+    ctx.restore()
+  }
+
+  const commitSelection = () => {
+    const sel = selectionRef.current
+    if (!sel.active) return
+    
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    
+    // Put background data back
+    if (sel.backgroundData) {
+      safePutImageData(ctx, sel.backgroundData)
+    }
+    
+    // Draw the floating pixels at final position
+    if (sel.pixels && sel.rect) {
+      const offscreen = document.createElement('canvas')
+      offscreen.width = sel.pixels.width
+      offscreen.height = sel.pixels.height
+      const offscreenCtx = offscreen.getContext('2d')
+      offscreenCtx.putImageData(sel.pixels, 0, 0)
+      ctx.drawImage(offscreen, sel.rect.x, sel.rect.y)
+    }
+    
+    sel.active = false
+    sel.rect = null
+    sel.pixels = null
+    sel.backgroundData = null
+    sel.originalCanvasData = null
+    sel.isSelecting = false
+    sel.isMoving = false
+    
+    saveCanvasState()
+  }
+
+  const cancelSelection = () => {
+    const sel = selectionRef.current
+    if (!sel.active) return
+    
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    
+    // Restore the canvas to the state before selection started
+    if (sel.originalCanvasData) {
+      safePutImageData(ctx, sel.originalCanvasData)
+    }
+    
+    sel.active = false
+    sel.rect = null
+    sel.pixels = null
+    sel.backgroundData = null
+    sel.originalCanvasData = null
+    sel.isSelecting = false
+    sel.isMoving = false
+  }
+
+  const deleteSelection = () => {
+    const sel = selectionRef.current
+    if (!sel.active) return
+    
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    
+    // Put background data (which has cutout filled with bg color)
+    if (sel.backgroundData) {
+      safePutImageData(ctx, sel.backgroundData)
+    }
+    
+    sel.active = false
+    sel.rect = null
+    sel.pixels = null
+    sel.backgroundData = null
+    sel.originalCanvasData = null
+    sel.isSelecting = false
+    sel.isMoving = false
+    
+    saveCanvasState()
+  }
+
   const set3DTool = (t) => {
     setActive3DToolState(t)
     active3DToolRef.current = t
@@ -1050,6 +1167,77 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
   }, [isActivePage])
 
+  // Commit active selection if tool changes away from 'select', and commit text if tool changes away from 'text'
+  useEffect(() => {
+    if (tool !== 'select') {
+      commitSelection()
+    }
+    if (tool !== 'text' && textInputRef.current) {
+      commitTextInput()
+    }
+    const canvas = canvasRef.current
+    if (canvas) {
+      canvas.style.cursor = tool === 'select' ? 'default' : 'crosshair'
+    }
+  }, [tool])
+
+  // Listen to keyboard shortcuts for selection manipulation (Nudge, Delete, Cancel)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (stateRef.current.canvasMode === '3d') return
+      
+      const sel = selectionRef.current
+      if (!sel.active) return
+      
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      
+      let moved = false
+      let nudgeAmt = e.shiftKey ? 10 : 2
+      
+      if (e.key === 'ArrowUp') {
+        sel.rect.y -= nudgeAmt
+        moved = true
+      } else if (e.key === 'ArrowDown') {
+        sel.rect.y += nudgeAmt
+        moved = true
+      } else if (e.key === 'ArrowLeft') {
+        sel.rect.x -= nudgeAmt
+        moved = true
+      } else if (e.key === 'ArrowRight') {
+        sel.rect.x += nudgeAmt
+        moved = true
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault()
+        deleteSelection()
+        return
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        cancelSelection()
+        return
+      }
+      
+      if (moved) {
+        e.preventDefault()
+        // Redraw canvas with new position
+        safePutImageData(ctx, sel.backgroundData)
+        if (sel.pixels) {
+          const offscreen = document.createElement('canvas')
+          offscreen.width = sel.pixels.width
+          offscreen.height = sel.pixels.height
+          const offscreenCtx = offscreen.getContext('2d')
+          offscreenCtx.putImageData(sel.pixels, 0, 0)
+          ctx.drawImage(offscreen, sel.rect.x, sel.rect.y)
+        }
+        drawMarqueeOutline(ctx, sel.rect)
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
+
   const saveCanvasState = (isEmpty = false) => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -1066,6 +1254,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
   const handleModeSwitch = (newMode) => {
     if (newMode === canvasMode) return
+    
+    if (selectionRef.current.active) {
+      commitSelection()
+    }
     
     const canvas = canvasRef.current
     if (!canvas) return
@@ -1098,6 +1290,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       handleUndo3D()
       return
     }
+    if (selectionRef.current.active) {
+      commitSelection()
+    }
     if (undoStack.length <= 1) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
@@ -1126,6 +1321,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       handleRedo3D()
       return
     }
+    if (selectionRef.current.active) {
+      commitSelection()
+    }
     if (redoStack.length === 0) return
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d')
@@ -1151,6 +1349,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     if (canvasMode === '3d') {
       handleClear3D()
       return
+    }
+    if (selectionRef.current.active) {
+      commitSelection()
     }
     setDialog({
       isOpen: true,
@@ -1304,7 +1505,36 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const scaleY = canvas.height / rect.height
     const x = (e.clientX - rect.left) * scaleX
     const y = (e.clientY - rect.top) * scaleY
-    startDraw(x, y)
+    
+    if (stateRef.current.tool === 'select') {
+      if (textInputRef.current) {
+        commitTextInput()
+      }
+      e.preventDefault()
+      const sel = selectionRef.current
+      
+      const clickedInside = sel.active && sel.rect &&
+        x >= sel.rect.x && x <= sel.rect.x + sel.rect.w &&
+        y >= sel.rect.y && y <= sel.rect.y + sel.rect.h
+        
+      if (clickedInside) {
+        sel.isMoving = true
+        sel.startX = x
+        sel.startY = y
+        sel.lastX = sel.rect.x
+        sel.lastY = sel.rect.y
+      } else {
+        commitSelection()
+        sel.isSelecting = true
+        sel.startX = x
+        sel.startY = y
+        const ctx = canvas.getContext('2d')
+        sel.originalCanvasData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        sel.rect = null
+      }
+    } else {
+      startDraw(x, y)
+    }
   }
 
   const handleMouseMove = (e) => {
@@ -1317,14 +1547,47 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       return
     }
     
-    if (!drawingRef.current.isDrawing) return
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
     const x = (e.clientX - rect.left) * scaleX
     const y = (e.clientY - rect.top) * scaleY
     
-    addParticles(x, y, stateRef.current.color)
-    drawMove(x, y)
+    if (stateRef.current.tool === 'select') {
+      e.preventDefault()
+      const sel = selectionRef.current
+      const ctx = canvas.getContext('2d')
+      
+      if (sel.isSelecting) {
+        const x1 = Math.min(sel.startX, x)
+        const y1 = Math.min(sel.startY, y)
+        const w = Math.abs(x - sel.startX)
+        const h = Math.abs(y - sel.startY)
+        sel.rect = { x: x1, y: y1, w, h }
+        
+        safePutImageData(ctx, sel.originalCanvasData)
+        drawMarqueeOutline(ctx, sel.rect)
+      } else if (sel.isMoving) {
+        const dx = x - sel.startX
+        const dy = y - sel.startY
+        sel.rect.x = sel.lastX + dx
+        sel.rect.y = sel.lastY + dy
+        
+        safePutImageData(ctx, sel.backgroundData)
+        if (sel.pixels) {
+          const offscreen = document.createElement('canvas')
+          offscreen.width = sel.pixels.width
+          offscreen.height = sel.pixels.height
+          const offscreenCtx = offscreen.getContext('2d')
+          offscreenCtx.putImageData(sel.pixels, 0, 0)
+          ctx.drawImage(offscreen, sel.rect.x, sel.rect.y)
+        }
+        drawMarqueeOutline(ctx, sel.rect)
+      }
+    } else {
+      if (!drawingRef.current.isDrawing) return
+      addParticles(x, y, stateRef.current.color)
+      drawMove(x, y)
+    }
   }
 
   const handleMouseUp = () => {
@@ -1332,8 +1595,63 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       handleMouseUp3D()
       return
     }
-    if (!drawingRef.current.isDrawing) return
-    endDraw()
+    
+    if (stateRef.current.tool === 'select') {
+      const sel = selectionRef.current
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const ctx = canvas.getContext('2d')
+      
+      if (sel.isSelecting) {
+        sel.isSelecting = false
+        if (sel.rect && sel.rect.w > 4 && sel.rect.h > 4) {
+          // Restore clean canvas to avoid capturing the marquee outline in pixels or background
+          if (sel.originalCanvasData) {
+            safePutImageData(ctx, sel.originalCanvasData)
+          }
+          sel.pixels = ctx.getImageData(sel.rect.x, sel.rect.y, sel.rect.w, sel.rect.h)
+          ctx.fillStyle = '#0a0518'
+          ctx.fillRect(sel.rect.x, sel.rect.y, sel.rect.w, sel.rect.h)
+          sel.backgroundData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+          
+          safePutImageData(ctx, sel.backgroundData)
+          if (sel.pixels) {
+            const offscreen = document.createElement('canvas')
+            offscreen.width = sel.pixels.width
+            offscreen.height = sel.pixels.height
+            const offscreenCtx = offscreen.getContext('2d')
+            offscreenCtx.putImageData(sel.pixels, 0, 0)
+            ctx.drawImage(offscreen, sel.rect.x, sel.rect.y)
+          }
+          drawMarqueeOutline(ctx, sel.rect)
+          sel.active = true
+        } else {
+          if (sel.originalCanvasData) {
+            safePutImageData(ctx, sel.originalCanvasData)
+          }
+          sel.active = false
+          sel.rect = null
+          sel.pixels = null
+          sel.backgroundData = null
+          sel.originalCanvasData = null
+        }
+      } else if (sel.isMoving) {
+        sel.isMoving = false
+        safePutImageData(ctx, sel.backgroundData)
+        if (sel.pixels) {
+          const offscreen = document.createElement('canvas')
+          offscreen.width = sel.pixels.width
+          offscreen.height = sel.pixels.height
+          const offscreenCtx = offscreen.getContext('2d')
+          offscreenCtx.putImageData(sel.pixels, 0, 0)
+          ctx.drawImage(offscreen, sel.rect.x, sel.rect.y)
+        }
+        drawMarqueeOutline(ctx, sel.rect)
+      }
+    } else {
+      if (!drawingRef.current.isDrawing) return
+      endDraw()
+    }
   }
 
   const commitTextInput = () => {
@@ -1342,7 +1660,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     
     // Protect against instant blur caused by browser click event cycle
     const age = Date.now() - (currentInput.createdAt || 0)
-    if (age < 300) {
+    if (age < 300 && stateRef.current.tool === 'text') {
       setTimeout(() => {
         const inputEl = document.getElementById('canvas-text-input')
         if (inputEl) inputEl.focus()
@@ -1375,6 +1693,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   }
 
   const startDraw = (x, y) => {
+    if (stateRef.current.tool === 'select') return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -1412,6 +1731,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   }
 
   const drawMove = (x, y) => {
+    if (stateRef.current.tool === 'select') return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -1548,6 +1868,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   }
 
   const endDraw = () => {
+    if (stateRef.current.tool === 'select') return
     const drawState = drawingRef.current
     drawState.isDrawing = false
     
@@ -1598,6 +1919,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   }
 
   const stampShape = (x, y, radius, shapeType, colorVal, sizeVal, opacityVal) => {
+    if (stateRef.current.tool === 'select') return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -2319,53 +2641,174 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         drawState.waveHistory = []
       }
 
-      const isIndexUp = indexTip.y < indexPip.y
-      const isMiddleUp = middleTip.y < middlePip.y
-
-      if (isIndexUp && !isMiddleUp) {
-        const isShapeTool = !['brush', 'pencil', 'highlighter', 'spray', 'eraser', 'text'].includes(currentTool)
+      if (currentTool === 'select') {
+        const thumbTip = landmarks[4]
+        const pinchDist = Math.sqrt(
+          Math.pow(indexTip.x - thumbTip.x, 2) +
+          Math.pow(indexTip.y - thumbTip.y, 2)
+        )
+        const isPinching = pinchDist < 0.045
         
-        if (isShapeTool) {
-          const thumbTip = landmarks[4]
-          const pinchDist = Math.sqrt(
-            Math.pow(indexTip.x - thumbTip.x, 2) +
-            Math.pow(indexTip.y - thumbTip.y, 2)
-          )
-          
-          if (pinchDist > 0.05) {
-            currentMode = 'Shape Sizing'
-            
-            if (drawState.isDrawing) {
-              endDraw()
-            }
-            
-            drawState.wasSizing = true
-            drawState.sizingRadius = pinchDist * canvas.width * 0.8
-          } else if (drawState.wasSizing) {
-            currentMode = 'Shape Lock'
-          }
-          if (pinchDist > 0.05 || drawState.wasSizing) {
-            hCtx.strokeStyle = currentColor
-            hCtx.lineWidth = 3
-            hCtx.globalAlpha = 0.8
-            hCtx.beginPath()
-            const previewRadius = drawState.sizingRadius
-            
-            drawShapePath(hCtx, currentTool, x - previewRadius, y - previewRadius, x + previewRadius, y + previewRadius)
-            hCtx.stroke()
-            
-            hCtx.fillStyle = '#ffffff'
-            hCtx.font = 'bold 13px sans-serif'
-            hCtx.shadowColor = 'black'
-            hCtx.shadowBlur = 4
-            if (currentMode === 'Shape Sizing') {
-              hCtx.fillText(`Sizing: ${Math.round(previewRadius)}px`, x - 35, y - previewRadius - 28)
-              hCtx.fillText("Tuck thumb to lock size", x - 65, y - previewRadius - 10)
+        const sel = selectionRef.current
+        const mainCtx = canvas.getContext('2d')
+
+        if (isPinching) {
+          const clickedInside = sel.active && sel.rect &&
+            x >= sel.rect.x && x <= sel.rect.x + sel.rect.w &&
+            y >= sel.rect.y && y <= sel.rect.y + sel.rect.h
+
+          if (clickedInside || sel.isMoving) {
+            currentMode = 'Pinch Move'
+            if (!sel.isMoving) {
+              sel.isMoving = true
+              sel.startX = x
+              sel.startY = y
+              sel.lastX = sel.rect.x
+              sel.lastY = sel.rect.y
             } else {
-              hCtx.fillText(`Size Locked: ${Math.round(previewRadius)}px`, x - 45, y - previewRadius - 28)
-              hCtx.fillText("Close fist to STAMP shape", x - 70, y - previewRadius - 10)
+              const dx = x - sel.startX
+              const dy = y - sel.startY
+              sel.rect.x = sel.lastX + dx
+              sel.rect.y = sel.lastY + dy
+
+              safePutImageData(mainCtx, sel.backgroundData)
+              if (sel.pixels) {
+                const offscreen = document.createElement('canvas')
+                offscreen.width = sel.pixels.width
+                offscreen.height = sel.pixels.height
+                const offscreenCtx = offscreen.getContext('2d')
+                offscreenCtx.putImageData(sel.pixels, 0, 0)
+                mainCtx.drawImage(offscreen, sel.rect.x, sel.rect.y)
+              }
+              drawMarqueeOutline(mainCtx, sel.rect)
             }
-            hCtx.shadowBlur = 0
+          } else {
+            currentMode = 'Pinch Select'
+            if (!sel.isSelecting) {
+              if (sel.active) {
+                commitSelection()
+              }
+              sel.isSelecting = true
+              sel.startX = x
+              sel.startY = y
+              sel.originalCanvasData = mainCtx.getImageData(0, 0, canvas.width, canvas.height)
+              sel.rect = null
+            } else {
+              const x1 = Math.min(sel.startX, x)
+              const y1 = Math.min(sel.startY, y)
+              const w = Math.abs(x - sel.startX)
+              const h = Math.abs(y - sel.startY)
+              sel.rect = { x: x1, y: y1, w, h }
+
+              safePutImageData(mainCtx, sel.originalCanvasData)
+              drawMarqueeOutline(mainCtx, sel.rect)
+            }
+          }
+        } else {
+          currentMode = 'Hover'
+          if (sel.isSelecting) {
+            sel.isSelecting = false
+            if (sel.rect && sel.rect.w > 4 && sel.rect.h > 4) {
+              // Restore clean canvas to avoid capturing the marquee outline in pixels or background
+              if (sel.originalCanvasData) {
+                safePutImageData(mainCtx, sel.originalCanvasData)
+              }
+              sel.pixels = mainCtx.getImageData(sel.rect.x, sel.rect.y, sel.rect.w, sel.rect.h)
+              mainCtx.fillStyle = '#0a0518'
+              mainCtx.fillRect(sel.rect.x, sel.rect.y, sel.rect.w, sel.rect.h)
+              sel.backgroundData = mainCtx.getImageData(0, 0, canvas.width, canvas.height)
+              
+              safePutImageData(mainCtx, sel.backgroundData)
+              if (sel.pixels) {
+                const offscreen = document.createElement('canvas')
+                offscreen.width = sel.pixels.width
+                offscreen.height = sel.pixels.height
+                const offscreenCtx = offscreen.getContext('2d')
+                offscreenCtx.putImageData(sel.pixels, 0, 0)
+                mainCtx.drawImage(offscreen, sel.rect.x, sel.rect.y)
+              }
+              drawMarqueeOutline(mainCtx, sel.rect)
+              sel.active = true
+            } else {
+              if (sel.originalCanvasData) {
+                safePutImageData(mainCtx, sel.originalCanvasData)
+              }
+              sel.active = false
+              sel.rect = null
+              sel.pixels = null
+              sel.backgroundData = null
+              sel.originalCanvasData = null
+            }
+          } else if (sel.isMoving) {
+            sel.isMoving = false
+            safePutImageData(mainCtx, sel.backgroundData)
+            if (sel.pixels) {
+              const offscreen = document.createElement('canvas')
+              offscreen.width = sel.pixels.width
+              offscreen.height = sel.pixels.height
+              const offscreenCtx = offscreen.getContext('2d')
+              offscreenCtx.putImageData(sel.pixels, 0, 0)
+              mainCtx.drawImage(offscreen, sel.rect.x, sel.rect.y)
+            }
+            drawMarqueeOutline(mainCtx, sel.rect)
+          }
+        }
+      } else {
+        const isIndexUp = indexTip.y < indexPip.y
+        const isMiddleUp = middleTip.y < middlePip.y
+
+        if (isIndexUp && !isMiddleUp) {
+          const isShapeTool = !['brush', 'pencil', 'highlighter', 'spray', 'eraser', 'text'].includes(currentTool)
+          
+          if (isShapeTool) {
+            const thumbTip = landmarks[4]
+            const pinchDist = Math.sqrt(
+              Math.pow(indexTip.x - thumbTip.x, 2) +
+              Math.pow(indexTip.y - thumbTip.y, 2)
+            )
+            
+            if (pinchDist > 0.05) {
+              currentMode = 'Shape Sizing'
+              
+              if (drawState.isDrawing) {
+                endDraw()
+              }
+              
+              drawState.wasSizing = true
+              drawState.sizingRadius = pinchDist * canvas.width * 0.8
+            } else if (drawState.wasSizing) {
+              currentMode = 'Shape Lock'
+            }
+            if (pinchDist > 0.05 || drawState.wasSizing) {
+              hCtx.strokeStyle = currentColor
+              hCtx.lineWidth = 3
+              hCtx.globalAlpha = 0.8
+              hCtx.beginPath()
+              const previewRadius = drawState.sizingRadius
+              
+              drawShapePath(hCtx, currentTool, x - previewRadius, y - previewRadius, x + previewRadius, y + previewRadius)
+              hCtx.stroke()
+              
+              hCtx.fillStyle = '#ffffff'
+              hCtx.font = 'bold 13px sans-serif'
+              hCtx.shadowColor = 'black'
+              hCtx.shadowBlur = 4
+              if (currentMode === 'Shape Sizing') {
+                hCtx.fillText(`Sizing: ${Math.round(previewRadius)}px`, x - 35, y - previewRadius - 28)
+                hCtx.fillText("Tuck thumb to lock size", x - 65, y - previewRadius - 10)
+              } else {
+                hCtx.fillText(`Size Locked: ${Math.round(previewRadius)}px`, x - 45, y - previewRadius - 28)
+                hCtx.fillText("Close fist to STAMP shape", x - 70, y - previewRadius - 10)
+              }
+              hCtx.shadowBlur = 0
+            } else {
+              currentMode = 'Drawing'
+              if (!drawState.isDrawing) {
+                startDraw(x, y)
+              } else {
+                drawMove(x, y)
+              }
+            }
           } else {
             currentMode = 'Drawing'
             if (!drawState.isDrawing) {
@@ -2374,31 +2817,24 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
               drawMove(x, y)
             }
           }
-        } else {
-          currentMode = 'Drawing'
-          if (!drawState.isDrawing) {
-            startDraw(x, y)
-          } else {
-            drawMove(x, y)
-          }
-        }
-      } else if (isIndexUp && isMiddleUp) {
-        currentMode = 'Hover'
-        drawState.wasSizing = false
-        drawState.sizingRadius = 0
-        if (drawState.isDrawing) {
-          endDraw()
-        }
-      } else {
-        if (drawState.wasSizing) {
-          stampShape(x, y, drawState.sizingRadius, currentTool, currentColor, stateRef.current.brushSize, stateRef.current.brushOpacity)
+        } else if (isIndexUp && isMiddleUp) {
+          currentMode = 'Hover'
           drawState.wasSizing = false
           drawState.sizingRadius = 0
-          currentMode = 'Shape Stamped'
-        } else {
-          currentMode = 'None'
           if (drawState.isDrawing) {
             endDraw()
+          }
+        } else {
+          if (drawState.wasSizing) {
+            stampShape(x, y, drawState.sizingRadius, currentTool, currentColor, stateRef.current.brushSize, stateRef.current.brushOpacity)
+            drawState.wasSizing = false
+            drawState.sizingRadius = 0
+            currentMode = 'Shape Stamped'
+          } else {
+            currentMode = 'None'
+            if (drawState.isDrawing) {
+              endDraw()
+            }
           }
         }
       }
