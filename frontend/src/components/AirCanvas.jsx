@@ -1420,6 +1420,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const { tool: currentTool, color: currentColor, brushSize: currentBrushSize, brushOpacity: currentBrushOpacity, stabilizeEnabled: currentStabilizeEnabled } = stateRef.current
 
     ctx.strokeStyle = currentTool === 'eraser' ? '#0a0518' : currentColor
+    ctx.fillStyle = currentTool === 'eraser' ? '#0a0518' : currentColor
     ctx.lineWidth = currentBrushSize
     ctx.globalAlpha = currentBrushOpacity
     ctx.lineCap = 'round'
