@@ -898,6 +898,42 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const previewSize3DRef = useRef(40)
   const canvas2DDataRef = useRef(null)
 
+  const drawnShapesRef = useRef([])
+
+  const expandSelectionToContainIntersectingShapes = (rect) => {
+    if (!rect) return rect
+    let currentRect = { ...rect }
+    let expanded = true
+    const shapes = drawnShapesRef.current
+    const visited = new Set()
+    
+    while (expanded) {
+      expanded = false
+      for (let i = 0; i < shapes.length; i++) {
+        if (visited.has(i)) continue
+        const s = shapes[i]
+        
+        // Check intersection
+        const intersects = 
+          currentRect.x < s.x + s.w &&
+          currentRect.x + currentRect.w > s.x &&
+          currentRect.y < s.y + s.h &&
+          currentRect.y + currentRect.h > s.y
+          
+        if (intersects) {
+          visited.add(i)
+          const x1 = Math.min(currentRect.x, s.x)
+          const y1 = Math.min(currentRect.y, s.y)
+          const x2 = Math.max(currentRect.x + currentRect.w, s.x + s.w)
+          const y2 = Math.max(currentRect.y + currentRect.h, s.y + s.h)
+          currentRect = { x: x1, y: y1, w: x2 - x1, h: y2 - y1 }
+          expanded = true
+        }
+      }
+    }
+    return currentRect
+  }
+
   const selectionRef = useRef({
     active: false,
     rect: null, // { x, y, w, h }
@@ -909,7 +945,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     startX: 0,
     startY: 0,
     lastX: 0,
-    lastY: 0
+    lastY: 0,
+    selectedShapeIndices: [],
+    originalRect: null
   })
 
   const drawMarqueeOutline = (ctx, rect) => {
@@ -958,6 +996,18 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       ctx.drawImage(offscreen, sel.rect.x, sel.rect.y)
     }
     
+    // Offset the coordinates of the selected shapes
+    if (sel.selectedShapeIndices && sel.selectedShapeIndices.length > 0 && sel.originalRect && sel.rect) {
+      const dx = sel.rect.x - sel.originalRect.x
+      const dy = sel.rect.y - sel.originalRect.y
+      sel.selectedShapeIndices.forEach(idx => {
+        if (drawnShapesRef.current[idx]) {
+          drawnShapesRef.current[idx].x += dx
+          drawnShapesRef.current[idx].y += dy
+        }
+      })
+    }
+    
     sel.active = false
     sel.rect = null
     sel.pixels = null
@@ -965,6 +1015,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     sel.originalCanvasData = null
     sel.isSelecting = false
     sel.isMoving = false
+    sel.selectedShapeIndices = []
+    sel.originalRect = null
     
     saveCanvasState()
   }
@@ -989,6 +1041,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     sel.originalCanvasData = null
     sel.isSelecting = false
     sel.isMoving = false
+    sel.selectedShapeIndices = []
+    sel.originalRect = null
   }
 
   const deleteSelection = () => {
@@ -1004,6 +1058,11 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       safePutImageData(ctx, sel.backgroundData)
     }
     
+    // Remove the selected shapes from drawnShapesRef
+    if (sel.selectedShapeIndices && sel.selectedShapeIndices.length > 0) {
+      drawnShapesRef.current = drawnShapesRef.current.filter((_, idx) => !sel.selectedShapeIndices.includes(idx))
+    }
+    
     sel.active = false
     sel.rect = null
     sel.pixels = null
@@ -1011,6 +1070,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     sel.originalCanvasData = null
     sel.isSelecting = false
     sel.isMoving = false
+    sel.selectedShapeIndices = []
+    sel.originalRect = null
     
     saveCanvasState()
   }
@@ -1245,7 +1306,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
     
     setUndoStack(prev => {
-      const next = [...prev, { imgData, isEmpty }]
+      const next = [...prev, { imgData, isEmpty, shapes: [...drawnShapesRef.current] }]
       if (next.length > 25) next.shift()
       return next
     })
@@ -1302,6 +1363,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     
     const previous = undoStack[undoStack.length - 2]
     safePutImageData(ctx, previous.imgData)
+    drawnShapesRef.current = previous.shapes || []
     setUndoStack(prev => prev.slice(0, -1))
   }
 
@@ -1330,6 +1392,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     
     const nextState = redoStack[redoStack.length - 1]
     safePutImageData(ctx, nextState.imgData)
+    drawnShapesRef.current = nextState.shapes || []
     
     setUndoStack(prev => [...prev, nextState])
     setRedoStack(prev => prev.slice(0, -1))
@@ -1366,6 +1429,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         ctx.globalAlpha = 1.0
         ctx.fillStyle = '#0a0518'
         ctx.fillRect(0, 0, canvas.width, canvas.height)
+        drawnShapesRef.current = []
         saveCanvasState(true)
         setDialog(prev => ({ ...prev, isOpen: false }))
       },
@@ -1605,6 +1669,24 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       if (sel.isSelecting) {
         sel.isSelecting = false
         if (sel.rect && sel.rect.w > 4 && sel.rect.h > 4) {
+          // Expand selection rectangle to contain any intersected shapes
+          sel.rect = expandSelectionToContainIntersectingShapes(sel.rect)
+          
+          // Find indices of shapes inside the selection
+          sel.selectedShapeIndices = []
+          for (let i = 0; i < drawnShapesRef.current.length; i++) {
+            const s = drawnShapesRef.current[i]
+            const intersects = 
+              sel.rect.x <= s.x + s.w &&
+              sel.rect.x + sel.rect.w >= s.x &&
+              sel.rect.y <= s.y + s.h &&
+              sel.rect.y + sel.rect.h >= s.y
+            if (intersects) {
+              sel.selectedShapeIndices.push(i)
+            }
+          }
+          sel.originalRect = { ...sel.rect }
+
           // Restore clean canvas to avoid capturing the marquee outline in pixels or background
           if (sel.originalCanvasData) {
             safePutImageData(ctx, sel.originalCanvasData)
@@ -1817,6 +1899,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       ctx.beginPath()
       drawShapePath(ctx, currentTool, drawState.startX, drawState.startY, drawX, drawY)
       ctx.stroke()
+      
+      drawState.lastX = drawX
+      drawState.lastY = drawY
     }
   }
 
@@ -1863,6 +1948,62 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       ctx.ellipse(detected.params.cx, detected.params.cy, detected.params.rx, detected.params.ry, 0, 0, 2 * Math.PI)
       ctx.stroke()
     }
+    // Record the snapped shape box in drawnShapesRef
+    let shapeRect = null
+    const margin = sizeVal + 4
+    if (detected.type === 'line') {
+      const x1 = Math.min(detected.params.startX, detected.params.endX)
+      const y1 = Math.min(detected.params.startY, detected.params.endY)
+      const x2 = Math.max(detected.params.startX, detected.params.endX)
+      const y2 = Math.max(detected.params.startY, detected.params.endY)
+      shapeRect = {
+        x: x1 - margin,
+        y: y1 - margin,
+        w: (x2 - x1) + 2 * margin,
+        h: (y2 - y1) + 2 * margin
+      }
+    } else if (detected.type === 'circle') {
+      const r = detected.params.r
+      shapeRect = {
+        x: detected.params.cx - r - margin,
+        y: detected.params.cy - r - margin,
+        w: 2 * r + 2 * margin,
+        h: 2 * r + 2 * margin
+      }
+    } else if (detected.type === 'rect') {
+      shapeRect = {
+        x: detected.params.startX - margin,
+        y: detected.params.startY - margin,
+        w: detected.params.w + 2 * margin,
+        h: detected.params.h + 2 * margin
+      }
+    } else if (detected.type === 'triangle') {
+      const xs = [detected.params.p1.x, detected.params.p2.x, detected.params.p3.x]
+      const ys = [detected.params.p1.y, detected.params.p2.y, detected.params.p3.y]
+      const minX = Math.min(...xs)
+      const maxX = Math.max(...xs)
+      const minY = Math.min(...ys)
+      const maxY = Math.max(...ys)
+      shapeRect = {
+        x: minX - margin,
+        y: minY - margin,
+        w: (maxX - minX) + 2 * margin,
+        h: (maxY - minY) + 2 * margin
+      }
+    } else if (detected.type === 'ellipse') {
+      const rx = detected.params.rx
+      const ry = detected.params.ry
+      shapeRect = {
+        x: detected.params.cx - rx - margin,
+        y: detected.params.cy - ry - margin,
+        w: 2 * rx + 2 * margin,
+        h: 2 * ry + 2 * margin
+      }
+    }
+    if (shapeRect) {
+      drawnShapesRef.current.push(shapeRect)
+    }
+
     ctx.restore()
     saveCanvasState()
   }
@@ -1911,6 +2052,20 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         runLocalFallback()
       })
     } else {
+      const paintTools2 = ['brush', 'pencil', 'highlighter', 'spray', 'eraser', 'text']
+      if (!paintTools2.includes(currentTool) && currentTool !== 'select') {
+        const x1 = Math.min(drawState.startX, drawState.lastX)
+        const y1 = Math.min(drawState.startY, drawState.lastY)
+        const x2 = Math.max(drawState.startX, drawState.lastX)
+        const y2 = Math.max(drawState.startY, drawState.lastY)
+        const margin = currentBrushSize + 4
+        drawnShapesRef.current.push({
+          x: x1 - margin,
+          y: y1 - margin,
+          w: (x2 - x1) + 2 * margin,
+          h: (y2 - y1) + 2 * margin
+        })
+      }
       saveCanvasState()
     }
     
@@ -1940,6 +2095,14 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     ctx.beginPath()
     drawShapePath(ctx, shapeType, x - radius, y - radius, x + radius, y + radius)
     ctx.stroke()
+    
+    const margin = sizeVal + 4
+    drawnShapesRef.current.push({
+      x: x - radius - margin,
+      y: y - radius - margin,
+      w: 2 * radius + 2 * margin,
+      h: 2 * radius + 2 * margin
+    })
     
     saveCanvasState()
   }
@@ -2709,6 +2872,24 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           if (sel.isSelecting) {
             sel.isSelecting = false
             if (sel.rect && sel.rect.w > 4 && sel.rect.h > 4) {
+              // Expand selection rectangle to contain any intersected shapes
+              sel.rect = expandSelectionToContainIntersectingShapes(sel.rect)
+              
+              // Find indices of shapes inside the selection
+              sel.selectedShapeIndices = []
+              for (let i = 0; i < drawnShapesRef.current.length; i++) {
+                const s = drawnShapesRef.current[i]
+                const intersects = 
+                  sel.rect.x <= s.x + s.w &&
+                  sel.rect.x + sel.rect.w >= s.x &&
+                  sel.rect.y <= s.y + s.h &&
+                  sel.rect.y + sel.rect.h >= s.y
+                if (intersects) {
+                  sel.selectedShapeIndices.push(i)
+                }
+              }
+              sel.originalRect = { ...sel.rect }
+
               // Restore clean canvas to avoid capturing the marquee outline in pixels or background
               if (sel.originalCanvasData) {
                 safePutImageData(mainCtx, sel.originalCanvasData)
