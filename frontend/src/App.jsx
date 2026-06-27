@@ -9,11 +9,13 @@ import Auth from './components/Auth'
 import WelcomeAnimation from './components/WelcomeAnimation'
 import AIStencils from './components/AIStencils'
 import { AnimatePresence, motion } from 'framer-motion'
+import { useToast } from './components/Toast'
 
 // Backend URL configuration
 export const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 function App() {
+  const { showToast } = useToast()
   const [showWelcome, setShowWelcome] = useState(true)
   const [activePage, setActivePage] = useState('landing')
   
@@ -102,6 +104,7 @@ function App() {
     localStorage.setItem('theme_name', name)
     localStorage.setItem('theme_color_1', color1)
     localStorage.setItem('theme_color_2', color2)
+    showToast(`Theme updated to ${name}`, 'theme')
   }
 
   // Session login success callback
@@ -114,6 +117,7 @@ function App() {
       localStorage.removeItem('profile_picture')
     }
     setUser({ username, token, profilePicture })
+    showToast(`Welcome back, ${username}! Splashed into your creative canvas.`, 'login')
     // Redirect back to where the user wanted to go
     if (activePage === 'auth') {
       setActivePage('canvas')
@@ -127,6 +131,7 @@ function App() {
     localStorage.removeItem('profile_picture')
     setUser(null)
     setActivePage('landing')
+    showToast("Logged out. See you soon in the stream!", 'logout')
   }
 
   // Profile Click Handler
@@ -206,6 +211,7 @@ function App() {
           localStorage.removeItem('profile_picture')
         }
         setProfileMessage('Profile updated successfully!')
+        showToast("Profile details updated successfully!", 'profile')
         setTimeout(() => {
           setShowProfileModal(false)
         }, 1500)

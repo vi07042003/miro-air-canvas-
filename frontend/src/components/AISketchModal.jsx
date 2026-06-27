@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Sparkles, HelpCircle, Key, Cpu, ToggleLeft, ToggleRight, Layers, Image as ImageIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BACKEND_URL } from '../App'
+import { useToast } from './Toast'
 
 export default function AISketchModal({
   isOpen,
@@ -11,6 +12,7 @@ export default function AISketchModal({
   currentCanvasMode,
   styles = {}
 }) {
+  const { showToast } = useToast()
   const [prompt, setPrompt] = useState('')
   const [targetCanvas, setTargetCanvas] = useState('2d')
   const [modelId, setModelId] = useState('stabilityai/stable-diffusion-xl-base-1.0')
@@ -134,6 +136,7 @@ export default function AISketchModal({
         prompt: prompt.trim()
       })
       
+      showToast(`AI Sketch outline for "${prompt.trim()}" generated!`, 'ai')
       onClose()
     } catch (err) {
       const rawMsg = err.message || 'Error connecting to server';

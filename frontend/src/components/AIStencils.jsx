@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, ArrowRight, Download, HelpCircle, RefreshCw, Layers, Check, Search } from 'lucide-react'
 import { BACKEND_URL } from '../App'
+import { useToast } from './Toast'
 
 export default function AIStencils({ user, onApplyStencil }) {
+  const { showToast } = useToast()
   const [keyword, setKeyword] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
@@ -76,6 +78,7 @@ export default function AIStencils({ user, onApplyStencil }) {
 
         setResult(base64Data)
         setUsage({ count: data.usage_count, max: data.max_usage, resetTime: data.reset_time })
+        showToast(`AI Stencil for "${promptKeyword}" generated!`, 'ai')
       }
     } catch (err) {
       setError(err.message === "Failed to load image from generator"
@@ -95,6 +98,7 @@ export default function AIStencils({ user, onApplyStencil }) {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    showToast("AI Stencil PNG downloaded!", "download")
   }
 
   const formatResetTime = (isoString) => {

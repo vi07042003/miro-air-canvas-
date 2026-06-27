@@ -3,8 +3,10 @@ import { createPortal } from 'react-dom'
 import { Image, Download, Trash2, Eye, Calendar, X, Edit, ChevronLeft, ChevronRight } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import GlassDialog from './GlassDialog'
+import { useToast } from './Toast'
 
 export default function Gallery({ onEditDrawing }) {
+  const { showToast } = useToast()
   const [drawings, setDrawings] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedDrawing, setSelectedDrawing] = useState(null)
@@ -66,6 +68,8 @@ export default function Gallery({ onEditDrawing }) {
 
   const handleDelete = (id, e) => {
     if (e) e.stopPropagation()
+    const targetDrawing = drawings.find(d => d.id === id)
+    const drawingTitle = targetDrawing ? targetDrawing.title : 'Drawing'
     setDialog({
       isOpen: true,
       type: 'confirm',
@@ -88,6 +92,7 @@ export default function Gallery({ onEditDrawing }) {
             if (selectedDrawing && selectedDrawing.id === id) {
               setSelectedDrawing(null)
             }
+            showToast(`"${drawingTitle}" deleted from gallery.`, 'error')
           } else {
             const data = await res.json()
             setDialog({
@@ -123,6 +128,7 @@ export default function Gallery({ onEditDrawing }) {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    showToast(`Sketch "${drawing.title}" downloaded!`, 'download')
   }
 
   return (

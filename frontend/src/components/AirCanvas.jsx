@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/purity, react-hooks/immutability, react-hooks/exhaustive-deps, no-unused-vars, react-hooks/set-state-in-effect */
 import { useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
@@ -6,6 +5,7 @@ import {
   Pencil, ChevronDown, Box, Image as ImageIcon, Paintbrush, ChevronLeft, ChevronRight, Type
 } from 'lucide-react'
 import { BACKEND_URL } from '../App'
+import { useToast } from './Toast'
 import { 
   project3DPoint, unprojectPoint, drawViewportGrid, drawAxisHelper, 
   getMesh, drawMesh, draw3DStroke, generateOBJString 
@@ -297,6 +297,7 @@ const getPartial3DStrokes = (strokes, progress) => {
 const PRIMITIVE_3D_TOOLS = ['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone', '3d-prism', '3d-torus', '3d-octahedron', '3d-capsule']
 
 export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved, initialStencil, onClearInitialStencil, isActivePage }) {
+  const { showToast } = useToast()
   const canvasRef = useRef(null)
   const videoRef = useRef(null)
   const handCanvasRef = useRef(null)
@@ -3165,6 +3166,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      showToast("Canvas sketch downloaded locally!", "download")
     }
   }
 
@@ -3690,6 +3692,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           link.click()
           document.body.removeChild(link)
           URL.revokeObjectURL(url)
+          showToast("3D OBJ Model downloaded!", "download")
         }}
       />
 
