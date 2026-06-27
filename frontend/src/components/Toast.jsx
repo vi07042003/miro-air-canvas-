@@ -96,9 +96,11 @@ const TOAST_STYLES = `
     max-width: 460px;
     min-height: 64px;
     border-radius: 32px;
-    background: rgba(15, 10, 25, 0.22);
+    border: 1px solid transparent;
+    background: 
+      linear-gradient(rgba(15, 10, 25, 0.22), rgba(15, 10, 25, 0.22)) padding-box,
+      linear-gradient(135deg, var(--toast-accent-color) 0%, rgba(255, 255, 255, 0.15) 50%, var(--toast-accent-color) 100%) border-box;
     backdrop-filter: blur(28px) saturate(210%);
-    border: 1px solid var(--toast-border-color, rgba(255, 255, 255, 0.2));
     box-shadow: 
       inset 0 1px 2px rgba(255, 255, 255, 0.4),
       inset 0 -1px 2px rgba(0, 0, 0, 0.4),
@@ -259,6 +261,65 @@ const TOAST_STYLES = `
   }
 `
 
+// Web Audio API Synthesizers for satisfying liquid feedback sounds
+const playDropletSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext
+    if (!AudioContext) return
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    
+    const now = ctx.currentTime
+    
+    // Smooth upward pitch sweep to sound like a droplet landing (plop)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(140, now)
+    osc.frequency.exponentialRampToValueAtTime(700, now + 0.13)
+    
+    // Very fast attack, gentle decay envelope
+    gain.gain.setValueAtTime(0.001, now)
+    gain.gain.linearRampToValueAtTime(0.15, now + 0.015)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13)
+    
+    osc.start(now)
+    osc.stop(now + 0.14)
+  } catch {
+    // Ignore context blocked errors (browsers require user interaction first)
+  }
+}
+
+const playPopSound = () => {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext
+    if (!AudioContext) return
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    
+    const now = ctx.currentTime
+    
+    // Fast downward pitch sweep (pop)
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(750, now)
+    osc.frequency.exponentialRampToValueAtTime(100, now + 0.07)
+    
+    gain.gain.setValueAtTime(0.1, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07)
+    
+    osc.start(now)
+    osc.stop(now + 0.08)
+  } catch {
+    // Ignore context blocked errors
+  }
+}
+
 // Define properties based on toast type (Static Helper)
 const getToastConfig = (type) => {
   switch (type) {
@@ -375,6 +436,7 @@ export const ToastProvider = ({ children }) => {
     setTimeout(() => {
       setDropletActive(false)
       setCapsuleActive(true)
+      playDropletSound()
     }, 220)
 
     // Stage 2: Toast Capsule remains visible
@@ -391,6 +453,7 @@ export const ToastProvider = ({ children }) => {
       }
       setCapsuleActive(false)
       setShowExitSplash(true)
+      playPopSound()
       
       // Clear exit splash after it finishes (180ms)
       setTimeout(() => {
@@ -509,10 +572,18 @@ export const ToastProvider = ({ children }) => {
                 opacity: 1
               }}
               exit={{ 
-                scaleX: 0.4, 
-                scaleY: 0.4,
+                scaleX: 0.1, 
+                scaleY: 1.8,
+                borderRadius: '50%',
+                y: -40,
                 opacity: 0,
-                transition: { duration: 0.2, ease: 'easeInOut' }
+                transition: {
+                  y: { duration: 0.26, ease: [0.4, 0, 1, 1] },
+                  scaleX: { duration: 0.22, ease: 'easeIn' },
+                  scaleY: { duration: 0.22, ease: 'easeIn' },
+                  borderRadius: { duration: 0.2, ease: 'easeInOut' },
+                  opacity: { duration: 0.22, ease: 'easeIn' }
+                }
               }}
               transition={{
                 y: {
@@ -542,6 +613,8 @@ export const ToastProvider = ({ children }) => {
                 }
               }}
             >
+
+
               {/* Inner Ripple spreading on impact */}
               <div className="water-ripple-layer" />
 
