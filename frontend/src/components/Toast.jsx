@@ -36,7 +36,7 @@ const TOAST_STYLES = `
     top: 0;
     width: 160px;
     height: 30px;
-    background: rgba(15, 10, 25, 0.85);
+    background: rgba(15, 10, 25, 0.35);
     backdrop-filter: blur(12px);
     border-radius: 0 0 20px 20px;
     border-left: 1px solid rgba(255, 255, 255, 0.08);
@@ -96,7 +96,7 @@ const TOAST_STYLES = `
     max-width: 460px;
     min-height: 64px;
     border-radius: 32px;
-    background: rgba(15, 10, 25, 0.68);
+    background: rgba(15, 10, 25, 0.22);
     backdrop-filter: blur(28px) saturate(210%);
     border: 1px solid var(--toast-border-color, rgba(255, 255, 255, 0.2));
     box-shadow: 
@@ -440,30 +440,55 @@ export const ToastProvider = ({ children }) => {
     <ToastContext.Provider value={{ showToast, dismissToast }}>
       {children}
 
+      {/* SVG Gooey filter definition for the droplet snapping effect */}
+      <svg style={{ position: 'absolute', width: 0, height: 0, pointerEvents: 'none' }} xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <filter id="toast-gooey-effect">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur" />
+            <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo" />
+            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
+          </filter>
+        </defs>
+      </svg>
+
       <div className="toast-liquid-filter-container">
-        {/* Dynamic Island style top notch */}
-        <AnimatePresence>
-          {(dropletActive || capsuleActive) && (
-            <motion.div
-              className="toast-island-notch"
-              initial={{ y: -30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -30, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+        {/* Upper Drip Area wrapped in Gooey Filter */}
+        <div style={{
+          filter: 'url(#toast-gooey-effect)',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '160px',
+          pointerEvents: 'none',
+          display: 'flex',
+          justifyContent: 'center',
+          zIndex: 10
+        }}>
+          {/* Dynamic Island style top notch */}
+          <AnimatePresence>
+            {(dropletActive || capsuleActive) && (
+              <motion.div
+                className="toast-island-notch"
+                initial={{ y: -30, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -30, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Falling Drip Animation */}
+          {dropletActive && activeConfig && (
+            <div 
+              className="liquid-droplet" 
+              style={{ 
+                '--toast-accent-color': activeConfig.accentColor,
+                '--toast-accent-rgb': activeConfig.accentRgb
+              }} 
             />
           )}
-        </AnimatePresence>
-
-        {/* Falling Drip Animation */}
-        {dropletActive && activeConfig && (
-          <div 
-            className="liquid-droplet" 
-            style={{ 
-              '--toast-accent-color': activeConfig.accentColor,
-              '--toast-accent-rgb': activeConfig.accentRgb
-            }} 
-          />
-        )}
+        </div>
 
         {/* Main Liquid Glass Toast Capsule */}
         <AnimatePresence>
@@ -475,10 +500,11 @@ export const ToastProvider = ({ children }) => {
                 '--toast-accent-rgb': activeConfig.accentRgb,
                 '--toast-border-color': activeConfig.borderColor,
               }}
-              initial={{ scaleX: 0.1, scaleY: 0.1, y: 15, opacity: 0 }}
+              initial={{ scaleX: 0.25, scaleY: 1.6, y: 15, opacity: 0, borderRadius: '50%' }}
               animate={{ 
-                scaleX: [0.1, 1.25, 0.85, 1.05, 0.98, 1],
-                scaleY: [0.1, 0.7, 1.2, 0.9, 1.02, 1],
+                scaleX: 1,
+                scaleY: 1,
+                borderRadius: '32px',
                 y: 50,
                 opacity: 1
               }}
@@ -486,12 +512,34 @@ export const ToastProvider = ({ children }) => {
                 scaleX: 0.4, 
                 scaleY: 0.4,
                 opacity: 0,
-                transition: { duration: 0.25, ease: 'easeInOut' }
+                transition: { duration: 0.2, ease: 'easeInOut' }
               }}
               transition={{
-                duration: 0.28,
-                ease: 'easeOut',
-                times: [0, 0.35, 0.55, 0.75, 0.9, 1]
+                y: {
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 22,
+                  mass: 0.8
+                },
+                scaleX: {
+                  type: 'spring',
+                  stiffness: 280,
+                  damping: 13,
+                  mass: 0.6
+                },
+                scaleY: {
+                  type: 'spring',
+                  stiffness: 280,
+                  damping: 13,
+                  mass: 0.6
+                },
+                borderRadius: {
+                  duration: 0.38,
+                  ease: 'easeOut'
+                },
+                opacity: {
+                  duration: 0.15
+                }
               }}
             >
               {/* Inner Ripple spreading on impact */}

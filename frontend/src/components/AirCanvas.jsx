@@ -636,6 +636,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         save3DState()
       }
     }
+    showToast("Stencil applied to canvas successfully!", "success")
   }
 
   const handleApplyAISketch = ({ imageUrl, targetCanvas, prompt }) => {
@@ -3127,7 +3128,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
       if (res.ok) {
         const data = await res.json()
-        setDbMessage(isUpdate ? 'Sketch updated successfully!' : 'Sketch saved successfully!')
+        const successMsg = isUpdate ? 'Sketch updated successfully!' : 'Sketch saved successfully!'
+        setDbMessage(successMsg)
+        showToast(successMsg, 'success')
         
         if (onDrawingSaved) {
           onDrawingSaved(data)
@@ -3140,14 +3143,18 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         setTimeout(() => {
           setShowSaveModal(false)
           setDbMessage('')
-        }, 2000)
+        }, 1000)
       } else {
         const data = await res.json()
-        setDbMessage(data.detail || (isUpdate ? 'Failed to update sketch' : 'Failed to save sketch'))
+        const errorMsg = data.detail || (isUpdate ? 'Failed to update sketch' : 'Failed to save sketch')
+        setDbMessage(errorMsg)
+        showToast(errorMsg, 'error')
       }
     } catch (err) {
       console.error(err)
-      setDbMessage('Server connection error')
+      const errorMsg = 'Server connection error'
+      setDbMessage(errorMsg)
+      showToast(errorMsg, 'error')
     } finally {
       setSaving(false)
     }

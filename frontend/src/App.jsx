@@ -143,6 +143,13 @@ function App() {
     setProfileMessage('')
     setShowProfileModal(true)
   }
+  const handleCloseProfileModal = () => {
+    setShowProfileModal(false)
+    setEditUsername('')
+    setEditPassword('')
+    setEditProfilePicture('')
+    setProfileMessage('')
+  }
 
   // Handle file picker selection and base64 conversion
   const handleFileChange = (e) => {
@@ -222,6 +229,11 @@ function App() {
       setProfileLoading(false)
     }
   }
+
+  const isProfileUnchanged = 
+    editUsername === (user?.username || '') &&
+    editPassword === '' &&
+    editProfilePicture === (user?.profilePicture || '')
 
   // Safe navigation: always redirects to auth for protected pages
   const navigateTo = (page) => {
@@ -650,7 +662,7 @@ function App() {
                       height: '100%',
                       zIndex: -1
                     }}
-                    onClick={() => setShowProfileModal(false)}
+                    onClick={handleCloseProfileModal}
                   />
 
                   {/* Dialog Content Box */}
@@ -669,7 +681,7 @@ function App() {
                         <UserIcon size={20} color="var(--theme-color-2)" />
                         <h3 style={styles.modalTitle}>User Profile</h3>
                       </div>
-                      <button style={styles.closeBtn} onClick={() => setShowProfileModal(false)}>
+                      <button style={styles.closeBtn} onClick={handleCloseProfileModal}>
                         <X size={18} />
                       </button>
                     </div>
@@ -683,6 +695,21 @@ function App() {
                             <UserIcon size={36} color="var(--theme-color-2)" />
                           )}
                         </div>
+                        {editProfilePicture !== (user?.profilePicture || '') && (
+                          <div style={{
+                            fontSize: '11px',
+                            background: 'rgba(245, 158, 11, 0.15)',
+                            color: '#fbbf24',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            fontWeight: '600',
+                            marginTop: '2px',
+                            marginBottom: '6px'
+                          }}>
+                            Unsaved Photo Preview
+                          </div>
+                        )}
                         <div style={{ display: 'flex', gap: '10px' }}>
                           <label className="glass-btn" style={styles.uploadBtn}>
                             <span>Choose Photo</span>
@@ -744,7 +771,7 @@ function App() {
                         type="submit" 
                         className="glass-btn glass-btn-primary" 
                         style={styles.modalSubmitBtn}
-                        disabled={profileLoading}
+                        disabled={profileLoading || isProfileUnchanged}
                       >
                         {profileLoading ? 'Saving Changes...' : 'Save Profile'}
                       </button>
