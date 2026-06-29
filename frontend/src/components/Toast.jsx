@@ -96,10 +96,8 @@ const TOAST_STYLES = `
     max-width: 460px;
     min-height: 64px;
     border-radius: 32px;
-    border: 1px solid transparent;
-    background: 
-      linear-gradient(rgba(15, 10, 25, 0.22), rgba(15, 10, 25, 0.22)) padding-box,
-      linear-gradient(135deg, var(--toast-accent-color) 0%, rgba(255, 255, 255, 0.15) 50%, var(--toast-accent-color) 100%) border-box;
+    border: none;
+    background: rgba(15, 10, 25, 0.22);
     backdrop-filter: blur(28px) saturate(210%);
     box-shadow: 
       inset 0 1px 2px rgba(255, 255, 255, 0.4),
@@ -133,7 +131,7 @@ const TOAST_STYLES = `
 
   /* Water Ripple Animation */
   @keyframes ripple-wave {
-    0% {
+    0% {v
       transform: translate(-50%, -50%) scale(0.05);
       opacity: 0.85;
     }
@@ -214,22 +212,7 @@ const TOAST_STYLES = `
     line-height: 1.35;
   }
 
-  /* Liquid draining progress indicator */
-  .toast-liquid-progress-container {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: rgba(255, 255, 255, 0.05);
-    z-index: 2;
-  }
 
-  .toast-liquid-progress-bar {
-    height: 100%;
-    background: linear-gradient(90deg, var(--toast-accent-color) 0%, rgba(var(--toast-accent-rgb), 0.4) 100%);
-    box-shadow: 0 0 6px var(--toast-accent-color);
-  }
 
   /* Exit splash animations */
   @keyframes splash-droplet-n {
@@ -613,6 +596,56 @@ export const ToastProvider = ({ children }) => {
                 }
               }}
             >
+              {/* SVG Border Progress Loader */}
+              <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 5 }}>
+                <defs>
+                  {/* Permanent ambient gradient track border */}
+                  <linearGradient id={`track-grad-${currentToast.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="var(--toast-accent-color)" stopOpacity={0.35} />
+                    <stop offset="50%" stopColor="#ffffff" stopOpacity={0.15} />
+                    <stop offset="100%" stopColor="var(--toast-accent-color)" stopOpacity={0.35} />
+                  </linearGradient>
+                  {/* Bright active depleting loader border */}
+                  <linearGradient id={`progress-grad-${currentToast.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="var(--toast-accent-color)" stopOpacity={1} />
+                    <stop offset="50%" stopColor="#ffffff" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="var(--toast-accent-color)" stopOpacity={1} />
+                  </linearGradient>
+                </defs>
+                {/* Permanent gradient track border */}
+                <rect
+                  x="1"
+                  y="1"
+                  style={{
+                    width: 'calc(100% - 2px)',
+                    height: 'calc(100% - 2px)'
+                  }}
+                  rx="31"
+                  ry="31"
+                  fill="none"
+                  stroke={`url(#track-grad-${currentToast.id})`}
+                  strokeWidth="1.5"
+                />
+                {/* Active progress border */}
+                <motion.rect
+                  x="1"
+                  y="1"
+                  style={{
+                    width: 'calc(100% - 2px)',
+                    height: 'calc(100% - 2px)'
+                  }}
+                  rx="31"
+                  ry="31"
+                  fill="none"
+                  stroke={`url(#progress-grad-${currentToast.id})`}
+                  strokeWidth="2.2"
+                  pathLength="100"
+                  initial={{ strokeDashoffset: 0 }}
+                  animate={{ strokeDashoffset: 100 }}
+                  transition={{ duration: currentToast.duration / 1000, ease: 'linear', delay: 0.22 }}
+                  strokeDasharray="100"
+                />
+              </svg>
 
 
               {/* Inner Ripple spreading on impact */}
@@ -668,15 +701,7 @@ export const ToastProvider = ({ children }) => {
                 </motion.div>
               </div>
 
-              {/* Liquid level progress indicator at the bottom */}
-              <div className="toast-liquid-progress-container">
-                <motion.div 
-                  className="toast-liquid-progress-bar"
-                  initial={{ width: '100%' }}
-                  animate={{ width: '0%' }}
-                  transition={{ duration: currentToast.duration / 1000, ease: 'linear', delay: 0.22 }}
-                />
-              </div>
+
             </motion.div>
           )}
         </AnimatePresence>
