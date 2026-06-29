@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand, FileImage } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 export default function LandingPage({ onStartCanvas }) {
   const [showManual, setShowManual] = useState(false)
@@ -23,14 +24,26 @@ export default function LandingPage({ onStartCanvas }) {
           No physical mouse or touch screen required.
         </p>
         <div style={styles.ctaContainer}>
-          <button className="glass-btn glass-btn-primary" onClick={onStartCanvas}>
+          <motion.button 
+            className="glass-btn glass-btn-primary" 
+            onClick={onStartCanvas}
+            whileHover={{ scale: 1.04, y: -2 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 20 }}
+          >
             <span>Launch MIRO Canvas</span>
             <ArrowRight size={18} />
-          </button>
-          <button className="glass-btn" onClick={() => setShowManual(true)}>
+          </motion.button>
+          <motion.button 
+            className="glass-btn" 
+            onClick={() => setShowManual(true)}
+            whileHover={{ scale: 1.04, y: -2 }}
+            whileTap={{ scale: 0.96 }}
+            transition={{ type: 'spring', stiffness: 350, damping: 20 }}
+          >
             <HelpCircle size={18} />
             <span>How it Works</span>
-          </button>
+          </motion.button>
         </div>
       </section>
 
@@ -38,7 +51,12 @@ export default function LandingPage({ onStartCanvas }) {
       <section style={styles.featuresSection}>
         <h2 style={styles.sectionTitle}>Engineered for Magic</h2>
         <div style={styles.grid}>
-          <div className="glass-card" style={styles.card}>
+          <motion.div 
+            className="glass-card" 
+            style={styles.card}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
             <div style={styles.iconWrapper}>
               <Camera size={24} color="#06b6d4" />
             </div>
@@ -46,9 +64,14 @@ export default function LandingPage({ onStartCanvas }) {
             <p style={styles.cardText}>
               Powered by browser-based MediaPipe WASM. Tracks 21 coordinates on your hand in real-time with sub-millisecond latency.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="glass-card" style={styles.card}>
+          <motion.div 
+            className="glass-card" 
+            style={styles.card}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
             <div style={styles.iconWrapper}>
               <Layers size={24} color="#8b5cf6" />
             </div>
@@ -56,9 +79,14 @@ export default function LandingPage({ onStartCanvas }) {
             <p style={styles.cardText}>
               Draw lines, rectangles, perfect circles, or paint freehand. Control brush thickness, opacity, and neon-themed color choices.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="glass-card" style={styles.card}>
+          <motion.div 
+            className="glass-card" 
+            style={styles.card}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
             <div style={styles.iconWrapper}>
               <Sparkles size={24} color="#c084fc" className="spin-animation" style={{ animationDuration: '6s' }} />
             </div>
@@ -66,9 +94,14 @@ export default function LandingPage({ onStartCanvas }) {
             <p style={styles.cardText}>
               Describe anything you want to draw and watch our AI instantly trace and plot the outline onto your 2D canvas or 3D space.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="glass-card" style={styles.card}>
+          <motion.div 
+            className="glass-card" 
+            style={styles.card}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
             <div style={styles.iconWrapper}>
               <FileImage size={24} color="#10b981" />
             </div>
@@ -76,9 +109,14 @@ export default function LandingPage({ onStartCanvas }) {
             <p style={styles.cardText}>
               Upload any custom image or snapshot and let our Edge-Detection AI convert it into a trace stencil for guided 2D and 3D drawing.
             </p>
-          </div>
+          </motion.div>
 
-          <div className="glass-card" style={styles.card}>
+          <motion.div 
+            className="glass-card" 
+            style={styles.card}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
             <div style={styles.iconWrapper}>
               <Image size={24} color="#ec4899" />
             </div>
@@ -86,7 +124,7 @@ export default function LandingPage({ onStartCanvas }) {
             <p style={styles.cardText}>
               All designs are secured and saved in your personal database profile. Sign in to load and edit only your sketches.
             </p>
-          </div>
+          </motion.div>
         </div>
       </section>
 

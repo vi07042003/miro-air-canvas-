@@ -244,17 +244,87 @@ function App() {
       setActivePage(page)
     }
   }
+
+  // macOS-style Liquid Glass Droplet Morph transition variants for page switching
+  const macPageVariants = {
+    initial: { 
+      opacity: 0, 
+      scaleX: 0.45, 
+      scaleY: 1.5, 
+      borderRadius: "200px",
+      y: -60,
+      filter: "blur(12px) contrast(1.25)",
+      transformOrigin: "center top"
+    },
+    animate: { 
+      opacity: 1, 
+      scaleX: 1, 
+      scaleY: 1, 
+      borderRadius: "24px",
+      y: 0,
+      filter: "blur(0px) contrast(1)",
+      transformOrigin: "center top",
+      transition: { 
+        y: {
+          type: 'spring',
+          stiffness: 280,
+          damping: 20,
+          mass: 0.8
+        },
+        scaleX: {
+          type: 'spring',
+          stiffness: 260,
+          damping: 14,
+          mass: 0.6
+        },
+        scaleY: {
+          type: 'spring',
+          stiffness: 260,
+          damping: 14,
+          mass: 0.6
+        },
+        borderRadius: {
+          duration: 0.38,
+          ease: 'easeOut'
+        },
+        filter: {
+          duration: 0.25
+        },
+        opacity: {
+          duration: 0.2
+        }
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      scaleX: 0.25, 
+      scaleY: 1.6, 
+      borderRadius: "200px",
+      y: 70,
+      filter: "blur(12px) contrast(1.25)",
+      transformOrigin: "center bottom",
+      transition: { 
+        y: { duration: 0.28, ease: [0.4, 0, 1, 1] },
+        scaleX: { duration: 0.22, ease: 'easeIn' },
+        scaleY: { duration: 0.22, ease: 'easeIn' },
+        borderRadius: { duration: 0.22, ease: 'easeInOut' },
+        filter: { duration: 0.22 },
+        opacity: { duration: 0.22 }
+      }
+    }
+  }
+
   const renderPage = () => {
     // Strict auth gate — canvas, gallery and stencils are ALWAYS blocked without a session
     if ((activePage === 'canvas' || activePage === 'gallery' || activePage === 'stencils') && !user) {
       return (
         <motion.div
           key="auth"
-          initial={{ opacity: 0, x: 15 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -15 }}
-          transition={{ duration: 0.22, ease: 'easeInOut' }}
-          style={{ gridColumn: 1, gridRow: 1 }}
+          variants={macPageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
         >
           <Auth onLoginSuccess={handleLoginSuccess} />
         </motion.div>
@@ -266,11 +336,11 @@ function App() {
       return (
         <motion.div
           key="auth"
-          initial={{ opacity: 0, x: 15 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -15 }}
-          transition={{ duration: 0.22, ease: 'easeInOut' }}
-          style={{ gridColumn: 1, gridRow: 1 }}
+          variants={macPageVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
         >
           <Auth onLoginSuccess={handleLoginSuccess} />
         </motion.div>
@@ -287,11 +357,11 @@ function App() {
         return (
           <motion.div
             key="landing"
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -15 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
-            style={{ gridColumn: 1, gridRow: 1 }}
+            variants={macPageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <LandingPage onStartCanvas={() => navigateTo('canvas')} />
           </motion.div>
@@ -302,11 +372,11 @@ function App() {
         return (
           <motion.div
             key="gallery"
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -15 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
-            style={{ gridColumn: 1, gridRow: 1 }}
+            variants={macPageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <Gallery onEditDrawing={(drawing) => {
               setEditingDrawing(drawing)
@@ -318,11 +388,11 @@ function App() {
         return (
           <motion.div
             key="settings"
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -15 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
-            style={{ gridColumn: 1, gridRow: 1 }}
+            variants={macPageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <Settings 
               onThemeChange={handleThemeChange} 
@@ -339,11 +409,11 @@ function App() {
         return (
           <motion.div
             key="stencils"
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -15 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
-            style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1 }}
+            variants={macPageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <AIStencils 
               user={user}
@@ -358,11 +428,11 @@ function App() {
         return (
           <motion.div
             key="landing"
-            initial={{ opacity: 0, x: 15 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -15 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
-            style={{ gridColumn: 1, gridRow: 1 }}
+            variants={macPageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <LandingPage onStartCanvas={() => navigateTo('canvas')} />
           </motion.div>
@@ -401,7 +471,13 @@ function App() {
 
           {/* Main Glass Header */}
           <header className="header-glass">
-            <div className="logo-container" onClick={() => setActivePage('landing')}>
+            <motion.div 
+              className="logo-container" 
+              onClick={() => setActivePage('landing')}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              style={{ cursor: 'pointer' }}
+            >
               <div className="logo-icon" style={{ padding: '6px' }}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <defs>
@@ -428,13 +504,15 @@ function App() {
                 <span className="header-brand-ro">RO</span>
                 <span className="header-brand-canvas">CANVAS</span>
               </span>
-            </div>
+            </motion.div>
 
             <nav className="nav-links">
-              <button 
+              <motion.button 
                 className={`nav-item ${activePage === 'landing' ? 'nav-item-active' : ''}`}
                 onClick={() => setActivePage('landing')}
                 style={{ position: 'relative' }}
+                whileHover={{ scale: 1.04, y: -1 }}
+                whileTap={{ scale: 0.95 }}
               >
                 {activePage === 'landing' && (
                   <motion.div
@@ -447,12 +525,14 @@ function App() {
                   <Home size={19} />
                   <span>Home</span>
                 </span>
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
                 className={`nav-item ${activePage === 'canvas' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
                 onClick={() => navigateTo('canvas')}
                 title={!user ? 'Sign in to access Canvas' : 'Canvas'}
                 style={{ position: 'relative' }}
+                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
+                whileTap={!user ? {} : { scale: 0.95 }}
               >
                 {(activePage === 'canvas') && (
                   <motion.div
@@ -466,12 +546,14 @@ function App() {
                   <span>Canvas</span>
                   {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
                 className={`nav-item ${activePage === 'gallery' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
                 onClick={() => navigateTo('gallery')}
                 title={!user ? 'Sign in to access Gallery' : 'Gallery'}
                 style={{ position: 'relative' }}
+                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
+                whileTap={!user ? {} : { scale: 0.95 }}
               >
                 {activePage === 'gallery' && (
                   <motion.div
@@ -485,12 +567,14 @@ function App() {
                   <span>Gallery</span>
                   {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
                 className={`nav-item ${activePage === 'stencils' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
                 onClick={() => navigateTo('stencils')}
                 title={!user ? 'Sign in to generate AI stencils' : 'AI Stencil Generator'}
                 style={{ position: 'relative' }}
+                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
+                whileTap={!user ? {} : { scale: 0.95 }}
               >
                 {activePage === 'stencils' && (
                   <motion.div
@@ -504,11 +588,13 @@ function App() {
                   <span>AI Stencils</span>
                   {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
-              </button>
-              <button 
+              </motion.button>
+              <motion.button 
                 className={`nav-item ${activePage === 'settings' ? 'nav-item-active' : ''}`}
                 onClick={() => setActivePage('settings')}
                 style={{ position: 'relative' }}
+                whileHover={{ scale: 1.04, y: -1 }}
+                whileTap={{ scale: 0.95 }}
               >
                 {activePage === 'settings' && (
                   <motion.div
@@ -521,7 +607,7 @@ function App() {
                   <SettingsIcon size={19} />
                   <span>Settings</span>
                 </span>
-              </button>
+              </motion.button>
             </nav>
 
             {/* User Session Nav Panel */}
@@ -529,14 +615,20 @@ function App() {
               {user ? (
                 <div style={styles.userInfoRow}>
                   <div className="user-badge-wrapper">
-                    <div className="user-badge-clickable" onClick={handleProfileClick} title="Edit Profile">
+                    <motion.div 
+                      className="user-badge-clickable" 
+                      onClick={handleProfileClick} 
+                      title="Edit Profile"
+                      whileHover={{ scale: 1.03 }}
+                      whileTap={{ scale: 0.97 }}
+                    >
                       {user.profilePicture ? (
                         <img src={user.profilePicture} style={styles.headerAvatar} alt="Profile" />
                       ) : (
                         <UserIcon size={18} color="var(--theme-color-2)" />
                       )}
                       <span>{user.username}</span>
-                    </div>
+                    </motion.div>
 
                     {/* Profile Hover Card */}
                     <div className="profile-hover-card" onClick={handleProfileClick} title="Edit Profile">
@@ -553,16 +645,29 @@ function App() {
                       </div>
                     </div>
                   </div>
-                  <button className="glass-btn" style={styles.authBtn} onClick={handleLogout} title="Log Out">
+                  <motion.button 
+                    className="glass-btn" 
+                    style={styles.authBtn} 
+                    onClick={handleLogout} 
+                    title="Log Out"
+                    whileHover={{ scale: 1.04, y: -1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
                     <LogOut size={16} />
                     <span>Log Out</span>
-                  </button>
+                  </motion.button>
                 </div>
               ) : (
-                <button className="glass-btn glass-btn-primary" style={styles.authBtn} onClick={() => setActivePage('auth')}>
+                <motion.button 
+                  className="glass-btn glass-btn-primary" 
+                  style={styles.authBtn} 
+                  onClick={() => setActivePage('auth')}
+                  whileHover={{ scale: 1.04, y: -1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <LogIn size={16} />
                   <span>Sign In</span>
-                </button>
+                </motion.button>
               )}
             </div>
           </header>
@@ -575,36 +680,81 @@ function App() {
             overflowX: 'hidden',
             display: 'grid',
             gridTemplateColumns: '100%',
-            gridTemplateRows: 'auto'
+            gridTemplateRows: 'auto',
+            perspective: '1200px',
+            transformStyle: 'preserve-3d'
           }}>
             <AnimatePresence mode="wait">
               {renderPage()}
             </AnimatePresence>
             {user && (
               <motion.div 
-                initial={false}
+                initial="hidden"
                 animate={(activePage === 'canvas' || (activePage === 'auth' && user)) ? "visible" : "hidden"}
                 variants={{
                   visible: { 
                     opacity: 1, 
-                    x: 0, 
-                    scale: 1,
+                    scaleX: 1, 
+                    scaleY: 1, 
+                    borderRadius: "24px",
+                    y: 0,
+                    filter: "blur(0px) contrast(1)",
                     display: 'block', 
-                    transition: { duration: 0.22, ease: 'easeInOut' } 
+                    transition: { 
+                      y: {
+                        type: 'spring',
+                        stiffness: 280,
+                        damping: 20,
+                        mass: 0.8
+                      },
+                      scaleX: {
+                        type: 'spring',
+                        stiffness: 260,
+                        damping: 14,
+                        mass: 0.6
+                      },
+                      scaleY: {
+                        type: 'spring',
+                        stiffness: 260,
+                        damping: 14,
+                        mass: 0.6
+                      },
+                      borderRadius: {
+                        duration: 0.38,
+                        ease: 'easeOut'
+                      },
+                      filter: {
+                        duration: 0.25
+                      },
+                      opacity: {
+                        duration: 0.2
+                      }
+                    }
                   },
                   hidden: { 
                     opacity: 0, 
-                    x: -15, 
-                    scale: 0.98,
+                    scaleX: 0.25, 
+                    scaleY: 1.6, 
+                    borderRadius: "200px",
+                    y: 70,
+                    filter: "blur(12px) contrast(1.25)",
                     transitionEnd: { display: 'none' },
-                    transition: { duration: 0.22, ease: 'easeInOut' } 
+                    transition: { 
+                      y: { duration: 0.28, ease: [0.4, 0, 1, 1] },
+                      scaleX: { duration: 0.22, ease: 'easeIn' },
+                      scaleY: { duration: 0.22, ease: 'easeIn' },
+                      borderRadius: { duration: 0.22, ease: 'easeInOut' },
+                      filter: { duration: 0.22 },
+                      opacity: { duration: 0.22 }
+                    } 
                   }
                 }}
                 style={{ 
                   width: '100%',
                   gridColumn: 1,
                   gridRow: 1,
-                  pointerEvents: (activePage === 'canvas' || (activePage === 'auth' && user)) ? 'auto' : 'none'
+                  pointerEvents: (activePage === 'canvas' || (activePage === 'auth' && user)) ? 'auto' : 'none',
+                  transformStyle: 'preserve-3d'
                 }}
               >
                 <AirCanvas 
