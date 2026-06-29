@@ -132,7 +132,7 @@ export default function AIStencils({ user, onApplyStencil }) {
       <div style={styles.contentGrid}>
         {/* Left Column - Forms & Limits */}
         <div style={styles.leftColumn}>
-          <div className="glass-panel-heavy" style={styles.panel}>
+          <div className="glass-panel-heavy" style={{ ...styles.panel, flex: 1 }}>
             <h3 style={styles.panelTitle}>Describe Stencil</h3>
             <form onSubmit={handleGenerate} style={styles.form}>
               <div style={styles.inputContainer}>
@@ -412,12 +412,16 @@ export default function AIStencils({ user, onApplyStencil }) {
 
 const styles = {
   pageContainer: {
-    maxWidth: '1200px',
+    width: '100%',
+    maxWidth: '100%',
     margin: '0 auto',
-    padding: '20px 0',
+    padding: '0',
     display: 'flex',
     flexDirection: 'column',
-    gap: '30px',
+    gap: '20px',
+    height: 'calc(100vh - 150px)',
+    minHeight: '500px',
+    overflow: 'hidden'
   },
   header: {
     display: 'flex',
@@ -446,18 +450,23 @@ const styles = {
   },
   contentGrid: {
     display: 'grid',
-    gridTemplateColumns: '1.1fr 1.3fr',
+    gridTemplateColumns: '420px 1fr',
     gap: '30px',
     alignItems: 'stretch',
+    flex: 1,
+    minHeight: 0,
+    width: '100%',
   },
   leftColumn: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '30px',
+    gap: '20px',
+    height: '100%',
   },
   rightColumn: {
     display: 'flex',
     flexDirection: 'column',
+    height: '100%',
   },
   panel: {
     padding: '28px',
@@ -629,7 +638,7 @@ const styles = {
   },
   stencilImageWrapper: {
     width: '100%',
-    maxHeight: '300px',
+    height: '100%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -637,7 +646,7 @@ const styles = {
   },
   stencilImage: {
     maxWidth: '100%',
-    maxHeight: '300px',
+    maxHeight: '100%',
     objectFit: 'contain',
     filter: 'invert(1) drop-shadow(0 0 10px rgba(6, 182, 212, 0.5))',
   },

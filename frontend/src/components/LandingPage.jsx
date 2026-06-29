@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand, FileImage } from 'lucide-react'
+import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand, FileImage, Wand2, Rotate3d } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function LandingPage({ onStartCanvas }) {
@@ -123,6 +123,36 @@ export default function LandingPage({ onStartCanvas }) {
             <h3 style={styles.cardTitle}>Personal User Gallery</h3>
             <p style={styles.cardText}>
               All designs are secured and saved in your personal database profile. Sign in to load and edit only your sketches.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            className="glass-card" 
+            style={styles.card}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <div style={styles.iconWrapper}>
+              <Wand2 size={24} color="#00f2fe" />
+            </div>
+            <h3 style={styles.cardTitle}>Doodle-to-Art AI Brush</h3>
+            <p style={styles.cardText}>
+              Translate rough layouts or simple sketched doodles into high-fidelity AI-generated art using stable diffusion Image-to-Image models.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            className="glass-card" 
+            style={styles.card}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <div style={styles.iconWrapper}>
+              <Rotate3d size={24} color="#8b5cf6" />
+            </div>
+            <h3 style={styles.cardTitle}>3D Revolve & Lathe Studio</h3>
+            <p style={styles.cardText}>
+              Draw a 2D line profile contour in real-time, and watch it mathematically revolve 360° around a Y-axis to model 3D vases, glasses, or chess pieces.
             </p>
           </motion.div>
         </div>

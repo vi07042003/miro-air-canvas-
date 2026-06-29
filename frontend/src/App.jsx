@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Home, Image, Settings as SettingsIcon, Palette, LogIn, LogOut, User as UserIcon, Lock, X, Sparkles } from 'lucide-react'
+import { Home, Image, Settings as SettingsIcon, Palette, LogIn, LogOut, User as UserIcon, Lock, X, Sparkles, Wand2, Rotate3d } from 'lucide-react'
 import LandingPage from './components/LandingPage'
 import AirCanvas from './components/AirCanvas'
 import Gallery from './components/Gallery'
@@ -8,6 +8,7 @@ import Settings from './components/Settings'
 import Auth from './components/Auth'
 import WelcomeAnimation from './components/WelcomeAnimation'
 import AIStencils from './components/AIStencils'
+import RevolveStudio from './components/RevolveStudio'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useToast } from './components/Toast'
 
@@ -237,7 +238,7 @@ function App() {
 
   // Safe navigation: always redirects to auth for protected pages
   const navigateTo = (page) => {
-    const protectedPages = ['canvas', 'gallery', 'stencils']
+    const protectedPages = ['canvas', 'gallery', 'stencils', 'revolve']
     if (protectedPages.includes(page) && !user) {
       setActivePage('auth')
     } else {
@@ -315,8 +316,8 @@ function App() {
   }
 
   const renderPage = () => {
-    // Strict auth gate — canvas, gallery and stencils are ALWAYS blocked without a session
-    if ((activePage === 'canvas' || activePage === 'gallery' || activePage === 'stencils') && !user) {
+    // Strict auth gate — canvas, gallery, stencils, and revolve are ALWAYS blocked without a session
+    if ((activePage === 'canvas' || activePage === 'gallery' || activePage === 'stencils' || activePage === 'revolve') && !user) {
       return (
         <motion.div
           key="auth"
@@ -422,6 +423,19 @@ function App() {
                 navigateTo('canvas')
               }}
             />
+          </motion.div>
+        )
+      case 'revolve':
+        return (
+          <motion.div
+            key="revolve"
+            variants={macPageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
+          >
+            <RevolveStudio user={user} />
           </motion.div>
         )
       default:
@@ -581,6 +595,27 @@ function App() {
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Sparkles size={19} />
                   <span>AI Stencils</span>
+                  {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                </span>
+              </motion.button>
+              <motion.button 
+                className={`nav-item ${activePage === 'revolve' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
+                onClick={() => navigateTo('revolve')}
+                title={!user ? 'Sign in to access 3D Revolve' : '3D Revolve'}
+                style={{ position: 'relative' }}
+                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
+                whileTap={!user ? {} : { scale: 0.95 }}
+              >
+                {activePage === 'revolve' && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="nav-item-active-bg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Rotate3d size={19} />
+                  <span>3D Revolve</span>
                   {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
               </motion.button>

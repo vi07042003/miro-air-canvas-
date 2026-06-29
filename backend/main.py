@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocke
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import pydantic
 import os
 import hashlib
@@ -361,6 +361,40 @@ def update_settings(settings_data: Dict[str, str], db: Session = Depends(databas
     db.commit()
     return {"message": "Settings updated successfully"}
 
+def upload_to_tmpfiles(image_bytes: bytes) -> str:
+    import urllib.request
+    import json
+    import uuid
+    import ssl
+    
+    url = "https://tmpfiles.org/api/v1/upload"
+    boundary = f"----WebKitFormBoundary{uuid.uuid4().hex}"
+    
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="doodle.png"\r\n'
+        f"Content-Type: image/png\r\n\r\n"
+    ).encode('utf-8') + image_bytes + f"\r\n--{boundary}--\r\n".encode('utf-8')
+    
+    headers = {
+        "Content-Type": f"multipart/form-data; boundary={boundary}",
+        "Content-Length": str(len(body)),
+        "User-Agent": "Mozilla/5.0"
+    }
+    
+    req = urllib.request.Request(url, data=body, headers=headers, method="POST")
+    try:
+        context = ssl._create_unverified_context()
+        with urllib.request.urlopen(req, context=context, timeout=20) as response:
+            resp_data = json.loads(response.read().decode('utf-8'))
+            if resp_data.get("status") == "success":
+                original_url = resp_data["data"]["url"]
+                dl_url = original_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
+                return dl_url
+    except Exception as e:
+        print(f"Error uploading to tmpfiles: {e}", flush=True)
+    return None
+
 # --- AI Stencil Generation API ---
 
 def generate_hf_image(prompt: str, model_id: str, hf_token: str = None) -> bytes:
@@ -535,6 +569,128 @@ def get_ai_sketch_usage(
 ):
     check_and_reset_ai_sketch_limit(current_user, db)
     return {
+        "usage_count": current_user.ai_sketch_usage_count,
+        "max_usage": MAX_AI_SKETCH_USAGE,
+        "reset_time": current_user.ai_sketch_reset_time.isoformat() if current_user.ai_sketch_reset_time else None
+    }
+
+@app.post("/api/ai-sketch/doodle-to-art")
+def doodle_to_art(
+    payload: Dict[str, Any],
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(database.get_db)
+):
+    from datetime import datetime
+    
+    prompt = (payload.get("prompt") or "").strip()
+    image_data = (payload.get("image_data") or "").strip() # data:image/png;base64,...
+    strength = float(payload.get("strength") or 0.55)
+    hf_token = (payload.get("hf_token") or "").strip()
+    if not hf_token:
+        db_setting = db.query(models.Setting).filter(models.Setting.key == "hf_token").first()
+        if db_setting:
+            hf_token = db_setting.value.strip()
+    if not hf_token:
+        import os
+        hf_token = os.getenv("HF_TOKEN", "").strip()
+    model_id = (payload.get("model_id") or "runwayml/stable-diffusion-v1-5").strip()
+    use_fallback = payload.get("use_fallback") == "true" or payload.get("use_fallback") is True or payload.get("use_fallback") is None
+    
+    if not prompt:
+        raise HTTPException(status_code=400, detail="Prompt is required")
+    if not image_data:
+        raise HTTPException(status_code=400, detail="Image data is required")
+        
+    check_and_reset_ai_sketch_limit(current_user, db)
+    
+    if current_user.ai_sketch_usage_count >= MAX_AI_SKETCH_USAGE:
+        remaining = (current_user.ai_sketch_reset_time - datetime.utcnow()).total_seconds()
+        remaining = max(0, int(remaining))
+        mins = remaining // 60
+        secs = remaining % 60
+        time_str = f"{mins}m {secs}s" if mins > 0 else f"{secs}s"
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. You can generate {MAX_AI_SKETCH_USAGE} sketches per hour. Try again in {time_str}."
+        )
+
+    # Decode base64 image
+    try:
+        if "," in image_data:
+            header, encoded = image_data.split(",", 1)
+        else:
+            encoded = image_data
+        image_bytes = base64.b64decode(encoded)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image base64 data: {str(e)}")
+
+    service_used = "Pollinations AI"
+    output_bytes = None
+
+    try:
+        from PIL import Image
+        import io
+        import urllib.request
+        import urllib.parse
+        import ssl
+        import random
+        
+        # Load and resize the canvas image to keep the URL payload small (under 8KB limit)
+        img = Image.open(io.BytesIO(image_bytes))
+        
+        # Handle alpha/transparency channels if present
+        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+            background = Image.new("RGB", img.size, (255, 255, 255))
+            # Extract alpha mask for clean pasting
+            alpha = img.split()[-1]
+            background.paste(img, mask=alpha)
+            img = background
+        else:
+            img = img.convert("RGB")
+            
+        # Resize to 256x256 and save with low quality JPEG to minimize base64 size
+        img_resized = img.resize((256, 256))
+        buffered = io.BytesIO()
+        img_resized.save(buffered, format="JPEG", quality=55)
+        resized_bytes = buffered.getvalue()
+        resized_base64 = base64.b64encode(resized_bytes).decode('utf-8')
+        resized_data_uri = f"data:image/jpeg;base64,{resized_base64}"
+        
+        # Generate random seed for variations
+        seed = random.randint(1, 100000)
+        
+        # Build prompt & parameters
+        enhanced_prompt = f"high quality masterfully rendered digital art of {prompt}, vibrant colors, highly detailed"
+        encoded_prompt = urllib.parse.quote(enhanced_prompt)
+        encoded_image_uri = urllib.parse.quote(resized_data_uri)
+        
+        url = f"https://image.pollinations.ai/p/{encoded_prompt}?width=512&height=512&seed={seed}&model=flux&image={encoded_image_uri}"
+        
+        req = urllib.request.Request(
+            url,
+            headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        context = ssl._create_unverified_context()
+        with urllib.request.urlopen(req, context=context, timeout=30) as response:
+            output_bytes = response.read()
+            service_used = "Pollinations AI (Image-to-Image)"
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate image via Pollinations AI. Error: {str(e)}"
+        )
+
+    if not output_bytes:
+        raise HTTPException(status_code=500, detail="Generated image data was empty")
+
+    current_user.ai_sketch_usage_count += 1
+    db.commit()
+    db.refresh(current_user)
+    
+    img_str = base64.b64encode(output_bytes).decode('utf-8')
+    return {
+        "image_data": f"data:image/png;base64,{img_str}",
+        "service_used": service_used,
         "usage_count": current_user.ai_sketch_usage_count,
         "max_usage": MAX_AI_SKETCH_USAGE,
         "reset_time": current_user.ai_sketch_reset_time.isoformat() if current_user.ai_sketch_reset_time else None
