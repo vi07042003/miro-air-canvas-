@@ -183,20 +183,6 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
                   <span>0.9 (High - Stricter)</span>
                 </div>
               </div>
-
-              <div style={styles.inputGroup}>
-                <label style={styles.label}>Default Brush Color</label>
-                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                  <input 
-                    type="color" 
-                    value={appSettings.defaultColor}
-                    onChange={(e) => setAppSettings({ ...appSettings, defaultColor: e.target.value })}
-                    style={styles.colorPicker}
-                  />
-                  <span style={{ fontStyle: 'monospace' }}>{appSettings.defaultColor}</span>
-                </div>
-              </div>
-
               <div style={styles.inputGroup}>
                 <label style={styles.label}>Glass Transparency</label>
                 <input 
