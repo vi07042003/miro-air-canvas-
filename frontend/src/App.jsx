@@ -442,18 +442,13 @@ function App() {
 
   return (
     <>
-      {/* Background liquid elements */}
+      {/* Premium Ambient Aurora Glow Background */}
       <div className="app-bg-container">
-        <div className="liquid-blob blob-1"></div>
-        <div className="liquid-blob blob-2"></div>
-        <div className="liquid-blob blob-3"></div>
-        <div className="liquid-blob blob-4"></div>
-        <div className="liquid-blob blob-5"></div>
-        <div className="liquid-blob blob-6"></div>
-        <div className="liquid-blob blob-7"></div>
-        <div className="liquid-blob blob-8"></div>
-        <div className="liquid-blob blob-9"></div>
-        <div className="liquid-blob blob-10"></div>
+        <div className="ambient-glow glow-1"></div>
+        <div className="ambient-glow glow-2"></div>
+        <div className="ambient-glow glow-3"></div>
+        <div className="ambient-glow glow-4"></div>
+        <div className="ambient-glow glow-5"></div>
       </div>
 
       <AnimatePresence mode="wait">
