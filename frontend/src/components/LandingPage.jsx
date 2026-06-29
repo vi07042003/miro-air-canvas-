@@ -133,21 +133,6 @@ export default function LandingPage({ onStartCanvas }) {
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
-              <Wand2 size={24} color="#00f2fe" />
-            </div>
-            <h3 style={styles.cardTitle}>Doodle-to-Art AI Brush</h3>
-            <p style={styles.cardText}>
-              Translate rough layouts or simple sketched doodles into high-fidelity AI-generated art using stable diffusion Image-to-Image models.
-            </p>
-          </motion.div>
-
-          <motion.div 
-            className="glass-card" 
-            style={styles.card}
-            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-          >
-            <div style={styles.iconWrapper}>
               <Rotate3d size={24} color="#8b5cf6" />
             </div>
             <h3 style={styles.cardTitle}>3D Revolve & Lathe Studio</h3>
