@@ -4,6 +4,7 @@ import { Image, Download, Trash2, Eye, Calendar, X, Edit, ChevronLeft, ChevronRi
 import { BACKEND_URL } from '../App'
 import GlassDialog from './GlassDialog'
 import { useToast } from './Toast'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function Gallery({ onEditDrawing }) {
   const { showToast } = useToast()
@@ -259,58 +260,158 @@ export default function Gallery({ onEditDrawing }) {
       </div>
 
       {/* Lightbox / Zoom Modal */}
-      {selectedDrawing && createPortal(
-        <div className="modal-backdrop-glass" onClick={() => setSelectedDrawing(null)}>
-          <div className="glass-panel-heavy" style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <div>
-                <h2 style={styles.modalTitle}>{selectedDrawing.title}</h2>
-                <div style={styles.modalMeta}>
-                  <Calendar size={14} />
-                  <span>Saved on {selectedDrawing.created_at}</span>
-                </div>
-              </div>
-              <button style={styles.closeBtn} onClick={() => setSelectedDrawing(null)}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div style={styles.modalImageWrapper}>
-              <img src={selectedDrawing.image_data} alt={selectedDrawing.title} style={styles.modalImage} />
-            </div>
+      {createPortal(
+        <AnimatePresence>
+          {selectedDrawing && (
+            <motion.div 
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: { opacity: 1, transition: { duration: 0.2 } }
+              }}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+                perspective: '1000px',
+                pointerEvents: 'auto'
+              }}
+            >
+              {/* Backdrop blur overlay */}
+              <motion.div 
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: { opacity: 1 }
+                }}
+                transition={{ duration: 0.25 }}
+                className="modal-backdrop-glass"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  zIndex: -1
+                }}
+                onClick={() => setSelectedDrawing(null)}
+              />
 
-            <div style={styles.modalFooter}>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button 
-                  className="glass-btn glass-btn-primary" 
-                  onClick={(e) => handleDownload(selectedDrawing, e)}
-                >
-                  <Download size={16} />
-                  <span>Download High-Res</span>
-                </button>
-                <button 
-                  className="glass-btn" 
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', borderColor: 'var(--glass-border)' }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onEditDrawing(selectedDrawing)
-                  }}
-                >
-                  <Edit size={16} />
-                  <span>Resume Sketch</span>
-                </button>
-              </div>
-              <button 
-                className="glass-btn glass-btn-danger" 
-                style={styles.modalDeleteBtn}
-                onClick={(e) => handleDelete(selectedDrawing.id, e)}
+              {/* Dialog Content Box */}
+              <motion.div
+                variants={{
+                  hidden: { 
+                    opacity: 0, 
+                    scaleX: 0.35, 
+                    scaleY: 1.6, 
+                    borderRadius: "200px",
+                    y: 100,
+                    filter: "blur(10px)",
+                    transformOrigin: "center bottom"
+                  },
+                  visible: { 
+                    opacity: 1, 
+                    scaleX: 1, 
+                    scaleY: 1, 
+                    borderRadius: "24px",
+                    y: 0,
+                    filter: "blur(0px)",
+                    transformOrigin: "center bottom",
+                    transition: { 
+                      y: {
+                        type: 'spring',
+                        stiffness: 300,
+                        damping: 22,
+                        mass: 0.8
+                      },
+                      scaleX: {
+                        type: 'spring',
+                        stiffness: 280,
+                        damping: 14,
+                        mass: 0.6
+                      },
+                      scaleY: {
+                        type: 'spring',
+                        stiffness: 280,
+                        damping: 14,
+                        mass: 0.6
+                      },
+                      borderRadius: {
+                        duration: 0.38,
+                        ease: 'easeOut'
+                      },
+                      filter: {
+                        duration: 0.25
+                      },
+                      opacity: {
+                        duration: 0.15
+                      }
+                    }
+                  }
+                }}
+                className="glass-panel-heavy modal-content-scroll"
+                style={{ ...styles.modalContent, transformStyle: 'preserve-3d', overflow: 'hidden' }}
+                onClick={(e) => e.stopPropagation()}
               >
-                <Trash2 size={16} />
-                <span>Delete Sketch</span>
-              </button>
-            </div>
-          </div>
-        </div>,
+                <div style={styles.modalHeader}>
+                  <div>
+                    <h2 style={styles.modalTitle}>{selectedDrawing.title}</h2>
+                    <div style={styles.modalMeta}>
+                      <Calendar size={14} />
+                      <span>Saved on {selectedDrawing.created_at}</span>
+                    </div>
+                  </div>
+                  <button style={styles.closeBtn} onClick={() => setSelectedDrawing(null)}>
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <div style={styles.modalImageWrapper}>
+                  <img src={selectedDrawing.image_data} alt={selectedDrawing.title} style={styles.modalImage} />
+                </div>
+
+                <div style={styles.modalFooter}>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button 
+                      className="glass-btn glass-btn-primary" 
+                      onClick={(e) => handleDownload(selectedDrawing, e)}
+                    >
+                      <Download size={16} />
+                      <span>Download High-Res</span>
+                    </button>
+                    <button 
+                      className="glass-btn" 
+                      style={{ background: 'rgba(255, 255, 255, 0.05)', borderColor: 'var(--glass-border)' }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onEditDrawing(selectedDrawing)
+                      }}
+                    >
+                      <Edit size={16} />
+                      <span>Resume Sketch</span>
+                    </button>
+                  </div>
+                  <button 
+                    className="glass-btn glass-btn-danger" 
+                    style={styles.modalDeleteBtn}
+                    onClick={(e) => handleDelete(selectedDrawing.id, e)}
+                  >
+                    <Trash2 size={16} />
+                    <span>Delete Sketch</span>
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
       <GlassDialog

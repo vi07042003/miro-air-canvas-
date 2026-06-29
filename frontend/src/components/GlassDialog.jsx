@@ -60,10 +60,55 @@ export default function GlassDialog({
           {/* Dialog Content Box */}
           <motion.div
             variants={{
-              hidden: { opacity: 0, scale: 0.95, y: 15, rotateX: -5 },
-              visible: { opacity: 1, scale: 1, y: 0, rotateX: 0 }
+              hidden: { 
+                opacity: 0, 
+                scaleX: 0.35, 
+                scaleY: 1.6, 
+                borderRadius: "200px",
+                y: 100,
+                filter: "blur(10px)",
+                transformOrigin: "center bottom"
+              },
+              visible: { 
+                opacity: 1, 
+                scaleX: 1, 
+                scaleY: 1, 
+                borderRadius: "24px",
+                y: 0,
+                filter: "blur(0px)",
+                transformOrigin: "center bottom",
+                transition: { 
+                  y: {
+                    type: 'spring',
+                    stiffness: 300,
+                    damping: 22,
+                    mass: 0.8
+                  },
+                  scaleX: {
+                    type: 'spring',
+                    stiffness: 280,
+                    damping: 14,
+                    mass: 0.6
+                  },
+                  scaleY: {
+                    type: 'spring',
+                    stiffness: 280,
+                    damping: 14,
+                    mass: 0.6
+                  },
+                  borderRadius: {
+                    duration: 0.38,
+                    ease: 'easeOut'
+                  },
+                  filter: {
+                    duration: 0.25
+                  },
+                  opacity: {
+                    duration: 0.15
+                  }
+                }
+              }
             }}
-            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
             className="glass-panel-heavy"
             style={{
               width: '90%',
@@ -75,7 +120,8 @@ export default function GlassDialog({
               position: 'relative',
               boxShadow: '0 20px 50px rgba(0, 0, 0, 0.4)',
               margin: 'auto',
-              transformStyle: 'preserve-3d'
+              transformStyle: 'preserve-3d',
+              overflow: 'hidden'
             }}
             onClick={e => e.stopPropagation()}
           >

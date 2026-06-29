@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand, FileImage } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function LandingPage({ onStartCanvas }) {
   const [showManual, setShowManual] = useState(false)
@@ -160,72 +160,172 @@ export default function LandingPage({ onStartCanvas }) {
       </section>
 
       {/* Manual / How It Works Modal */}
-      {showManual && createPortal(
-        <div className="modal-backdrop-glass" onClick={() => setShowManual(false)}>
-          <div className="glass-panel-heavy" style={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-            <div style={styles.modalHeader}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <BookOpen size={22} color="var(--theme-color-2)" />
-                <h2 style={styles.modalTitle}>User Guide & Controls</h2>
-              </div>
-              <button style={styles.closeBtn} onClick={() => setShowManual(false)}>
-                <X size={20} />
-              </button>
-            </div>
+      {createPortal(
+        <AnimatePresence>
+          {showManual && (
+            <motion.div 
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: { opacity: 1, transition: { duration: 0.2 } }
+              }}
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '20px',
+                perspective: '1000px',
+                pointerEvents: 'auto'
+              }}
+            >
+              {/* Backdrop blur overlay */}
+              <motion.div 
+                variants={{
+                  hidden: { opacity: 0 },
+                  visible: { opacity: 1 }
+                }}
+                transition={{ duration: 0.25 }}
+                className="modal-backdrop-glass"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  zIndex: -1
+                }}
+                onClick={() => setShowManual(false)}
+              />
 
-            <div style={styles.modalBody}>
-              <p style={styles.manualIntro}>
-                MIRO Canvas converts standard webcam feeds into real-time gesture paint canvases. Follow the instructions below to learn how to interact with the device.
-              </p>
-
-              <div style={styles.guideStep}>
-                <div style={styles.stepHeader}>
-                  <Camera size={18} color="var(--theme-color-2)" />
-                  <span style={styles.stepTitle}>1. Camera Positioning</span>
+              {/* Dialog Content Box */}
+              <motion.div
+                variants={{
+                  hidden: { 
+                    opacity: 0, 
+                    scaleX: 0.35, 
+                    scaleY: 1.6, 
+                    borderRadius: "200px",
+                    y: 100,
+                    filter: "blur(10px)",
+                    transformOrigin: "center bottom"
+                  },
+                  visible: { 
+                    opacity: 1, 
+                    scaleX: 1, 
+                    scaleY: 1, 
+                    borderRadius: "24px",
+                    y: 0,
+                    filter: "blur(0px)",
+                    transformOrigin: "center bottom",
+                    transition: { 
+                      y: {
+                        type: 'spring',
+                        stiffness: 300,
+                        damping: 22,
+                        mass: 0.8
+                      },
+                      scaleX: {
+                        type: 'spring',
+                        stiffness: 280,
+                        damping: 14,
+                        mass: 0.6
+                      },
+                      scaleY: {
+                        type: 'spring',
+                        stiffness: 280,
+                        damping: 14,
+                        mass: 0.6
+                      },
+                      borderRadius: {
+                        duration: 0.38,
+                        ease: 'easeOut'
+                      },
+                      filter: {
+                        duration: 0.25
+                      },
+                      opacity: {
+                        duration: 0.15
+                      }
+                    }
+                  }
+                }}
+                className="glass-panel-heavy modal-content-scroll"
+                style={{ ...styles.modalContent, transformStyle: 'preserve-3d', overflow: 'hidden' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div style={styles.modalHeader}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <BookOpen size={22} color="var(--theme-color-2)" />
+                    <h2 style={styles.modalTitle}>User Guide & Controls</h2>
+                  </div>
+                  <button style={styles.closeBtn} onClick={() => setShowManual(false)}>
+                    <X size={20} />
+                  </button>
                 </div>
-                <p style={styles.stepText}>
-                  Ensure your room is well-lit and you sit directly in front of the lens. Place your hand approximately 1 to 2 feet away from the webcam for optimum tracking precision.
-                </p>
-              </div>
 
-              <div style={styles.guideStep}>
-                <div style={styles.stepHeader}>
-                  <Hand size={18} color="var(--theme-color-1)" style={{ transform: 'rotate(90deg)' }} />
-                  <span style={styles.stepTitle}>2. Paint Gesture (Index Raised)</span>
+                <div style={styles.modalBody}>
+                  <p style={styles.manualIntro}>
+                    MIRO Canvas converts standard webcam feeds into real-time gesture paint canvases. Follow the instructions below to learn how to interact with the device.
+                  </p>
+
+                  <div style={styles.guideStep}>
+                    <div style={styles.stepHeader}>
+                      <Camera size={18} color="var(--theme-color-2)" />
+                      <span style={styles.stepTitle}>1. Camera Positioning</span>
+                    </div>
+                    <p style={styles.stepText}>
+                      Ensure your room is well-lit and you sit directly in front of the lens. Place your hand approximately 1 to 2 feet away from the webcam for optimum tracking precision.
+                    </p>
+                  </div>
+
+                  <div style={styles.guideStep}>
+                    <div style={styles.stepHeader}>
+                      <Hand size={18} color="var(--theme-color-1)" style={{ transform: 'rotate(90deg)' }} />
+                      <span style={styles.stepTitle}>2. Paint Gesture (Index Raised)</span>
+                    </div>
+                    <p style={styles.stepText}>
+                      Raise only your **index finger** (fold middle, ring, pinky, and thumb). A neon paint trail will follow your fingertip to sketch lines, curves, or shape objects.
+                    </p>
+                  </div>
+
+                  <div style={styles.guideStep}>
+                    <div style={styles.stepHeader}>
+                      <Hand size={18} color="var(--primary-emerald)" />
+                      <span style={styles.stepTitle}>3. Hover & Navigation Gesture (V-Sign)</span>
+                    </div>
+                    <p style={styles.stepText}>
+                      Raise both your **index and middle fingers** split apart (like a peace sign). This activates cursor-only hover mode, letting you reposition without painting.
+                    </p>
+                  </div>
+
+                  <div style={styles.guideStep}>
+                    <div style={styles.stepHeader}>
+                      <MousePointer size={18} color="var(--primary-pink)" />
+                      <span style={styles.stepTitle}>4. Mouse Safety Fallback</span>
+                    </div>
+                    <p style={styles.stepText}>
+                      If you don't have a webcam or camera permissions are blocked, you can drag your mouse cursor directly on the dark canvas to paint and test all vector shapes.
+                    </p>
+                  </div>
                 </div>
-                <p style={styles.stepText}>
-                  Raise only your **index finger** (fold middle, ring, pinky, and thumb). A neon paint trail will follow your fingertip to sketch lines, curves, or shape objects.
-                </p>
-              </div>
 
-              <div style={styles.guideStep}>
-                <div style={styles.stepHeader}>
-                  <Hand size={18} color="var(--primary-emerald)" />
-                  <span style={styles.stepTitle}>3. Hover & Navigation Gesture (V-Sign)</span>
+                <div style={styles.modalFooter}>
+                  <button className="glass-btn glass-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowManual(false)}>
+                    Got it!
+                  </button>
                 </div>
-                <p style={styles.stepText}>
-                  Raise both your **index and middle fingers** split apart (like a peace sign). This activates cursor-only hover mode, letting you reposition without painting.
-                </p>
-              </div>
-
-              <div style={styles.guideStep}>
-                <div style={styles.stepHeader}>
-                  <MousePointer size={18} color="var(--primary-pink)" />
-                  <span style={styles.stepTitle}>4. Mouse Safety Fallback</span>
-                </div>
-                <p style={styles.stepText}>
-                  If you don't have a webcam or camera permissions are blocked, you can drag your mouse cursor directly on the dark canvas to paint and test all vector shapes.
-                </p>
-              </div>
-            </div>
-
-            <div style={styles.modalFooter}>
-              <button className="glass-btn glass-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setShowManual(false)}>
-                Got it!
-              </button>
-            </div>
-          </div>
-        </div>,
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
         document.body
       )}
     </div>
