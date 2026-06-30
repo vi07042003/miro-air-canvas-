@@ -24,6 +24,11 @@ export default function DoodleStudio({ user }) {
   const [error, setError] = useState('')
   const [serviceUsed, setServiceUsed] = useState('')
   const [sketchDescription, setSketchDescription] = useState('')
+  const [detectedObject, setDetectedObject] = useState('')
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [isDescriptionEdited, setIsDescriptionEdited] = useState(false)
+  const analysisTimeoutRef = useRef(null)
+  const lastAnalysisTimeRef = useRef(0)
 
   // Limit States
   const [usageCount, setUsageCount] = useState(0)
@@ -151,6 +156,7 @@ export default function DoodleStudio({ user }) {
     const canvas = canvasRef.current
     if (!canvas) return
     isDrawingRef.current = true
+    setIsDescriptionEdited(false)
     const pos = getMousePos(e)
     lastPosRef.current = pos
     
@@ -181,8 +187,71 @@ export default function DoodleStudio({ user }) {
     lastPosRef.current = pos
   }
 
+  const analyzeCurrentSketch = async () => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const now = Date.now()
+    const cooldown = 10000 // 10 seconds minimum interval to completely prevent 429
+    const timeSinceLast = now - lastAnalysisTimeRef.current
+
+    if (timeSinceLast < cooldown) {
+      // Re-schedule the analysis to run when the cooldown expires
+      if (analysisTimeoutRef.current) {
+        clearTimeout(analysisTimeoutRef.current)
+      }
+      analysisTimeoutRef.current = setTimeout(() => {
+        analyzeCurrentSketch()
+      }, cooldown - timeSinceLast + 100)
+      return
+    }
+
+    lastAnalysisTimeRef.current = now
+    setIsAnalyzing(true)
+    const sketchDataUrl = canvas.toDataURL('image/png')
+
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ai-sketch/analyze-doodle`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          image_data: sketchDataUrl,
+          hf_token: localStorage.getItem('hf_api_token') || ''
+        })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setDetectedObject(data.sketch_description || '')
+        setSketchDescription(data.sketch_description || '')
+        if (data.gemini_status === 429) {
+          showToast("Gemini Rate Limit Exceeded (429)! Please pause a moment between drawings.", "warning")
+        }
+      }
+    } catch (err) {
+      console.error("Failed to analyze sketch:", err)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
   const stopDrawing = () => {
+    if (!isDrawingRef.current) return
     isDrawingRef.current = false
+
+    // Debounce sketch analysis by 2500ms to avoid API rate limits (e.g. Gemini 429)
+    if (analysisTimeoutRef.current) {
+      clearTimeout(analysisTimeoutRef.current)
+    }
+    analysisTimeoutRef.current = setTimeout(() => {
+      analyzeCurrentSketch()
+    }, 2500)
   }
 
   const clearCanvas = () => {
@@ -191,6 +260,11 @@ export default function DoodleStudio({ user }) {
     const ctx = canvas.getContext('2d')
     ctx.fillStyle = '#0a0518'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
+    setDetectedObject('')
+    setSketchDescription('')
+    if (analysisTimeoutRef.current) {
+      clearTimeout(analysisTimeoutRef.current)
+    }
     showToast("Canvas cleared!", "info")
   }
 
@@ -200,6 +274,10 @@ export default function DoodleStudio({ user }) {
     setError('')
     setServiceUsed('')
     setSketchDescription('')
+    setDetectedObject('')
+    if (analysisTimeoutRef.current) {
+      clearTimeout(analysisTimeoutRef.current)
+    }
     showToast('Artwork cleared', 'info')
   }
 
@@ -234,7 +312,9 @@ export default function DoodleStudio({ user }) {
         body: JSON.stringify({
           prompt: prompt.trim(),
           image_data: sketchDataUrl,
-          use_fallback: useFallback
+          use_fallback: useFallback,
+          sketch_description: detectedObject || sketchDescription || '',
+          hf_token: localStorage.getItem('hf_api_token') || ''
         })
       })
 
@@ -243,6 +323,7 @@ export default function DoodleStudio({ user }) {
         setGeneratedImage(data.image_data)
         setServiceUsed(data.service_used)
         setSketchDescription(data.sketch_description || '')
+        setDetectedObject(data.sketch_description || '')
         setUsageCount(data.usage_count)
         setMaxUsage(data.max_usage)
         if (data.reset_time) setResetTime(data.reset_time)
@@ -334,6 +415,83 @@ export default function DoodleStudio({ user }) {
             onMouseLeave={stopDrawing}
             style={{ width: '100%', height: '100%', display: 'block' }}
           />
+        </div>
+
+        {/* Real-time AI Sketch Detection Preview */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          marginTop: '12px',
+          padding: '8px 16px',
+          background: 'rgba(255, 255, 255, 0.02)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '12px',
+          fontSize: '12px',
+          minHeight: '38px',
+          boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.03)'
+        }}>
+          <Sparkles 
+            size={14} 
+            color="var(--theme-color-1)" 
+            style={{ 
+              animation: isAnalyzing ? 'doodle-spin 1s linear infinite' : 'none' 
+            }} 
+          />
+          <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: '500' }}>AI Detection Preview:</span>
+          {isAnalyzing ? (
+            <span style={{ 
+              color: 'var(--theme-color-1)', 
+              fontStyle: 'italic', 
+              animation: 'doodle-pulse 1s infinite alternate' 
+            }}>
+              Analyzing sketch...
+            </span>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+              <input
+                type="text"
+                value={detectedObject}
+                onChange={(e) => {
+                  setDetectedObject(e.target.value)
+                  setSketchDescription(e.target.value)
+                  setIsDescriptionEdited(true)
+                }}
+                placeholder="Draw a simple object to detect shape..."
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: 'none',
+                  color: detectedObject ? 'var(--theme-color-1)' : 'rgba(255,255,255,0.4)',
+                  fontSize: '12.5px',
+                  fontWeight: '600',
+                  outline: 'none',
+                  padding: '2px 0'
+                }}
+              />
+              {detectedObject && (
+                <span style={{ fontSize: '10px', opacity: 0.35, fontStyle: 'italic' }}>
+                  (click to edit description)
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+        
+        {/* User Guidance / Rate-limit Helper Tip */}
+        <div style={{ 
+          fontSize: '11px', 
+          color: 'rgba(255, 255, 255, 0.4)', 
+          marginTop: '6px', 
+          padding: '0 6px',
+          fontStyle: 'italic',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '6px',
+          lineHeight: '1.4'
+        }}>
+          <span style={{ color: 'var(--theme-color-1)' }}>💡</span>
+          <span><strong>Tip:</strong> Avoid drawing continuously. Pause briefly between elements so the AI can analyze the sketch without rate-limit issues.</span>
         </div>
 
         {/* Drawing Toolbar */}
@@ -658,6 +816,10 @@ export default function DoodleStudio({ user }) {
         @keyframes doodle-orbit {
           0%   { transform: translateX(28px) rotate(0deg);   }
           100% { transform: translateX(28px) rotate(360deg); }
+        }
+        @keyframes doodle-pulse {
+          from { opacity: 0.4; }
+          to { opacity: 1; }
         }
       `}</style>
     </div>

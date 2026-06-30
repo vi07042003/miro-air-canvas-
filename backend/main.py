@@ -574,6 +574,62 @@ def get_ai_sketch_usage(
         "reset_time": current_user.ai_sketch_reset_time.isoformat() if current_user.ai_sketch_reset_time else None
     }
 
+@app.post("/api/ai-sketch/analyze-doodle")
+def analyze_doodle(
+    payload: Dict[str, Any],
+    current_user: models.User = Depends(get_current_user)
+):
+    import doodle_art
+    import base64
+    import io
+    from PIL import Image
+    
+    image_data = (payload.get("image_data") or "").strip()
+    hf_token = (payload.get("hf_token") or "").strip()
+    if not image_data:
+        raise HTTPException(status_code=400, detail="Image data is required")
+        
+    try:
+        if "," in image_data:
+            _, encoded = image_data.split(",", 1)
+        else:
+            encoded = image_data
+        image_bytes = base64.b64decode(encoded)
+        img = Image.open(io.BytesIO(image_bytes))
+        
+        # Flatten transparency onto white background
+        if img.mode in ('RGBA', 'LA') or (img.mode == 'P' and 'transparency' in img.info):
+            bg = Image.new("RGB", img.size, (255, 255, 255))
+            alpha = img.split()[-1]
+            bg.paste(img, mask=alpha)
+            img = bg
+        else:
+            img = img.convert("RGB")
+            
+        description = ""
+        gemini_status = 200
+        # 1. Try Gemini Vision first
+        gemini_buf = io.BytesIO()
+        img.resize((384, 384)).save(gemini_buf, format="JPEG", quality=90)
+        description, gemini_status = doodle_art.describe_sketch_via_gemini(gemini_buf.getvalue())
+        
+        # 2. Try Hugging Face second
+        if not description and hf_token:
+            hf_buf = io.BytesIO()
+            img.resize((384, 384)).save(hf_buf, format="JPEG", quality=90)
+            description = doodle_art.describe_sketch_via_huggingface(hf_buf.getvalue(), hf_token)
+            
+        # 3. Fallback to local
+        if not description:
+            description = doodle_art.analyze_sketch_locally(img)
+            
+        return {
+            "sketch_description": description,
+            "gemini_status": gemini_status
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to analyze sketch: {str(e)}")
+
 @app.post("/api/ai-sketch/doodle-to-art")
 def doodle_to_art(
     payload: Dict[str, Any],
