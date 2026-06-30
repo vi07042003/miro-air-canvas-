@@ -341,7 +341,8 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
 
 const styles = {
   container: {
-    maxWidth: '1100px',
+    width: '100%',
+    maxWidth: '1280px',
     margin: '0 auto',
     padding: '20px 0',
   },
@@ -359,21 +360,29 @@ const styles = {
     display: 'flex',
     gap: '24px',
     flexWrap: 'wrap',
+    alignItems: 'stretch',
   },
   mainColumn: {
-    flex: '2 1 600px',
+    flex: '1 1 0px',
+    minWidth: '320px',
     display: 'flex',
     flexDirection: 'column',
     gap: '24px',
   },
   sidebar: {
-    flex: '1 1 300px',
+    flex: '1 1 0px',
+    minWidth: '320px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '24px',
   },
   card: {
     padding: '28px',
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',
+    height: '100%',
+    flex: 1,
   },
   cardHeader: {
     display: 'flex',
@@ -448,8 +457,8 @@ const styles = {
     lineHeight: '1.5',
   },
   themeGrid: {
-    display: 'flex',
-    flexDirection: 'column',
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
     gap: '12px',
     marginTop: '10px',
   },
@@ -495,6 +504,7 @@ const styles = {
     border: '1px solid rgba(255, 255, 255, 0.05)',
     borderRadius: '12px',
     marginTop: '4px',
+    gridColumn: '1 / -1',
   },
   customColorInputGroup: {
     display: 'flex',
