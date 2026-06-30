@@ -9,6 +9,7 @@ import Auth from './components/Auth'
 import WelcomeAnimation from './components/WelcomeAnimation'
 import AIStencils from './components/AIStencils'
 import RevolveStudio from './components/RevolveStudio'
+import DoodleStudio from './components/DoodleStudio'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useToast } from './components/Toast'
 
@@ -238,7 +239,7 @@ function App() {
 
   // Safe navigation: always redirects to auth for protected pages
   const navigateTo = (page) => {
-    const protectedPages = ['canvas', 'gallery', 'stencils', 'revolve']
+    const protectedPages = ['canvas', 'gallery', 'stencils', 'revolve', 'doodle']
     if (protectedPages.includes(page) && !user) {
       setActivePage('auth')
     } else {
@@ -316,8 +317,8 @@ function App() {
   }
 
   const renderPage = () => {
-    // Strict auth gate — canvas, gallery, stencils, and revolve are ALWAYS blocked without a session
-    if ((activePage === 'canvas' || activePage === 'gallery' || activePage === 'stencils' || activePage === 'revolve') && !user) {
+    // Strict auth gate — canvas, gallery, stencils, revolve, and doodle are ALWAYS blocked without a session
+    if ((activePage === 'canvas' || activePage === 'gallery' || activePage === 'stencils' || activePage === 'revolve' || activePage === 'doodle') && !user) {
       return (
         <motion.div
           key="auth"
@@ -436,6 +437,19 @@ function App() {
             style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <RevolveStudio user={user} />
+          </motion.div>
+        )
+      case 'doodle':
+        return (
+          <motion.div
+            key="doodle"
+            variants={macPageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
+          >
+            <DoodleStudio user={user} />
           </motion.div>
         )
       default:
@@ -616,6 +630,27 @@ function App() {
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Rotate3d size={19} />
                   <span>3D Revolve</span>
+                  {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                </span>
+              </motion.button>
+              <motion.button 
+                className={`nav-item ${activePage === 'doodle' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
+                onClick={() => navigateTo('doodle')}
+                title={!user ? 'Sign in to access Doodle to Art' : 'Doodle Art'}
+                style={{ position: 'relative' }}
+                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
+                whileTap={!user ? {} : { scale: 0.95 }}
+              >
+                {activePage === 'doodle' && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="nav-item-active-bg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Wand2 size={19}/>
+                  <span>Doodle Art</span>
                   {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
               </motion.button>

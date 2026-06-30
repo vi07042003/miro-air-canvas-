@@ -244,64 +244,6 @@ const TOAST_STYLES = `
   }
 `
 
-// Web Audio API Synthesizers for satisfying liquid feedback sounds
-const playDropletSound = () => {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext
-    if (!AudioContext) return
-    const ctx = new AudioContext()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    
-    const now = ctx.currentTime
-    
-    // Smooth upward pitch sweep to sound like a droplet landing (plop)
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(140, now)
-    osc.frequency.exponentialRampToValueAtTime(700, now + 0.13)
-    
-    // Very fast attack, gentle decay envelope
-    gain.gain.setValueAtTime(0.001, now)
-    gain.gain.linearRampToValueAtTime(0.15, now + 0.015)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.13)
-    
-    osc.start(now)
-    osc.stop(now + 0.14)
-  } catch {
-    // Ignore context blocked errors (browsers require user interaction first)
-  }
-}
-
-const playPopSound = () => {
-  try {
-    const AudioContext = window.AudioContext || window.webkitAudioContext
-    if (!AudioContext) return
-    const ctx = new AudioContext()
-    const osc = ctx.createOscillator()
-    const gain = ctx.createGain()
-    
-    osc.connect(gain)
-    gain.connect(ctx.destination)
-    
-    const now = ctx.currentTime
-    
-    // Fast downward pitch sweep (pop)
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(750, now)
-    osc.frequency.exponentialRampToValueAtTime(100, now + 0.07)
-    
-    gain.gain.setValueAtTime(0.1, now)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07)
-    
-    osc.start(now)
-    osc.stop(now + 0.08)
-  } catch {
-    // Ignore context blocked errors
-  }
-}
 
 // Define properties based on toast type (Static Helper)
 const getToastConfig = (type) => {
@@ -419,7 +361,6 @@ export const ToastProvider = ({ children }) => {
     setTimeout(() => {
       setDropletActive(false)
       setCapsuleActive(true)
-      playDropletSound()
     }, 220)
 
     // Stage 2: Toast Capsule remains visible
@@ -436,7 +377,6 @@ export const ToastProvider = ({ children }) => {
       }
       setCapsuleActive(false)
       setShowExitSplash(true)
-      playPopSound()
       
       // Clear exit splash after it finishes (180ms)
       setTimeout(() => {

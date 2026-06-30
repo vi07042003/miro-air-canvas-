@@ -118,6 +118,21 @@ export default function LandingPage({ onStartCanvas }) {
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
+              <Wand2 size={24} color="#f43f5e" />
+            </div>
+            <h3 style={styles.cardTitle}>AI Doodle to Art</h3>
+            <p style={styles.cardText}>
+              Transform your freehand sketches into rich digital artwork instantly. Colorize, enhance contours, and fill drawings using advanced ControlNet AI.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            className="glass-card" 
+            style={styles.card}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <div style={styles.iconWrapper}>
               <Image size={24} color="#ec4899" />
             </div>
             <h3 style={styles.cardTitle}>Personal User Gallery</h3>
