@@ -232,6 +232,8 @@ export default function DoodleStudio({ user }) {
         setSketchDescription(data.sketch_description || '')
         if (data.gemini_status === 429) {
           showToast("Gemini Rate Limit Exceeded (429)! Please pause a moment between drawings.", "warning")
+        } else if (data.gemini_status === 503) {
+          showToast("Gemini Service Overloaded (503). Using alternative models...", "info")
         }
       }
     } catch (err) {
