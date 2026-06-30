@@ -27,6 +27,7 @@ export default function DoodleStudio({ user }) {
   const [detectedObject, setDetectedObject] = useState('')
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isDescriptionEdited, setIsDescriptionEdited] = useState(false)
+  const [isCanvasBlank, setIsCanvasBlank] = useState(true)
   const analysisTimeoutRef = useRef(null)
   const lastAnalysisTimeRef = useRef(0)
 
@@ -157,6 +158,7 @@ export default function DoodleStudio({ user }) {
     if (!canvas) return
     isDrawingRef.current = true
     setIsDescriptionEdited(false)
+    setIsCanvasBlank(false)
     const pos = getMousePos(e)
     lastPosRef.current = pos
     
@@ -264,6 +266,7 @@ export default function DoodleStudio({ user }) {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     setDetectedObject('')
     setSketchDescription('')
+    setIsCanvasBlank(true)
     if (analysisTimeoutRef.current) {
       clearTimeout(analysisTimeoutRef.current)
     }
@@ -277,6 +280,7 @@ export default function DoodleStudio({ user }) {
     setServiceUsed('')
     setSketchDescription('')
     setDetectedObject('')
+    setIsCanvasBlank(true)
     if (analysisTimeoutRef.current) {
       clearTimeout(analysisTimeoutRef.current)
     }
@@ -484,7 +488,8 @@ export default function DoodleStudio({ user }) {
                     }
                     analyzeCurrentSketch()
                   }}
-                  disabled={isAnalyzing}
+                  disabled={isAnalyzing || isCanvasBlank}
+                  title={isCanvasBlank ? "Please draw something on the canvas first" : "Analyze sketch"}
                   className="glass-btn"
                   style={{
                     padding: '4px 10px',
@@ -494,14 +499,15 @@ export default function DoodleStudio({ user }) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '6px',
-                    borderColor: 'var(--theme-color-1)',
+                    borderColor: isCanvasBlank ? 'rgba(255,255,255,0.1)' : 'var(--theme-color-1)',
                     background: 'rgba(255,255,255,0.03)',
                     borderRadius: '8px',
-                    cursor: 'pointer'
+                    cursor: isCanvasBlank ? 'not-allowed' : 'pointer',
+                    opacity: isCanvasBlank ? 0.4 : 1
                   }}
                 >
-                  <Sparkles size={11} color="var(--theme-color-1)" />
-                  <span style={{ color: 'var(--theme-color-1)', fontWeight: '600' }}>Analyze Sketch</span>
+                  <Sparkles size={11} color={isCanvasBlank ? "rgba(255,255,255,0.3)" : "var(--theme-color-1)"} />
+                  <span style={{ color: isCanvasBlank ? "rgba(255,255,255,0.3)" : "var(--theme-color-1)", fontWeight: '600' }}>Analyze Sketch</span>
                 </button>
               )}
             </div>
@@ -521,7 +527,7 @@ export default function DoodleStudio({ user }) {
           lineHeight: '1.4'
         }}>
           <span style={{ color: 'var(--theme-color-1)' }}>💡</span>
-          <span><strong>Tip:</strong> Avoid drawing continuously. Pause briefly between elements so the AI can analyze the sketch without rate-limit issues.</span>
+          <span><strong>Tip:</strong> Click <strong>"Analyze Sketch"</strong> first to let the AI understand your drawing, then click <strong>"Generate Art"</strong> to create your image!</span>
         </div>
 
         {/* Drawing Toolbar */}
@@ -806,12 +812,15 @@ export default function DoodleStudio({ user }) {
             <button
               type="submit"
               className="glass-btn glass-btn-primary"
-              disabled={generating || usageCount >= maxUsage}
+              disabled={generating || usageCount >= maxUsage || !detectedObject}
+              title={!detectedObject ? "Please click 'Analyze Sketch' first" : "Generate artwork"}
               style={{
                 fontSize: '12px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '6px',
+                opacity: (!detectedObject && !generating) ? 0.4 : 1,
+                cursor: !detectedObject ? 'not-allowed' : 'pointer'
               }}
             >
               {generating ? (
