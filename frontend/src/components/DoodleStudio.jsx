@@ -247,13 +247,13 @@ export default function DoodleStudio({ user }) {
     if (!isDrawingRef.current) return
     isDrawingRef.current = false
 
-    // Debounce sketch analysis by 2500ms to avoid API rate limits (e.g. Gemini 429)
+    // Debounce sketch analysis by 6000ms (6 seconds) to ensure user has completely stopped drawing
     if (analysisTimeoutRef.current) {
       clearTimeout(analysisTimeoutRef.current)
     }
     analysisTimeoutRef.current = setTimeout(() => {
       analyzeCurrentSketch()
-    }, 2500)
+    }, 6000)
   }
 
   const clearCanvas = () => {
@@ -471,10 +471,38 @@ export default function DoodleStudio({ user }) {
                   padding: '2px 0'
                 }}
               />
-              {detectedObject && (
+              {detectedObject ? (
                 <span style={{ fontSize: '10px', opacity: 0.35, fontStyle: 'italic' }}>
                   (click to edit description)
                 </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (analysisTimeoutRef.current) {
+                      clearTimeout(analysisTimeoutRef.current)
+                    }
+                    analyzeCurrentSketch()
+                  }}
+                  disabled={isAnalyzing}
+                  className="glass-btn"
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    marginLeft: 'auto',
+                    minWidth: 'auto',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    borderColor: 'var(--theme-color-1)',
+                    background: 'rgba(255,255,255,0.03)',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Sparkles size={11} color="var(--theme-color-1)" />
+                  <span style={{ color: 'var(--theme-color-1)', fontWeight: '600' }}>Analyze Sketch</span>
+                </button>
               )}
             </div>
           )}
