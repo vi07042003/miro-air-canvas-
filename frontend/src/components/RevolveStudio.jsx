@@ -627,7 +627,6 @@ export default function RevolveStudio({ user }) {
             </div>
 
             <div style={styles.controlItem}>
-              <span style={styles.controlLabel}>Object Neon Tint</span>
               <div style={styles.colorPalette}>
                 {COLORS.map(c => (
                   <button
@@ -635,13 +634,36 @@ export default function RevolveStudio({ user }) {
                     style={{
                       ...styles.colorDot,
                       backgroundColor: c.hex,
-                      border: meshColor === c.hex ? '2px solid #ffffff' : '1px solid rgba(255,255,255,0.2)',
-                      boxShadow: meshColor === c.hex ? `0 0 8px ${c.hex}` : 'none'
+                      border: meshColor.toLowerCase() === c.hex.toLowerCase() ? '2px solid #ffffff' : '1px solid rgba(255,255,255,0.2)',
+                      boxShadow: meshColor.toLowerCase() === c.hex.toLowerCase() ? `0 0 8px ${c.hex}` : 'none',
+                      transition: 'all 0.2s ease',
+                      transform: meshColor.toLowerCase() === c.hex.toLowerCase() ? 'scale(1.15)' : 'scale(1)'
                     }}
                     onClick={() => setMeshColor(c.hex)}
                     title={c.name}
                   />
                 ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
+                <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>Custom Color:</span>
+                <div style={{ display: 'flex', alignItems: 'center', position: 'relative', width: '22px', height: '22px' }}>
+                  <input
+                    type="color"
+                    className="custom-color-picker"
+                    value={COLORS.some(c => c.hex.toLowerCase() === meshColor.toLowerCase()) ? '#a855f7' : meshColor}
+                    onChange={(e) => setMeshColor(e.target.value)}
+                    title="Custom Color"
+                    style={{
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      border: !COLORS.some(c => c.hex.toLowerCase() === meshColor.toLowerCase()) ? '2px solid #ffffff' : '1px solid rgba(255,255,255,0.2)',
+                      boxShadow: !COLORS.some(c => c.hex.toLowerCase() === meshColor.toLowerCase()) ? `0 0 8px ${meshColor}` : 'none',
+                      transition: 'all 0.2s ease',
+                      transform: !COLORS.some(c => c.hex.toLowerCase() === meshColor.toLowerCase()) ? 'scale(1.15)' : 'scale(1)'
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>

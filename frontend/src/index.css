@@ -1174,3 +1174,27 @@ body::before {
   pointer-events: none;
   z-index: 1;
 }
+
+/* Circular Custom Color Picker Input Styling */
+.custom-color-picker {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.custom-color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.custom-color-picker::-webkit-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
+
+.custom-color-picker::-moz-color-swatch {
+  border: none;
+  border-radius: 50%;
+}
