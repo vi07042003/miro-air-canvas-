@@ -93,9 +93,9 @@ function App() {
     root.style.setProperty('--theme-color-2-rgb', hexToRgb(theme.color2))
   }, [theme])
 
-  // Reset editing drawing when user leaves the canvas page
+  // Reset editing drawing when user leaves the drawing workspaces
   useEffect(() => {
-    if (activePage !== 'canvas') {
+    if (activePage !== 'canvas' && activePage !== 'revolve') {
       setEditingDrawing(null)
     }
   }, [activePage])
@@ -382,7 +382,11 @@ function App() {
           >
             <Gallery onEditDrawing={(drawing) => {
               setEditingDrawing(drawing)
-              setActivePage('canvas')
+              if (drawing.canvas_mode === 'revolve') {
+                setActivePage('revolve')
+              } else {
+                setActivePage('canvas')
+              }
             }} />
           </motion.div>
         )
@@ -436,7 +440,12 @@ function App() {
             exit="exit"
             style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
-            <RevolveStudio user={user} />
+            <RevolveStudio 
+              user={user} 
+              initialDrawing={editingDrawing}
+              onDrawingCleared={() => setEditingDrawing(null)}
+              onDrawingSaved={(drawing) => setEditingDrawing(drawing)}
+            />
           </motion.div>
         )
       case 'doodle':

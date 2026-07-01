@@ -132,6 +132,8 @@ class ProfileResponseSchema(pydantic.BaseModel):
 class DrawingBase(pydantic.BaseModel):
     title: str
     image_data: str
+    canvas_mode: Optional[str] = "2d"
+    threed_objects: Optional[str] = None
 
 class DrawingCreate(DrawingBase):
     pass
@@ -262,6 +264,8 @@ def get_drawings(current_user: models.User = Depends(get_current_user), db: Sess
             id=d.id,
             title=d.title,
             image_data=d.image_data,
+            canvas_mode=d.canvas_mode or "2d",
+            threed_objects=d.threed_objects,
             created_at=d.created_at.strftime("%Y-%m-%d %H:%M:%S")
         ))
     return response
@@ -276,6 +280,8 @@ def save_drawing(
     db_drawing = models.Drawing(
         title=drawing_in.title,
         image_data=drawing_in.image_data,
+        canvas_mode=drawing_in.canvas_mode or "2d",
+        threed_objects=drawing_in.threed_objects,
         user_id=current_user.id
     )
     db.add(db_drawing)
@@ -286,6 +292,8 @@ def save_drawing(
         id=db_drawing.id,
         title=db_drawing.title,
         image_data=db_drawing.image_data,
+        canvas_mode=db_drawing.canvas_mode or "2d",
+        threed_objects=db_drawing.threed_objects,
         created_at=db_drawing.created_at.strftime("%Y-%m-%d %H:%M:%S")
     )
 
@@ -310,6 +318,8 @@ def update_drawing(
     
     db_drawing.title = drawing_in.title
     db_drawing.image_data = drawing_in.image_data
+    db_drawing.canvas_mode = drawing_in.canvas_mode or "2d"
+    db_drawing.threed_objects = drawing_in.threed_objects
     db.commit()
     db.refresh(db_drawing)
     
@@ -317,6 +327,8 @@ def update_drawing(
         id=db_drawing.id,
         title=db_drawing.title,
         image_data=db_drawing.image_data,
+        canvas_mode=db_drawing.canvas_mode or "2d",
+        threed_objects=db_drawing.threed_objects,
         created_at=db_drawing.created_at.strftime("%Y-%m-%d %H:%M:%S")
     )
 

@@ -26,6 +26,8 @@ class Drawing(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(100), nullable=False)
     image_data = Column(Text, nullable=False)  # Base64 data URL
+    canvas_mode = Column(String(20), default="2d", nullable=True)
+    threed_objects = Column(Text, nullable=True) # JSON representation of 3D objects
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Associate drawing with a specific user

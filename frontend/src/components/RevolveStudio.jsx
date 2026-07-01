@@ -1,10 +1,13 @@
 import React, { useRef, useState, useEffect } from 'react'
-import { Rotate3d, Trash2, Download, RefreshCw, Box, HelpCircle, ArrowRight, Sun, Layers, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Rotate3d, Trash2, Download, RefreshCw, Box, HelpCircle, ArrowRight, Sun, Layers, ChevronLeft, ChevronRight, Save } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { project3DPoint, shadeColor } from '../utils/3dUtils'
 import { useToast } from './Toast'
+import SaveSketchModal from './SaveSketchModal'
+import { styles as modalStyles } from './AirCanvas.constants'
+import { BACKEND_URL } from '../App'
 
-export default function RevolveStudio({ user }) {
+export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, onDrawingSaved }) {
   const { showToast } = useToast()
   
   const canvas2D = useRef(null)
@@ -27,6 +30,48 @@ export default function RevolveStudio({ user }) {
   const [panY, setPanY] = useState(0)
   const [autoRotate, setAutoRotate] = useState(true)
   const [controlsOpen, setControlsOpen] = useState(true)
+
+  const [saveTitle, setSaveTitle] = useState('')
+  const [showSaveModal, setShowSaveModal] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [dbMessage, setDbMessage] = useState('')
+  const loadedDrawingIdRef = useRef(null)
+
+  // Keep saveTitle synced with initialDrawing
+  useEffect(() => {
+    if (initialDrawing && initialDrawing.title) {
+      setSaveTitle(initialDrawing.title)
+    }
+  }, [initialDrawing])
+
+  useEffect(() => {
+    const initialId = initialDrawing ? initialDrawing.id : null
+    if (initialId !== loadedDrawingIdRef.current) {
+      loadedDrawingIdRef.current = initialId
+      if (initialDrawing && initialDrawing.canvas_mode === 'revolve') {
+        if (initialDrawing.threed_objects) {
+          try {
+            const parsed = JSON.parse(initialDrawing.threed_objects)
+            if (parsed.profilePoints) {
+              setProfilePoints(parsed.profilePoints)
+            }
+            if (parsed.segments) setSegments(parsed.segments)
+            if (parsed.renderMode) setRenderMode(parsed.renderMode)
+            if (parsed.meshColor) setMeshColor(parsed.meshColor)
+          } catch (e) {
+            console.error("Failed to parse revolve drawing data:", e)
+          }
+        }
+      } else {
+        // Reset/clear
+        setProfilePoints([])
+        setSegments(20)
+        setRenderMode('solid')
+        setMeshColor('#8b5cf6')
+        setSaveTitle('')
+      }
+    }
+  }, [initialDrawing])
 
   // Colors available for mesh
   const COLORS = [
@@ -475,6 +520,82 @@ export default function RevolveStudio({ user }) {
     }
   }
 
+  const handleSaveToGallery = async (e) => {
+    e.preventDefault()
+    if (!saveTitle.trim()) {
+      setDbMessage('Please enter a sketch title')
+      return
+    }
+
+    setSaving(true)
+    setDbMessage('')
+
+    const canvas = canvas3D.current
+    const dataUrl = canvas.toDataURL('image/png')
+    const token = localStorage.getItem('token')
+
+    const isUpdate = !!initialDrawing
+    const url = isUpdate 
+      ? `${BACKEND_URL}/api/drawings/${initialDrawing.id}`
+      : `${BACKEND_URL}/api/drawings`
+    const method = isUpdate ? 'PUT' : 'POST'
+
+    const revolveData = {
+      profilePoints: profilePoints,
+      segments: segments,
+      renderMode: renderMode,
+      meshColor: meshColor
+    }
+
+    try {
+      const res = await fetch(url, {
+        method: method,
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: saveTitle,
+          image_data: dataUrl,
+          canvas_mode: 'revolve',
+          threed_objects: JSON.stringify(revolveData)
+        })
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const successMsg = isUpdate ? 'Model updated successfully!' : 'Model saved successfully!'
+        setDbMessage(successMsg)
+        showToast(successMsg, 'success')
+        
+        if (onDrawingSaved) {
+          onDrawingSaved(data)
+        }
+        
+        if (!isUpdate) {
+          setSaveTitle('')
+        }
+        
+        setTimeout(() => {
+          setShowSaveModal(false)
+          setDbMessage('')
+        }, 1000)
+      } else {
+        const data = await res.json()
+        const errorMsg = data.detail || (isUpdate ? 'Failed to update model' : 'Failed to save model')
+        setDbMessage(errorMsg)
+        showToast(errorMsg, 'error')
+      }
+    } catch (err) {
+      console.error(err)
+      const errorMsg = 'Server connection error'
+      setDbMessage(errorMsg)
+      showToast(errorMsg, 'error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -531,8 +652,18 @@ export default function RevolveStudio({ user }) {
               <button className="glass-btn" style={styles.actionBtnSmall} onClick={resetCamera} title="Reset Camera View">
                 <RefreshCw size={14} />
               </button>
-              <button className="glass-btn glass-btn-primary" style={styles.actionBtnSmall} onClick={handleExportOBJ} title="Export OBJ">
+              <button className="glass-btn" style={styles.actionBtnSmall} onClick={handleExportOBJ} title="Export OBJ">
                 <Download size={14} />
+              </button>
+              <button 
+                className="glass-btn glass-btn-primary" 
+                style={{ ...styles.actionBtnSmall, width: 'auto', display: 'flex', alignItems: 'center', gap: '5px', padding: '0 10px', height: '30px' }} 
+                onClick={() => setShowSaveModal(true)} 
+                title="Save model to your gallery"
+                disabled={profilePoints.length === 0}
+              >
+                <Save size={14} />
+                <span style={{ fontSize: '11.5px', fontWeight: '600' }}>Save to files</span>
               </button>
             </div>
           </div>
@@ -683,6 +814,19 @@ export default function RevolveStudio({ user }) {
           {controlsOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
       </div>
+
+      {/* Save Modal */}
+      <SaveSketchModal 
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        saveTitle={saveTitle}
+        onSaveTitleChange={setSaveTitle}
+        onSubmit={handleSaveToGallery}
+        dbMessage={dbMessage}
+        saving={saving}
+        initialDrawing={initialDrawing}
+        styles={modalStyles}
+      />
     </div>
   )
 }

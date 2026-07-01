@@ -1200,14 +1200,46 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       ctx.fillStyle = '#0a0518'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
-      if (initialDrawing && initialDrawing.image_data) {
-        const img = new Image()
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-          saveCanvasState(false)
+      if (initialDrawing) {
+        if (initialDrawing.canvas_mode === '3d') {
+          setCanvasMode('3d')
+          if (initialDrawing.threed_objects) {
+            try {
+              const parsed = JSON.parse(initialDrawing.threed_objects)
+              if (Array.isArray(parsed)) {
+                stamped3DObjectsRef.current = parsed
+                setUndoStack3D([parsed])
+                setRedoStack3D([])
+              }
+            } catch (e) {
+              console.error("Failed to parse 3D objects:", e)
+            }
+          } else {
+            stamped3DObjectsRef.current = []
+            setUndoStack3D([[]])
+            setRedoStack3D([])
+          }
+        } else {
+          setCanvasMode('2d')
+          stamped3DObjectsRef.current = []
+          setUndoStack3D([[]])
+          setRedoStack3D([])
+          if (initialDrawing.image_data) {
+            const img = new Image()
+            img.onload = () => {
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+              saveCanvasState(false)
+            }
+            img.src = initialDrawing.image_data
+          } else {
+            saveCanvasState(true)
+          }
         }
-        img.src = initialDrawing.image_data
       } else {
+        setCanvasMode('2d')
+        stamped3DObjectsRef.current = []
+        setUndoStack3D([[]])
+        setRedoStack3D([])
         saveCanvasState(true)
       }
     }
@@ -3122,7 +3154,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         },
         body: JSON.stringify({
           title: saveTitle,
-          image_data: dataUrl
+          image_data: dataUrl,
+          canvas_mode: canvasMode,
+          threed_objects: canvasMode === '3d' ? JSON.stringify(stamped3DObjectsRef.current) : null
         })
       })
 

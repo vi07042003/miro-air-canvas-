@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Image, Download, Trash2, Eye, Calendar, X, Edit, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Image, Download, Trash2, Eye, Calendar, X, Edit, ChevronLeft, ChevronRight, Rotate3d } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import GlassDialog from './GlassDialog'
 import { useToast } from './Toast'
@@ -185,7 +185,39 @@ export default function Gallery({ onEditDrawing }) {
                     </div>
                   </div>
                   <div style={styles.cardInfo}>
-                    <h3 style={styles.cardTitle}>{drawing.title}</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                      <h3 style={{ ...styles.cardTitle, margin: 0, flex: 1 }}>{drawing.title}</h3>
+                      <span style={{
+                        fontSize: '9px',
+                        fontWeight: '700',
+                        padding: '2px 6.5px',
+                        borderRadius: '6px',
+                        background: drawing.canvas_mode === '3d' 
+                          ? 'rgba(99, 102, 241, 0.15)' 
+                          : drawing.canvas_mode === 'revolve'
+                          ? 'rgba(236, 72, 153, 0.15)'
+                          : 'rgba(16, 185, 129, 0.15)',
+                        color: drawing.canvas_mode === '3d' 
+                          ? '#a5b4fc' 
+                          : drawing.canvas_mode === 'revolve'
+                          ? '#f472b6'
+                          : '#6ee7b7',
+                        border: drawing.canvas_mode === '3d' 
+                          ? '1px solid rgba(99, 102, 241, 0.3)' 
+                          : drawing.canvas_mode === 'revolve'
+                          ? '1px solid rgba(236, 72, 153, 0.3)'
+                          : '1px solid rgba(16, 185, 129, 0.3)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        flexShrink: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}>
+                        {drawing.canvas_mode === 'revolve' && <Rotate3d size={10} />}
+                        {drawing.canvas_mode === '3d' ? '3D' : drawing.canvas_mode === 'revolve' ? 'Revolve' : '2D'}
+                      </span>
+                    </div>
                     <div style={styles.cardMeta}>
                       <Calendar size={12} />
                       <span>{drawing.created_at}</span>
@@ -363,7 +395,38 @@ export default function Gallery({ onEditDrawing }) {
               >
                 <div style={styles.modalHeader}>
                   <div>
-                    <h2 style={styles.modalTitle}>{selectedDrawing.title}</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <h2 style={{ ...styles.modalTitle, margin: 0 }}>{selectedDrawing.title}</h2>
+                       <span style={{
+                        fontSize: '10px',
+                        fontWeight: '700',
+                        padding: '2px 8px',
+                        borderRadius: '6px',
+                        background: selectedDrawing.canvas_mode === '3d' 
+                          ? 'rgba(99, 102, 241, 0.15)' 
+                          : selectedDrawing.canvas_mode === 'revolve'
+                          ? 'rgba(236, 72, 153, 0.15)'
+                          : 'rgba(16, 185, 129, 0.15)',
+                        color: selectedDrawing.canvas_mode === '3d' 
+                          ? '#a5b4fc' 
+                          : selectedDrawing.canvas_mode === 'revolve'
+                          ? '#f472b6'
+                          : '#6ee7b7',
+                        border: selectedDrawing.canvas_mode === '3d' 
+                          ? '1px solid rgba(99, 102, 241, 0.3)' 
+                          : selectedDrawing.canvas_mode === 'revolve'
+                          ? '1px solid rgba(236, 72, 153, 0.3)'
+                          : '1px solid rgba(16, 185, 129, 0.3)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.05em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        {selectedDrawing.canvas_mode === 'revolve' && <Rotate3d size={12} />}
+                        {selectedDrawing.canvas_mode === '3d' ? '3D Canvas' : selectedDrawing.canvas_mode === 'revolve' ? 'Revolve Studio' : '2D Canvas'}
+                      </span>
+                    </div>
                     <div style={styles.modalMeta}>
                       <Calendar size={14} />
                       <span>Saved on {selectedDrawing.created_at}</span>

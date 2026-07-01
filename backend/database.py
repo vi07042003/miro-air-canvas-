@@ -78,6 +78,23 @@ def init_db():
                     conn.execute(text("ALTER TABLE users ADD COLUMN ai_sketch_reset_time TIMESTAMP;"))
                 except Exception:
                     pass
+
+            # Safe migrations for drawings table
+            try:
+                conn.execute(text("ALTER TABLE drawings ADD COLUMN IF NOT EXISTS canvas_mode VARCHAR(20) DEFAULT '2d';"))
+            except Exception:
+                try:
+                    conn.execute(text("ALTER TABLE drawings ADD COLUMN canvas_mode VARCHAR(20) DEFAULT '2d';"))
+                except Exception:
+                    pass
+
+            try:
+                conn.execute(text("ALTER TABLE drawings ADD COLUMN IF NOT EXISTS threed_objects TEXT;"))
+            except Exception:
+                try:
+                    conn.execute(text("ALTER TABLE drawings ADD COLUMN threed_objects TEXT;"))
+                except Exception:
+                    pass
         print("[SUCCESS] Database tables ready.")
     except Exception as e:
         print(f"[ERROR] Failed to initialize database: {e}")
