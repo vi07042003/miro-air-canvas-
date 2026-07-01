@@ -97,3 +97,35 @@ miro-air-canvas-/
 Environment variables are loaded automatically:
 - **Backend Database**: Defined in `DATABASE_URL` within `backend/.env`. When run via Docker Compose, this is overridden automatically to direct traffic through the Docker database network bridge (`db`).
 - **JWT Secret Key**: Defined in `JWT_SECRET_KEY` inside `backend/main.py` (or overridden in `docker-compose.yml`).
+
+---
+
+## 🔑 Gemini AI Sketch Analysis Setup
+
+AeroCanvas uses Google Gemini (via `gemini-2.5-flash-lite`) to perform high-fidelity, real-time AI sketch analysis.
+
+### 1. How to get a Gemini API Key:
+1. Go to [Google AI Studio](https://aistudio.google.com/).
+2. Sign in with your Google account.
+3. Click on **Create API Key**.
+4. Copy your generated API key.
+
+### 2. How to configure the key:
+You can configure the Gemini API Key in two ways:
+
+#### Option A: Inside the App UI (Recommended)
+1. Launch AeroCanvas and navigate to **Doodle Art**.
+2. Scroll to the bottom of the drawing board to the **API Key** configuration panel.
+3. Click **Configure Key**, paste your Gemini API key, and click **Save**.
+4. The system will automatically validate the key with Google and save it to the backend environment dynamically.
+
+#### Option B: Via `.env` File
+1. In the `backend/` directory, create or open the `.env` file.
+2. Add the following line:
+   ```env
+   GEMINI_API_KEY=your_actual_api_key_here
+   ```
+3. Save the file. The backend will automatically detect and reload the key.
+
+> [!NOTE]
+> If no Gemini API Key is configured, AeroCanvas will automatically run on **Secondary Fallback Mode** (using free Hugging Face BLIP or Pollinations AI vision models). While functional, sketch recognition accuracy may be lower.

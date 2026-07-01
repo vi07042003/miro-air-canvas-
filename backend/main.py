@@ -639,7 +639,87 @@ def doodle_to_art(
     import doodle_art
     return doodle_art.handle_doodle_to_art(payload, current_user, db)
 
+@app.get("/api/ai-sketch/gemini-status")
+def get_gemini_status():
+    import os
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+    key = os.getenv("GEMINI_API_KEY")
+    configured = bool(key)
+    masked_key = ""
+    if key:
+        if len(key) > 8:
+            masked_key = f"{key[:4]}...{key[-4:]}"
+        else:
+            masked_key = "Configured"
+    return {"configured": configured, "masked_key": masked_key}
 
+@app.post("/api/ai-sketch/update-gemini-key")
+def update_gemini_key(payload: Dict[str, Any]):
+    new_key = (payload.get("api_key") or "").strip()
+    if not new_key:
+        raise HTTPException(status_code=400, detail="API key is required")
+        
+    # Validate the key by making a test request to Gemini API
+    import urllib.request
+    import urllib.error
+    import json
+    import ssl
+    
+    validation_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key={new_key}"
+    validation_payload = {
+        "contents": [{"parts": [{"text": "Hello"}]}]
+    }
+    try:
+        req_data = json.dumps(validation_payload).encode("utf-8")
+        req = urllib.request.Request(
+            validation_url,
+            data=req_data,
+            headers={"Content-Type": "application/json"},
+            method="POST"
+        )
+        context = ssl._create_unverified_context()
+        with urllib.request.urlopen(req, context=context, timeout=8) as response:
+            pass
+    except urllib.error.HTTPError as e:
+        raise HTTPException(
+            status_code=400,
+            detail="The API key is invalid or unauthorized. Please verify your Gemini API key."
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not verify API key due to connection error: {str(e)}"
+        )
+        
+    import os
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    
+    lines = []
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            lines = f.readlines()
+            
+    key_found = False
+    new_line = f"GEMINI_API_KEY={new_key}\n"
+    for i, line in enumerate(lines):
+        if line.strip().startswith("GEMINI_API_KEY="):
+            lines[i] = new_line
+            key_found = True
+            break
+            
+    if not key_found:
+        if lines and not lines[-1].endswith("\n"):
+            lines[-1] += "\n"
+        lines.append(new_line)
+        
+    try:
+        with open(env_path, "w") as f:
+            f.writelines(lines)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to write to .env file: {str(e)}")
+        
+    return {"message": "Gemini API key updated successfully"}
 
 MAX_STENCIL_USAGE = 10
 

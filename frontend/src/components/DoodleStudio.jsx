@@ -28,6 +28,14 @@ export default function DoodleStudio({ user }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isDescriptionEdited, setIsDescriptionEdited] = useState(false)
   const [isCanvasBlank, setIsCanvasBlank] = useState(true)
+  
+  // Gemini Configuration States
+  const [isGeminiConfigured, setIsGeminiConfigured] = useState(false)
+  const [geminiMaskedKey, setGeminiMaskedKey] = useState('')
+  const [showKeyInput, setShowKeyInput] = useState(false)
+  const [tempKey, setTempKey] = useState('')
+  const [isSavingKey, setIsSavingKey] = useState(false)
+
   const analysisTimeoutRef = useRef(null)
   const lastAnalysisTimeRef = useRef(0)
 
@@ -47,6 +55,48 @@ export default function DoodleStudio({ user }) {
     { hex: '#ef4444', name: 'Red' }
   ]
 
+  // Fetch Gemini configuration status on mount
+  const checkGeminiStatus = async () => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ai-sketch/gemini-status`)
+      if (res.ok) {
+        const data = await res.json()
+        setIsGeminiConfigured(data.configured)
+        setGeminiMaskedKey(data.masked_key || '')
+      }
+    } catch (err) {
+      console.error("Failed to check Gemini status:", err)
+    }
+  }
+
+  const saveGeminiKey = async () => {
+    if (!tempKey.trim()) return
+    setIsSavingKey(true)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ai-sketch/update-gemini-key`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ api_key: tempKey.trim() })
+      })
+      if (res.ok) {
+        showToast("Gemini API key updated successfully in .env!", "success")
+        setTempKey('')
+        setShowKeyInput(false)
+        await checkGeminiStatus()
+      } else {
+        const errData = await res.json()
+        showToast(errData.detail || "Failed to update API key.", "error")
+      }
+    } catch (err) {
+      console.error("Error saving Gemini key:", err)
+      showToast("Error communicating with backend.", "error")
+    } finally {
+      setIsSavingKey(false)
+    }
+  }
+
   // Initialize canvas background
   useEffect(() => {
     const canvas = canvasRef.current
@@ -63,6 +113,7 @@ export default function DoodleStudio({ user }) {
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
     fetchUsage()
+    checkGeminiStatus()
   }, [])
 
   // Fetch AI usage limits
@@ -520,6 +571,96 @@ export default function DoodleStudio({ user }) {
         }}>
           <span style={{ color: 'var(--theme-color-1)' }}>💡</span>
           <span><strong>Tip:</strong> Click <strong>"Analyze Sketch"</strong> first to let the AI understand your drawing, then click <strong>"Generate Art"</strong> to create your image!</span>
+        </div>
+
+        {/* Gemini API Key Configuration Panel */}
+        <div style={{
+          marginTop: '12px',
+          padding: '10px 14px',
+          background: 'rgba(255, 255, 255, 0.01)',
+          border: '1px dashed rgba(255, 255, 255, 0.08)',
+          borderRadius: '12px',
+          fontSize: '11.5px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '12px' }}>{isGeminiConfigured ? "🟢" : "🔴"}</span>
+              <span style={{ fontWeight: '600', color: 'rgba(255,255,255,0.7)' }}>
+                 API Key:
+              </span>
+              <span style={{ color: isGeminiConfigured ? 'var(--theme-color-1)' : 'rgba(255,255,255,0.4)', fontWeight: '500' }}>
+                {isGeminiConfigured ? "Active" : "Not Configured (using fallbacks)"}
+              </span>
+            </div>
+            
+            <button
+              type="button"
+              onClick={() => setShowKeyInput(!showKeyInput)}
+              className="glass-btn"
+              style={{
+                padding: '2px 8px',
+                fontSize: '10.5px',
+                minWidth: 'auto',
+                height: '24px',
+                borderColor: 'rgba(255,255,255,0.1)'
+              }}
+            >
+              {showKeyInput ? "Close" : isGeminiConfigured ? "Change Key" : "Configure Key"}
+            </button>
+          </div>
+          
+          {!isGeminiConfigured && !showKeyInput && (
+            <div style={{ 
+              marginTop: '8px', 
+              color: 'rgba(255, 170, 0, 0.65)', 
+              fontSize: '10.5px', 
+              lineHeight: '1.4',
+              display: 'flex',
+              gap: '4px'
+            }}>
+              <span>⚠️</span>
+              <span>Without  API key, image generation accuracy might be lower as secondary fallback AI models are less precise at identifying detailed sketch shapes.</span>
+            </div>
+          )}
+          
+          {showKeyInput && (
+            <div style={{ display: 'flex', gap: '8px', marginTop: '10px', alignItems: 'center' }}>
+              <input
+                type="password"
+                placeholder="Paste Gemini API Key (AI Studio)..."
+                value={tempKey}
+                onChange={(e) => setTempKey(e.target.value)}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '6px',
+                  color: '#fff',
+                  fontSize: '11px',
+                  padding: '6px 10px',
+                  outline: 'none'
+                }}
+              />
+              <button
+                type="button"
+                onClick={saveGeminiKey}
+                disabled={isSavingKey || !tempKey.trim()}
+                className="glass-btn glass-btn-primary"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '11px',
+                  minWidth: 'auto',
+                  height: '28px',
+                  background: 'var(--theme-color-1)',
+                  border: 'none',
+                  color: '#fff',
+                  cursor: 'pointer'
+                }}
+              >
+                {isSavingKey ? "Saving..." : "Save"}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Drawing Toolbar */}
