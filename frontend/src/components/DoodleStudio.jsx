@@ -248,14 +248,6 @@ export default function DoodleStudio({ user }) {
   const stopDrawing = () => {
     if (!isDrawingRef.current) return
     isDrawingRef.current = false
-
-    // Debounce sketch analysis by 6000ms (6 seconds) to ensure user has completely stopped drawing
-    if (analysisTimeoutRef.current) {
-      clearTimeout(analysisTimeoutRef.current)
-    }
-    analysisTimeoutRef.current = setTimeout(() => {
-      analyzeCurrentSketch()
-    }, 6000)
   }
 
   const clearCanvas = () => {
