@@ -180,7 +180,13 @@ export default function StencilConverterModal({
               }
             }}
             className="glass-panel-heavy modal-content-scroll"
-            style={{ ...styles.modalContent, maxWidth: '700px', transformStyle: 'preserve-3d', overflow: 'hidden' }}
+            style={{ 
+              ...styles.modalContent, 
+              maxWidth: targetCanvas === '3d' ? '820px' : '720px', 
+              maxHeight: '92vh',
+              transformStyle: 'preserve-3d', 
+              overflowY: 'auto' 
+            }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>

@@ -114,17 +114,27 @@ const fitContoursToCanvas = (contours, canvasWidth, canvasHeight) => {
 
 const smoothContour = (path) => {
   if (path.length < 3) return path;
-  const result = [path[0]];
-  let lastPt = path[0];
-  for (let i = 1; i < path.length - 1; i++) {
-    const pt = path[i];
-    const dist = Math.hypot(pt.x - lastPt.x, pt.y - lastPt.y);
-    if (dist >= 2.0) { // Keep points at least 2.0 pixels apart to smooth Sobel noise
-      result.push(pt);
-      lastPt = pt;
+
+  // 1. Remove consecutive duplicate points
+  const clean = [path[0]];
+  for (let i = 1; i < path.length; i++) {
+    const prev = clean[clean.length - 1];
+    const curr = path[i];
+    if (prev.x !== curr.x || prev.y !== curr.y) {
+      clean.push(curr);
     }
   }
-  result.push(path[path.length - 1]);
+
+  if (clean.length < 5) return clean;
+
+  // 2. Apply a 5-point moving average smoothing window to eliminate staircase jaggedness
+  const result = [clean[0], clean[1]];
+  for (let i = 2; i < clean.length - 2; i++) {
+    const sumX = clean[i-2].x + clean[i-1].x + clean[i].x + clean[i+1].x + clean[i+2].x;
+    const sumY = clean[i-2].y + clean[i-1].y + clean[i].y + clean[i+1].y + clean[i+2].y;
+    result.push({ x: sumX / 5, y: sumY / 5 });
+  }
+  result.push(clean[clean.length - 2], clean[clean.length - 1]);
   return result;
 };
 
@@ -469,28 +479,73 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       // Apply to 2D Canvas
       const canvas = canvasRef.current
       if (canvas && contours.length > 0) {
+        // Filter out short noise/speckles and apply smoothing
+        const cleanContours = contours
+          .filter(c => c.length >= 4)
+          .map(smoothContour)
+          .filter(c => c.length >= 2)
+
+        if (cleanContours.length === 0) return
+
+        // Calculate bounding box of the clean contours to fit exactly to the canvas area
+        let minX = Infinity, maxX = -Infinity
+        let minY = Infinity, maxY = -Infinity
+        cleanContours.forEach(path => {
+          path.forEach(pt => {
+            if (pt.x < minX) minX = pt.x
+            if (pt.x > maxX) maxX = pt.x
+            if (pt.y < minY) minY = pt.y
+            if (pt.y > maxY) maxY = pt.y
+          })
+        })
+
+        const bboxW = maxX - minX
+        const bboxH = maxY - minY
+
         const ctx = canvas.getContext('2d')
-        
         ctx.save()
         ctx.strokeStyle = color || '#06b6d4'
         ctx.lineWidth = Math.max(2, brushSize / 2)
         ctx.lineCap = 'round'
         ctx.lineJoin = 'round'
         ctx.globalAlpha = brushOpacity
-        
-        const scale2D = scale * 1.5
-        const offsetX = (canvas.width - width * scale2D) / 2
-        const offsetY = (canvas.height - height * scale2D) / 2
-        
-        contours.forEach(path => {
-          if (path.length < 2) return
-          ctx.beginPath()
-          ctx.moveTo(offsetX + path[0].x * scale2D, offsetY + path[0].y * scale2D)
-          for (let i = 1; i < path.length; i++) {
-            ctx.lineTo(offsetX + path[i].x * scale2D, offsetY + path[i].y * scale2D)
-          }
-          ctx.stroke()
-        })
+
+        if (bboxW > 0 && bboxH > 0) {
+          // Fit stencil to 75% of the canvas area
+          const targetW = canvas.width * 0.75
+          const targetH = canvas.height * 0.75
+          const fitScale = Math.min(targetW / bboxW, targetH / bboxH)
+          const finalScale = scale * fitScale
+
+          // Offset to center the bounding box on the canvas
+          const offsetX = (canvas.width - bboxW * finalScale) / 2
+          const offsetY = (canvas.height - bboxH * finalScale) / 2
+
+          cleanContours.forEach(path => {
+            if (path.length < 2) return
+            ctx.beginPath()
+            ctx.moveTo((path[0].x - minX) * finalScale + offsetX, (path[0].y - minY) * finalScale + offsetY)
+            for (let i = 1; i < path.length; i++) {
+              ctx.lineTo((path[i].x - minX) * finalScale + offsetX, (path[i].y - minY) * finalScale + offsetY)
+            }
+            ctx.stroke()
+          })
+        } else {
+          // Fallback to original image scaling if bounding box is invalid
+          const scale2D = scale * 1.5
+          const offsetX = (canvas.width - width * scale2D) / 2
+          const offsetY = (canvas.height - height * scale2D) / 2
+
+          cleanContours.forEach(path => {
+            if (path.length < 2) return
+            ctx.beginPath()
+            ctx.moveTo(offsetX + path[0].x * scale2D, offsetY + path[0].y * scale2D)
+            for (let i = 1; i < path.length; i++) {
+              ctx.lineTo(offsetX + path[i].x * scale2D, offsetY + path[i].y * scale2D)
+            }
+            ctx.stroke()
+          })
+        }
         
         ctx.restore()
         saveCanvasState()
@@ -501,8 +556,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
       // Apply to 3D Canvas
       if (mode3D === 'heightmap' && grayscale) {
-        const scale3D = (250 / Math.max(width, height)) * scale
-        const depth3D = 60 * scale
+        const scale3D = (500 / Math.max(width, height)) * scale
+        const depth3D = 100 * scale
         
         const gridW = 35
         const gridH = 35
@@ -560,12 +615,19 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         ]
         save3DState()
       } else if (contours.length > 0) {
-        const scale3D = (250 / Math.max(width, height)) * scale
-        const depth3D = 40 * scale
+        const cleanContours = contours
+          .filter(c => c.length >= 4)
+          .map(smoothContour)
+          .filter(c => c.length >= 2)
+
+        if (cleanContours.length === 0) return
+
+        const scale3D = (500 / Math.max(width, height)) * scale
+        const depth3D = 80 * scale
         
         const new3DStrokes = []
 
-        contours.forEach(path => {
+        cleanContours.forEach(path => {
           const backPoints = path.map(pt => ({
             x: (pt.x - width / 2) * scale3D,
             y: (pt.y - height / 2) * scale3D,
@@ -645,15 +707,15 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const img = new Image()
     img.src = imageUrl
     img.onload = () => {
-      const { contours, w, h } = processImageToStencil(img, 50, false)
+      const { contours, w, h } = processImageToStencil(img, 55, false, true)
       if (!contours || contours.length === 0) {
         alert("The AI generated a blank sketch or could not detect clear outlines. Please try again with a different prompt.")
         return
       }
 
-      // Filter out small speckles/noise contours (< 6 points) and apply path smoothing
+      // Filter out small speckles/noise contours (< 4 points) and apply path smoothing
       const cleanContours = contours
-        .filter(c => c.length >= 6)
+        .filter(c => c.length >= 4)
         .map(smoothContour)
         .filter(c => c.length >= 2);
 
