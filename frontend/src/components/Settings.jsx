@@ -24,6 +24,12 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
     detectionConfidence: '0.5',
     defaultColor: '#06b6d4'
   })
+
+  const [initialAppSettings, setInitialAppSettings] = useState({
+    mirrorCamera: 'true',
+    detectionConfidence: '0.5',
+    defaultColor: '#06b6d4'
+  })
   
   // Local values for smooth real-time slider updates without dragging latency
   const [localOpacity, setLocalOpacity] = useState(glassOpacity !== undefined ? glassOpacity : 80)
@@ -90,6 +96,22 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
                          selectedColor1 !== activeColor1 || 
                          selectedColor2 !== activeColor2
 
+  // Revert preview transparency on unmount if it wasn't saved
+  useEffect(() => {
+    return () => {
+      const val = glassOpacity !== undefined ? glassOpacity : 80
+      const glassOpacityVal = 0.3 * (1 - val / 100)
+      const textOpacityVal = 0.85 + (1 - val / 100) * 0.15
+      document.documentElement.style.setProperty('--glass-opacity-val', glassOpacityVal)
+      document.documentElement.style.setProperty('--text-opacity', textOpacityVal)
+    }
+  }, [glassOpacity])
+
+  const isSettingsChanged = appSettings.mirrorCamera !== initialAppSettings.mirrorCamera ||
+                            appSettings.detectionConfidence !== initialAppSettings.detectionConfidence ||
+                            appSettings.defaultColor !== initialAppSettings.defaultColor ||
+                            localOpacity !== glassOpacity
+
   const handleSaveTheme = () => {
     onThemeChange(selectedColor1, selectedColor2, selectedThemeName)
     setThemeSavedMessage('Theme saved successfully!')
@@ -107,6 +129,7 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
         const data = await settingsRes.json()
         if (Object.keys(data).length > 0) {
           setAppSettings(prev => ({ ...prev, ...data }))
+          setInitialAppSettings(prev => ({ ...prev, ...data }))
         }
       }
     } catch (e) {
@@ -131,6 +154,8 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
       })
 
       if (res.ok) {
+        onGlassOpacityChange(localOpacity)
+        setInitialAppSettings(appSettings)
         setSettingsMessage('Settings saved successfully!')
         setTimeout(() => setSettingsMessage(''), 3000)
       } else {
@@ -204,9 +229,9 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
                     // Update CSS variable directly on root for 60fps real-time feedback
                     const glassOpacityVal = 0.3 * (1 - val / 100);
                     document.documentElement.style.setProperty('--glass-opacity-val', glassOpacityVal);
+                    const textOpacityVal = 0.85 + (1 - val / 100) * 0.15;
+                    document.documentElement.style.setProperty('--text-opacity', textOpacityVal);
                   }}
-                  onMouseUp={() => onGlassOpacityChange(localOpacity)}
-                  onTouchEnd={() => onGlassOpacityChange(localOpacity)}
                   className="glass-range"
                 />
                 <div style={styles.rangeValues}>
@@ -220,7 +245,11 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
             </div>
 
             <div style={styles.btnRow}>
-              <button onClick={handleSaveSettings} className="glass-btn" disabled={loadingSettings}>
+              <button 
+                onClick={handleSaveSettings} 
+                className="glass-btn" 
+                disabled={loadingSettings || !isSettingsChanged}
+              >
                 <Save size={16} />
                 <span>{loadingSettings ? 'Saving...' : 'Save Settings'}</span>
               </button>
