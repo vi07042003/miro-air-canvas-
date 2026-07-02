@@ -48,11 +48,11 @@ export const processImageToStencil = (img, threshold, invert, isSketch = false) 
       extremePixels++;
     }
   }
-  const isLineArt = isSketch || ((extremePixels / (w * h)) > 0.80);
+  const isLineArt = !isSketch && ((extremePixels / (w * h)) > 0.80);
 
   // 3. 3x3 Gaussian Blur to reduce noise (skip for sketches/line-art to keep lines sharp)
   const blurred = new Uint8Array(w * h);
-  if (isLineArt) {
+  if (isSketch || isLineArt) {
     for (let i = 0; i < w * h; i++) {
       blurred[i] = grayscale[i];
     }
