@@ -39,9 +39,20 @@ export const processImageToStencil = (img, threshold, invert, isSketch = false) 
     grayscale[i] = 0.299 * r + 0.587 * g + 0.114 * b;
   }
 
-  // 2. 3x3 Gaussian Blur to reduce high-frequency text/image noise (skip for sketches to keep thin lines sharp)
+  // 2. Auto-detect if the image is a high-contrast line-art/sketch/text
+  // If > 80% of pixels are extreme (pure white or pure black), it's line-art
+  let extremePixels = 0;
+  for (let i = 0; i < w * h; i++) {
+    const val = grayscale[i];
+    if (val < 45 || val > 210) {
+      extremePixels++;
+    }
+  }
+  const isLineArt = isSketch || ((extremePixels / (w * h)) > 0.80);
+
+  // 3. 3x3 Gaussian Blur to reduce noise (skip for sketches/line-art to keep lines sharp)
   const blurred = new Uint8Array(w * h);
-  if (isSketch) {
+  if (isLineArt) {
     for (let i = 0; i < w * h; i++) {
       blurred[i] = grayscale[i];
     }
@@ -56,7 +67,7 @@ export const processImageToStencil = (img, threshold, invert, isSketch = false) 
         blurred[idx] = val >> 4;
       }
     }
-    // Copy boundaries for blurred image
+    // Copy boundaries
     for (let x = 0; x < w; x++) {
       blurred[x] = grayscale[x];
       blurred[(h - 1) * w + x] = grayscale[(h - 1) * w + x];
@@ -67,113 +78,130 @@ export const processImageToStencil = (img, threshold, invert, isSketch = false) 
     }
   }
 
-  // 3. Sobel Edge Detection (using blurred/original image)
-  const gxData = new Float32Array(w * h);
-  const gyData = new Float32Array(w * h);
-  const magData = new Float32Array(w * h);
-
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const idx = y * w + x;
-      
-      const px00 = blurred[(y - 1) * w + (x - 1)];
-      const px01 = blurred[(y - 1) * w + x];
-      const px02 = blurred[(y - 1) * w + (x + 1)];
-      
-      const px10 = blurred[y * w + (x - 1)];
-      const px12 = blurred[y * w + (x + 1)];
-      
-      const px20 = blurred[(y + 1) * w + (x - 1)];
-      const px21 = blurred[(y + 1) * w + x];
-      const px22 = blurred[(y + 1) * w + (x + 1)];
-
-      const gx = -px00 + px02 - 2 * px10 + 2 * px12 - px20 + px22;
-      const gy = -px00 - 2 * px01 - px02 + px20 + 2 * px21 + px22;
-
-      gxData[idx] = gx;
-      gyData[idx] = gy;
-      magData[idx] = Math.sqrt(gx * gx + gy * gy);
-    }
-  }
-
-  // 4. Non-Maximum Suppression (NMS) pass to thin edges down to 1-pixel width
-  const sobelData = new Uint8Array(w * h);
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const idx = y * w + x;
-      const mag = magData[idx];
-      if (mag === 0) continue;
-
-      const gx = gxData[idx];
-      const gy = gyData[idx];
-
-      const angle = Math.atan2(gy, gx) * (180 / Math.PI);
-      
-      let mag1 = 0;
-      let mag2 = 0;
-
-      // Group angles into 4 sectors (0, 45, 90, 135 degrees)
-      if ((angle >= -22.5 && angle < 22.5) || (angle >= 157.5) || (angle < -157.5)) {
-        mag1 = magData[idx - 1];
-        mag2 = magData[idx + 1];
-      } else if ((angle >= 22.5 && angle < 67.5) || (angle >= -157.5 && angle < -112.5)) {
-        mag1 = magData[(y - 1) * w + (x + 1)];
-        mag2 = magData[(y + 1) * w + (x - 1)];
-      } else if ((angle >= 67.5 && angle < 112.5) || (angle >= -112.5 && angle < -67.5)) {
-        mag1 = magData[(y - 1) * w + x];
-        mag2 = magData[(y + 1) * w + x];
-      } else {
-        mag1 = magData[(y - 1) * w + (x - 1)];
-        mag2 = magData[(y + 1) * w + (x + 1)];
-      }
-
-      if (mag >= mag1 && mag >= mag2) {
-        sobelData[idx] = Math.min(255, mag);
-      } else {
-        sobelData[idx] = 0;
-      }
-    }
-  }
-
-  // Clear outer border margin to prevent image boundaries from showing up
-  const borderMargin = 6;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (x < borderMargin || x >= w - borderMargin || y < borderMargin || y >= h - borderMargin) {
-        sobelData[y * w + x] = 0;
-      }
-    }
-  }
-
-  // 5. Hysteresis Thresholding (Connects weak edge pixels to strong ones, avoiding dashed lines)
-  const lowThresh = threshold * 0.4;
-  const highThresh = threshold;
   const binaryPixels = new Uint8Array(w * h);
-  const visitedEdge = new Uint8Array(w * h);
-  const stack = [];
 
-  for (let y = 1; y < h - 1; y++) {
-    for (let x = 1; x < w - 1; x++) {
-      const idx = y * w + x;
-      if (sobelData[idx] >= highThresh && !visitedEdge[idx]) {
-        stack.push(idx);
-        visitedEdge[idx] = 1;
+  if (isLineArt) {
+    // Mode A: Boundary Thresholding for clean line-art/sketches/text
+    // Traces boundary edges of dark shapes directly
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = y * w + x;
+        const val = blurred[idx];
+        if (val < threshold) {
+          if (blurred[idx - 1] >= threshold || 
+              blurred[idx + 1] >= threshold || 
+              blurred[idx - w] >= threshold || 
+              blurred[idx + w] >= threshold) {
+            binaryPixels[idx] = 255;
+          }
+        }
+      }
+    }
+  } else {
+    // Mode B: Sobel + NMS + Hysteresis for general/low-contrast photos (like cars, people)
+    const gxData = new Float32Array(w * h);
+    const gyData = new Float32Array(w * h);
+    const magData = new Float32Array(w * h);
 
-        while (stack.length > 0) {
-          const currIdx = stack.pop();
-          binaryPixels[currIdx] = 255;
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = y * w + x;
+        
+        const px00 = blurred[(y - 1) * w + (x - 1)];
+        const px01 = blurred[(y - 1) * w + x];
+        const px02 = blurred[(y - 1) * w + (x + 1)];
+        
+        const px10 = blurred[y * w + (x - 1)];
+        const px12 = blurred[y * w + (x + 1)];
+        
+        const px20 = blurred[(y + 1) * w + (x - 1)];
+        const px21 = blurred[(y + 1) * w + x];
+        const px22 = blurred[(y + 1) * w + (x + 1)];
 
-          const cx = currIdx % w;
-          const cy = Math.floor(currIdx / w);
+        const gx = -px00 + px02 - 2 * px10 + 2 * px12 - px20 + px22;
+        const gy = -px00 - 2 * px01 - px02 + px20 + 2 * px21 + px22;
 
-          // Trace connected 8-neighbors above the low threshold
-          for (let ny = cy - 1; ny <= cy + 1; ny++) {
-            for (let nx = cx - 1; nx <= cx + 1; nx++) {
-              if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
-                const nidx = ny * w + nx;
-                if (!visitedEdge[nidx] && sobelData[nidx] >= lowThresh) {
-                  visitedEdge[nidx] = 1;
-                  stack.push(nidx);
+        gxData[idx] = gx;
+        gyData[idx] = gy;
+        magData[idx] = Math.sqrt(gx * gx + gy * gy);
+      }
+    }
+
+    // Non-Maximum Suppression (NMS)
+    const sobelData = new Uint8Array(w * h);
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = y * w + x;
+        const mag = magData[idx];
+        if (mag < 10) continue; // Skip weak noise gradients
+
+        const gx = gxData[idx];
+        const gy = gyData[idx];
+        const angle = Math.atan2(gy, gx) * (180 / Math.PI);
+        
+        let mag1 = 0;
+        let mag2 = 0;
+
+        if ((angle >= -22.5 && angle < 22.5) || (angle >= 157.5) || (angle < -157.5)) {
+          mag1 = magData[idx - 1];
+          mag2 = magData[idx + 1];
+        } else if ((angle >= 22.5 && angle < 67.5) || (angle >= -157.5 && angle < -112.5)) {
+          // 45 degrees: compare with top-left and bottom-right neighbors
+          mag1 = magData[(y - 1) * w + (x - 1)];
+          mag2 = magData[(y + 1) * w + (x + 1)];
+        } else if ((angle >= 67.5 && angle < 112.5) || (angle >= -112.5 && angle < -67.5)) {
+          mag1 = magData[(y - 1) * w + x];
+          mag2 = magData[(y + 1) * w + x];
+        } else {
+          // 135 degrees: compare with top-right and bottom-left neighbors
+          mag1 = magData[(y - 1) * w + (x + 1)];
+          mag2 = magData[(y + 1) * w + (x - 1)];
+        }
+
+        if (mag >= mag1 && mag >= mag2) {
+          sobelData[idx] = Math.min(255, mag);
+        }
+      }
+    }
+
+    // Clear outer border margin
+    const borderMargin = 6;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        if (x < borderMargin || x >= w - borderMargin || y < borderMargin || y >= h - borderMargin) {
+          sobelData[y * w + x] = 0;
+        }
+      }
+    }
+
+    // Hysteresis Thresholding
+    const lowThresh = threshold * 0.4;
+    const highThresh = threshold;
+    const visitedEdge = new Uint8Array(w * h);
+    const stack = [];
+
+    for (let y = 1; y < h - 1; y++) {
+      for (let x = 1; x < w - 1; x++) {
+        const idx = y * w + x;
+        if (sobelData[idx] >= highThresh && !visitedEdge[idx]) {
+          stack.push(idx);
+          visitedEdge[idx] = 1;
+
+          while (stack.length > 0) {
+            const currIdx = stack.pop();
+            binaryPixels[currIdx] = 255;
+
+            const cx = currIdx % w;
+            const cy = Math.floor(currIdx / w);
+
+            for (let ny = cy - 1; ny <= cy + 1; ny++) {
+              for (let nx = cx - 1; nx <= cx + 1; nx++) {
+                if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                  const nidx = ny * w + nx;
+                  if (!visitedEdge[nidx] && sobelData[nidx] >= lowThresh) {
+                    visitedEdge[nidx] = 1;
+                    stack.push(nidx);
+                  }
                 }
               }
             }
@@ -183,14 +211,22 @@ export const processImageToStencil = (img, threshold, invert, isSketch = false) 
     }
   }
 
-  // Create preview image using the clean binary edge map
+  // Clear outer border margin of binary pixels to prevent border lines
+  const borderMargin = 6;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (x < borderMargin || x >= w - borderMargin || y < borderMargin || y >= h - borderMargin) {
+        binaryPixels[y * w + x] = 0;
+      }
+    }
+  }
+
+  // Create preview image
   const previewData = ctx.createImageData(w, h);
   const previewPixels = previewData.data;
 
   for (let i = 0; i < w * h; i++) {
     const isEdge = binaryPixels[i] === 255;
-
-    // Draw preview
     if (invert) {
       if (isEdge) {
         previewPixels[i * 4] = 255;
@@ -220,7 +256,7 @@ export const processImageToStencil = (img, threshold, invert, isSketch = false) 
   ctx.putImageData(previewData, 0, 0);
   const previewUrl = canvas.toDataURL('image/png');
 
-  // 6. Contour Tracing
+  // 4. Contour Tracing (runs on binary boundary pixels)
   const visited = new Uint8Array(w * h);
   const contours = [];
   const dx = [1, 1, 0, -1, -1, -1, 0, 1];
