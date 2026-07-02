@@ -2,12 +2,19 @@ import React, { useState, useEffect } from 'react'
 import { Palette, Save, Camera } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 
+import auroraSkyImg from '../assets/aurora_sky.png'
+import liquidPearlImg from '../assets/liquid_pearl.png'
+import royalOrchidImg from '../assets/royal_orchid.png'
+import solarFlareImg from '../assets/solar_flare.png'
+import velvetEmeraldImg from '../assets/velvet_emerald.png'
+import customThemeImg from '../assets/custom_theme.png'
+
 const THEME_OPTIONS = [
-  { name: 'Aurora Sky', color1: '#00f2fe', color2: '#4facfe' },
-  { name: 'Liquid Pearl', color1: '#ff758c', color2: '#ff7eb3' },
-  { name: 'Royal Orchid', color1: '#b18cfd', color2: '#ff7ebb' },
-  { name: 'Solar Flare', color1: '#ff0844', color2: '#ffb199' },
-  { name: 'Velvet Emerald', color1: '#0575e6', color2: '#00f260' }
+  { name: 'Aurora Sky', color1: '#00f2fe', color2: '#4facfe', image: auroraSkyImg },
+  { name: 'Liquid Pearl', color1: '#ff758c', color2: '#ff7eb3', image: liquidPearlImg },
+  { name: 'Royal Orchid', color1: '#b18cfd', color2: '#ff7ebb', image: royalOrchidImg },
+  { name: 'Solar Flare', color1: '#ff0844', color2: '#ffb199', image: solarFlareImg },
+  { name: 'Velvet Emerald', color1: '#0575e6', color2: '#00f260', image: velvetEmeraldImg }
 ]
 
 export default function Settings({ onThemeChange, activeThemeName, glassOpacity, onGlassOpacityChange }) {
@@ -246,10 +253,11 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
                       setSelectedColor2(theme.color2)
                     }}
                   >
-                    <div style={styles.themePreview(theme.color1, theme.color2)}>
-                      <div style={styles.themePreviewDot(theme.color1)}></div>
-                      <div style={styles.themePreviewDot(theme.color2)}></div>
-                    </div>
+                    <img 
+                      src={theme.image} 
+                      alt={theme.name} 
+                      style={styles.themeImagePreview(theme.color1, isSelected)} 
+                    />
                     <span style={styles.themeName}>{theme.name}</span>
                   </button>
                 )
@@ -269,10 +277,11 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
                         setSelectedColor2(customColor2)
                       }}
                     >
-                      <div style={styles.themePreview(customColor1, customColor2)}>
-                        <div style={styles.themePreviewDot(customColor1)}></div>
-                        <div style={styles.themePreviewDot(customColor2)}></div>
-                      </div>
+                      <img 
+                        src={customThemeImg} 
+                        alt="Custom Theme" 
+                        style={styles.themeImagePreview(customColor1, isCustomSelected)} 
+                      />
                       <span style={styles.themeName}>Custom Theme</span>
                     </button>
                     
@@ -472,22 +481,13 @@ const styles = {
     background: isActive ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.02)',
     textAlign: 'left',
   }),
-  themePreview: (color1, color2) => ({
-    width: '48px',
-    height: '24px',
-    borderRadius: '100px',
-    background: `linear-gradient(90deg, ${color1}, ${color2})`,
-    display: 'flex',
-    padding: '4px',
-    gap: '8px',
-    alignItems: 'center',
-    boxShadow: `0 0 10px ${color1}44`,
-  }),
-  themePreviewDot: (color) => ({
-    width: '12px',
-    height: '12px',
+  themeImagePreview: (color, isActive) => ({
+    width: '38px',
+    height: '38px',
     borderRadius: '50%',
-    background: 'rgba(255,255,255,0.7)',
+    objectFit: 'cover',
+    mixBlendMode: 'screen',
+    transition: 'all 0.3s ease',
   }),
   themeName: {
     fontFamily: 'var(--font-title)',
