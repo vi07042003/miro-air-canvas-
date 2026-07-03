@@ -123,6 +123,11 @@ export default function Gallery({ onEditDrawing }) {
 
   const handleDownload = (drawing, e) => {
     if (e) e.stopPropagation()
+    // For 3D / revolve drawings, export as OBJ instead of PNG
+    if (drawing.canvas_mode === '3d' || drawing.canvas_mode === 'revolve') {
+      handleDownloadOBJ(drawing, e)
+      return
+    }
     const link = document.createElement('a')
     link.href = drawing.image_data
     link.download = `${drawing.title.replace(/\s+/g, '_')}_miro_canvas.png`
@@ -130,6 +135,259 @@ export default function Gallery({ onEditDrawing }) {
     link.click()
     document.body.removeChild(link)
     showToast(`Sketch "${drawing.title}" downloaded!`, 'download')
+  }
+
+  // ---- OBJ Export Helpers ----
+
+  const buildRevolveOBJ = (threedData, title) => {
+    const { profilePoints, segments = 20 } = threedData
+    if (!profilePoints || profilePoints.length < 2) return null
+    const scale = 0.8
+    const vertices = []
+    const faces = []
+    for (let s = 0; s < segments; s++) {
+      const angle = (s * 2 * Math.PI) / segments
+      const cosVal = Math.cos(angle)
+      const sinVal = Math.sin(angle)
+      profilePoints.forEach(pt => {
+        vertices.push({
+          x: pt.radius * cosVal * scale,
+          y: pt.height * scale,
+          z: pt.radius * sinVal * scale
+        })
+      })
+    }
+    const pCount = profilePoints.length
+    for (let s = 0; s < segments; s++) {
+      const nextS = (s + 1) % segments
+      for (let i = 0; i < pCount - 1; i++) {
+        const a = s * pCount + i
+        const b = s * pCount + i + 1
+        const c = nextS * pCount + i
+        const d = nextS * pCount + i + 1
+        faces.push([a, c, d, b])
+      }
+    }
+    let obj = `# AeroCanvas Revolve Studio Export\n`
+    obj += `# Title: ${title}\n`
+    obj += `# Created: ${new Date().toISOString()}\n`
+    obj += `# Segments: ${segments}\n\n`
+    vertices.forEach(v => {
+      obj += `v ${(v.x / 100).toFixed(4)} ${(-v.y / 100).toFixed(4)} ${(v.z / 100).toFixed(4)}\n`
+    })
+    obj += '\n'
+    faces.forEach(f => {
+      obj += `f ${f.map(i => i + 1).join(' ')}\n`
+    })
+    return obj
+  }
+
+  const buildSphereGeometry = (cx, cy, cz, r, rings = 10, segs = 16) => {
+    const verts = []
+    const faces = []
+    const s = r / 100
+    for (let lat = 0; lat <= rings; lat++) {
+      const theta = (lat / rings) * Math.PI
+      for (let lon = 0; lon <= segs; lon++) {
+        const phi = (lon / segs) * 2 * Math.PI
+        verts.push([
+          cx / 100 + s * Math.sin(theta) * Math.cos(phi),
+          -cy / 100 + s * Math.cos(theta),
+          cz / 100 + s * Math.sin(theta) * Math.sin(phi)
+        ])
+      }
+    }
+    for (let lat = 0; lat < rings; lat++) {
+      for (let lon = 0; lon < segs; lon++) {
+        const a = lat * (segs + 1) + lon
+        const b = a + segs + 1
+        faces.push([a, b, b + 1])
+        faces.push([a, b + 1, a + 1])
+      }
+    }
+    return { verts, faces }
+  }
+
+  const buildCubeGeometry = (cx, cy, cz, s) => {
+    const h = s / 100 / 2
+    const px = cx / 100, py = -cy / 100, pz = cz / 100
+    const verts = [
+      [px - h, py - h, pz - h], [px + h, py - h, pz - h],
+      [px + h, py + h, pz - h], [px - h, py + h, pz - h],
+      [px - h, py - h, pz + h], [px + h, py - h, pz + h],
+      [px + h, py + h, pz + h], [px - h, py + h, pz + h]
+    ]
+    const faces = [
+      [0, 1, 2, 3], [4, 7, 6, 5], [0, 3, 7, 4],
+      [1, 5, 6, 2], [0, 4, 5, 1], [3, 2, 6, 7]
+    ]
+    return { verts, faces }
+  }
+
+  const buildCylinderGeometry = (cx, cy, cz, s, segs = 16) => {
+    const r = s / 100 / 2, h = s / 100 / 2
+    const px = cx / 100, py = -cy / 100, pz = cz / 100
+    const verts = []
+    const faces = []
+    // Bottom circle verts, top circle verts
+    for (let i = 0; i <= segs; i++) {
+      const a = (i / segs) * 2 * Math.PI
+      verts.push([px + r * Math.cos(a), py - h, pz + r * Math.sin(a)])
+    }
+    for (let i = 0; i <= segs; i++) {
+      const a = (i / segs) * 2 * Math.PI
+      verts.push([px + r * Math.cos(a), py + h, pz + r * Math.sin(a)])
+    }
+    // Side faces
+    for (let i = 0; i < segs; i++) {
+      const a = i, b = i + 1, c = i + segs + 1, d = i + segs + 2
+      faces.push([a, c, d, b])
+    }
+    return { verts, faces }
+  }
+
+  const buildPyramidGeometry = (cx, cy, cz, s) => {
+    const h = s / 100, w = s / 100 / 2
+    const px = cx / 100, py = -cy / 100, pz = cz / 100
+    const verts = [
+      [px - w, py, pz - w], [px + w, py, pz - w],
+      [px + w, py, pz + w], [px - w, py, pz + w],
+      [px, py + h, pz]
+    ]
+    const faces = [
+      [0, 1, 2, 3],
+      [0, 4, 1], [1, 4, 2], [2, 4, 3], [3, 4, 0]
+    ]
+    return { verts, faces }
+  }
+
+  const buildOBJFrom3DObjects = (objects, title) => {
+    let obj = `# AeroCanvas 3D Canvas Export\n`
+    obj += `# Title: ${title}\n`
+    obj += `# Created: ${new Date().toISOString()}\n\n`
+    let vertexOffset = 0
+    objects.forEach((o, idx) => {
+      obj += `# Object ${idx + 1}: ${o.type}\n`
+      let geom = null
+      const px = (o.pos && o.pos.x != null) ? o.pos.x : 0
+      const py = (o.pos && o.pos.y != null) ? o.pos.y : 0
+      const pz = (o.pos && o.pos.z != null) ? o.pos.z : 0
+      const sz = o.size || 40
+      if (o.type === 'sphere') {
+        geom = buildSphereGeometry(px, py, pz, sz)
+      } else if (o.type === 'cube') {
+        geom = buildCubeGeometry(px, py, pz, sz)
+      } else if (o.type === 'cylinder') {
+        geom = buildCylinderGeometry(px, py, pz, sz)
+      } else if (o.type === 'pyramid') {
+        geom = buildPyramidGeometry(px, py, pz, sz)
+      } else if (o.type === 'cone') {
+        // Cone ≈ pyramid with circular base
+        const { verts, faces } = buildCylinderGeometry(px, py, pz, sz)
+        // Replace top ring with single apex
+        const apex = [px / 100, -py / 100 + sz / 100, pz / 100]
+        geom = { verts: [...verts, apex], faces }
+      } else if (o.type === 'prism') {
+        geom = buildCylinderGeometry(px, py, pz, sz, 3)
+      } else if (o.type === 'octahedron') {
+        const r = sz / 100 / 2
+        const bx = px / 100, by = -py / 100, bz = pz / 100
+        const verts = [
+          [bx, by + r, bz], [bx + r, by, bz], [bx, by, bz + r],
+          [bx - r, by, bz], [bx, by, bz - r], [bx, by - r, bz]
+        ]
+        const faces = [
+          [0, 1, 2], [0, 2, 3], [0, 3, 4], [0, 4, 1],
+          [5, 2, 1], [5, 3, 2], [5, 4, 3], [5, 1, 4]
+        ]
+        geom = { verts, faces }
+      } else if (o.type === 'torus') {
+        const R = sz / 100 / 2, r2 = R * 0.3
+        const bx = px / 100, by = -py / 100, bz = pz / 100
+        const segsA = 16, segsB = 8
+        const verts = []
+        const faces = []
+        for (let i = 0; i <= segsA; i++) {
+          const a = (i / segsA) * 2 * Math.PI
+          for (let j = 0; j <= segsB; j++) {
+            const b = (j / segsB) * 2 * Math.PI
+            verts.push([
+              bx + (R + r2 * Math.cos(b)) * Math.cos(a),
+              by + r2 * Math.sin(b),
+              bz + (R + r2 * Math.cos(b)) * Math.sin(a)
+            ])
+          }
+        }
+        for (let i = 0; i < segsA; i++) {
+          for (let j = 0; j < segsB; j++) {
+            const a = i * (segsB + 1) + j
+            const b = a + segsB + 1
+            faces.push([a, b, b + 1, a + 1])
+          }
+        }
+        geom = { verts, faces }
+      } else if (o.type === 'capsule') {
+        geom = buildCylinderGeometry(px, py, pz, sz)
+      } else if (o.type === 'stroke' && o.points && o.points.length > 0) {
+        // Export stroke as a polyline of vertices (no faces)
+        o.points.forEach(pt => {
+          obj += `v ${(pt.x / 100).toFixed(4)} ${(-pt.y / 100).toFixed(4)} ${(pt.z / 100).toFixed(4)}\n`
+        })
+        obj += '\n'
+        vertexOffset += o.points.length
+        return
+      }
+      if (geom) {
+        geom.verts.forEach(v => {
+          obj += `v ${v[0].toFixed(4)} ${v[1].toFixed(4)} ${v[2].toFixed(4)}\n`
+        })
+        obj += '\n'
+        geom.faces.forEach(f => {
+          obj += `f ${f.map(i => i + vertexOffset + 1).join(' ')}\n`
+        })
+        obj += '\n'
+        vertexOffset += geom.verts.length
+      }
+    })
+    return obj
+  }
+
+  const handleDownloadOBJ = (drawing, e) => {
+    if (e) e.stopPropagation()
+    if (!drawing.threed_objects) {
+      showToast('No 3D data found for this drawing.', 'error')
+      return
+    }
+    try {
+      const data = JSON.parse(drawing.threed_objects)
+      let objText = ''
+      const safeName = drawing.title.replace(/\s+/g, '_')
+      if (drawing.canvas_mode === 'revolve') {
+        objText = buildRevolveOBJ(data, drawing.title)
+        if (!objText) {
+          showToast('Not enough profile points to export.', 'error')
+          return
+        }
+      } else if (drawing.canvas_mode === '3d') {
+        if (!Array.isArray(data) || data.length === 0) {
+          showToast('No 3D objects found in this drawing.', 'error')
+          return
+        }
+        objText = buildOBJFrom3DObjects(data, drawing.title)
+      }
+      const blob = new Blob([objText], { type: 'text/plain' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `${safeName}_aerocanvas.obj`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(link.href)
+      showToast(`OBJ model "${drawing.title}" downloaded!`, 'success')
+    } catch (err) {
+      console.error('OBJ export error:', err)
+      showToast('Failed to export OBJ file.', 'error')
+    }
   }
 
   return (
@@ -178,7 +436,7 @@ export default function Gallery({ onEditDrawing }) {
                       <button 
                         style={styles.overlayBtn} 
                         onClick={(e) => handleDownload(drawing, e)}
-                        title="Download Sketch"
+                        title={drawing.canvas_mode === '3d' || drawing.canvas_mode === 'revolve' ? 'Download OBJ' : 'Download PNG'}
                       >
                         <Download size={18} />
                       </button>
@@ -235,6 +493,7 @@ export default function Gallery({ onEditDrawing }) {
                       <Edit size={14} />
                       <span>Edit</span>
                     </button>
+
                     <button 
                       className="glass-btn" 
                       style={{ ...styles.actionBtn, ...styles.deleteBtn }}
@@ -448,7 +707,7 @@ export default function Gallery({ onEditDrawing }) {
                       onClick={(e) => handleDownload(selectedDrawing, e)}
                     >
                       <Download size={16} />
-                      <span>Download High-Res</span>
+                      <span>Download</span>
                     </button>
                     <button 
                       className="glass-btn" 
