@@ -340,13 +340,16 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
   }
 
-  // Handle dynamic canvas resizing to fill the workspace container
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const container = canvas.closest('.glass-panel')
     if (!container) return
+
+    // Holds the original-size snapshot taken at the START of a resize sequence
+    let snapshotCanvas = null
+    let debounceTimer = null
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (let entry of entries) {
@@ -358,41 +361,49 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
         if (canvas.width === roundedWidth && canvas.height === roundedHeight) continue
 
-        const ctx = canvas.getContext('2d')
-        
-        // Save current canvas contents
-        const tempCanvas = document.createElement('canvas')
-        tempCanvas.width = canvas.width
-        tempCanvas.height = canvas.height
-        const tempCtx = tempCanvas.getContext('2d')
-        tempCtx.drawImage(canvas, 0, 0)
+        // --- First tick of a new resize sequence: capture the snapshot ---
+        if (!snapshotCanvas) {
+          snapshotCanvas = document.createElement('canvas')
+          snapshotCanvas.width = canvas.width
+          snapshotCanvas.height = canvas.height
+          const snapCtx = snapshotCanvas.getContext('2d')
+          snapCtx.drawImage(canvas, 0, 0)
+        }
 
-        // Set new resolution
+        // Resize the canvas resolution immediately so CSS layout is satisfied,
+        // but just fill with background — we'll paint the real content after debounce.
+        const ctx = canvas.getContext('2d')
         canvas.width = roundedWidth
         canvas.height = roundedHeight
-
-        // Re-apply context styles
         ctx.lineCap = 'round'
         ctx.lineJoin = 'round'
-
-        // Fill background
         ctx.fillStyle = '#0a0518'
         ctx.fillRect(0, 0, roundedWidth, roundedHeight)
 
-        // Scale old content uniformly to fit the new dimensions
-        const scale = Math.min(roundedWidth / tempCanvas.width, roundedHeight / tempCanvas.height)
-        const dw = tempCanvas.width * scale
-        const dh = tempCanvas.height * scale
-        const dx = (roundedWidth - dw) / 2
-        const dy = (roundedHeight - dh) / 2
-        ctx.drawImage(tempCanvas, dx, dy, dw, dh)
-
-        // Mirror resolution settings to hand overlay canvas
+        // Mirror resolution to hand overlay canvas
         const handCanvas = handCanvasRef.current
         if (handCanvas) {
           handCanvas.width = roundedWidth
           handCanvas.height = roundedHeight
         }
+
+        // Debounce: wait for the animation to finish, then do one clean redraw
+        clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(() => {
+          if (!snapshotCanvas) return
+
+          const finalWidth = canvas.width
+          const finalHeight = canvas.height
+          const finalCtx = canvas.getContext('2d')
+
+          // Fill background
+          finalCtx.fillStyle = '#0a0518'
+          finalCtx.fillRect(0, 0, finalWidth, finalHeight)
+          finalCtx.drawImage(snapshotCanvas, 0, 0, finalWidth, finalHeight)
+
+          // Reset for the next resize sequence
+          snapshotCanvas = null
+        }, 450) // slightly longer than the 0.4s CSS transition
       }
     })
 
@@ -400,6 +411,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
     return () => {
       resizeObserver.disconnect()
+      clearTimeout(debounceTimer)
     }
   }, [])
   
@@ -410,9 +422,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const fpsTextRef = useRef(null)
 
   // States (Only state variables that trigger UI actions)
-  const [tool, setTool] = useState('brush') // brush, line, rect, circle, eraser
+  const [tool, setTool] = useState('pencil') // brush, line, rect, circle, eraser
   const [color, setColor] = useState('#06b6d4')
-  const [brushSize, setBrushSize] = useState(8)
+  const [brushSize, setBrushSize] = useState(1)
   const [brushOpacity, setBrushOpacity] = useState(1.0)
   const [isCameraOn, setIsCameraOn] = useState(false)
   const [cameraLoading, setCameraLoading] = useState(false)
