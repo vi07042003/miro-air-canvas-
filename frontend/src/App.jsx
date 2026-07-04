@@ -630,7 +630,7 @@ function App() {
                   />
                   <path
                     d="M19 3.5 Q19 7.5 23 7.5 Q19 7.5 19 11.5 Q19 7.5 15 7.5 Q19 7.5 19 3.5"
-                    fill="url(#logo-grad)"
+                    fill="#ffffff"
                   />
                 </svg>
               </div>

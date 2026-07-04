@@ -176,7 +176,7 @@ export default function WelcomeAnimation({ onComplete }) {
               />
               <motion.path
                 d="M19 3.5 Q19 7.5 23 7.5 Q19 7.5 19 11.5 Q19 7.5 15 7.5 Q19 7.5 19 3.5"
-                fill="url(#brand-grad)"
+                fill="#ffffff"
                 initial={{ scale: 0, opacity: 0, rotate: -30 }}
                 animate={{ scale: [0, 1.2, 1], opacity: 1, rotate: 0 }}
                 transition={{ delay: 1.6, duration: 0.8, ease: "easeOut" }}
