@@ -22,9 +22,7 @@ export default function WelcomeAnimation({ onComplete }) {
     }))
   }, [])
 
-  // Split text into individual letters for a staggered reveal
-  const textBrand = "MIRO"
-  const textSub = "CANVAS"
+
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -145,103 +143,51 @@ export default function WelcomeAnimation({ onComplete }) {
       </div>
 
       <div style={styles.logoAndTextWrapper}>
-        {/* Large SVG Drawing Logo Container */}
-        <div style={styles.svgContainer}>
-          {/* Outer glowing glass circle behind the logo */}
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1.2, ease: "easeOut" }}
-            style={styles.logoRing}
-          />
 
-          <svg 
-            width="140" 
-            height="140" 
-            viewBox="0 0 24 24" 
-            fill="none" 
-            xmlns="http://www.w3.org/2000/svg"
-            style={styles.svg}
-          >
-            <defs>
-              <linearGradient id="welcome-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="var(--theme-color-1)" />
-                <stop offset="100%" stopColor="var(--theme-color-2)" />
-              </linearGradient>
-              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="1" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-
-            {/* Drawing M path */}
-            <motion.path
-              d="M5 18C5 18 8 6 10.5 6C12.5 6 12 13.5 13.5 13.5C15 13.5 16.5 7.5 19 7.5"
-              stroke="url(#welcome-logo-grad)"
-              strokeWidth="2.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              initial={{ pathLength: 0 }}
-              animate={{ pathLength: 1 }}
-              transition={{
-                duration: 1.8,
-                ease: [0.6, 0.05, 0.1, 0.9],
-                delay: 0.3
-              }}
-            />
-
-            {/* Sparkle/Star path popping up on top right */}
-            <motion.path
-              d="M19 3.5 Q19 7.5 23 7.5 Q19 7.5 19 11.5 Q19 7.5 15 7.5 Q19 7.5 19 3.5"
-              fill="#ffffff"
-              filter="url(#glow)"
-              initial={{ scale: 0, opacity: 0, rotate: -30 }}
-              animate={{ 
-                scale: [0, 1.2, 1],
-                opacity: 1, 
-                rotate: 0 
-              }}
-              transition={{
-                delay: 1.6,
-                duration: 0.8,
-                ease: "easeOut"
-              }}
-            />
-          </svg>
-        </div>
-
-        {/* Brand Name Typography Reveal */}
-        <div style={styles.brandRow}>
-          {textBrand.split("").map((char, index) => (
-            <motion.span
-              key={index}
-              variants={letterVariants}
-              style={{
-                ...styles.brandLetter,
-                background: index >= 2 
-                  ? 'linear-gradient(135deg, var(--theme-color-1) 0%, var(--theme-color-2) 100%)' 
-                  : '#ffffff',
-                WebkitBackgroundClip: index >= 2 ? 'text' : 'none',
-                WebkitTextFillColor: index >= 2 ? 'transparent' : 'none'
-              }}
+        {/* Brand wordmark — icon inline with miro, canvas small below */}
+        <motion.div
+          variants={letterVariants}
+          style={styles.brandRow}
+        >
+          <div style={styles.brandIconInline}>
+            <svg
+              width="80"
+              height="80"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              style={{ filter: 'drop-shadow(0 0 12px rgba(139,92,246,0.4))' }}
             >
-              {char}
-            </motion.span>
-          ))}
-        </div>
-
-        {/* Subtitle / Description reveal */}
-        <div style={styles.subRow}>
-          {textSub.split("").map((char, index) => (
-            <motion.span
-              key={index}
-              variants={letterVariants}
-              style={styles.subLetter}
-            >
-              {char}
-            </motion.span>
-          ))}
-        </div>
+              <defs>
+                <linearGradient id="brand-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="var(--theme-color-1)" />
+                  <stop offset="100%" stopColor="var(--theme-color-2)" />
+                </linearGradient>
+              </defs>
+              <motion.path
+                d="M5 18C5 18 8 6 10.5 6C12.5 6 12 13.5 13.5 13.5C15 13.5 16.5 7.5 19 7.5"
+                stroke="url(#brand-grad)"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                initial={{ pathLength: 0 }}
+                animate={{ pathLength: 1 }}
+                transition={{ duration: 1.8, ease: [0.6, 0.05, 0.1, 0.9], delay: 0.3 }}
+              />
+              <motion.path
+                d="M19 3.5 Q19 7.5 23 7.5 Q19 7.5 19 11.5 Q19 7.5 15 7.5 Q19 7.5 19 3.5"
+                fill="url(#brand-grad)"
+                initial={{ scale: 0, opacity: 0, rotate: -30 }}
+                animate={{ scale: [0, 1.2, 1], opacity: 1, rotate: 0 }}
+                transition={{ delay: 1.6, duration: 0.8, ease: "easeOut" }}
+              />
+            </svg>
+          </div>
+          <div style={styles.brandTextStack}>
+            <span style={styles.brandMiro}>miro</span>
+            <span style={styles.brandCanvas}>canvas</span>
+          </div>
+        </motion.div>
 
         {/* Decorative thin modern progress indicator */}
         <div style={styles.progressTrack}>
@@ -356,34 +302,43 @@ const styles = {
   },
   brandRow: {
     display: 'flex',
-    justifyContent: 'center',
-    gap: '4px',
-    marginBottom: '4px',
-  },
-  brandLetter: {
-    fontFamily: "var(--font-display)",
-    fontSize: '64px',
-    fontWeight: '800',
-    letterSpacing: '-1.5px',
-    color: '#ffffff',
-    textShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
-    display: 'inline-block',
-  },
-  subRow: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '3px',
+    alignItems: 'center',
+    gap: '16px',
     marginBottom: '36px',
   },
-  subLetter: {
-    fontFamily: "var(--font-accent)",
-    fontSize: '15px',
-    fontWeight: '700',
-    letterSpacing: '5px',
-    color: 'var(--text-secondary)',
-    opacity: 0.75,
+  brandIconInline: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  brandTextStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '2px',
+    lineHeight: 1,
+  },
+  brandMiro: {
+    fontFamily: 'var(--font-display)',
+    fontSize: '100px',
+    fontWeight: '500',
+    fontStyle: 'italic',
+    letterSpacing: '-3px',
+    lineHeight: '1',
+    color: '#ffffff',
+  },
+  brandDot: {
+    display: 'none',
+  },
+  brandCanvas: {
+    fontFamily: 'var(--font-accent)',
+    fontSize: '13px',
+    fontWeight: '500',
+    letterSpacing: '0.22em',
+    color: 'rgba(255,255,255,0.38)',
     textTransform: 'uppercase',
-    display: 'inline-block',
+    lineHeight: '1',
   },
   progressTrack: {
     width: '140px',

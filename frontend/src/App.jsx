@@ -613,31 +613,31 @@ function App() {
               whileTap={{ scale: 0.97 }}
               style={{ cursor: 'pointer' }}
             >
-              <div className="logo-icon" style={{ padding: '6px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <div className="logo-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#ffffff" />
-                      <stop offset="100%" stopColor="rgba(255, 255, 255, 0.75)" />
+                      <stop offset="0%" stopColor="var(--theme-color-1)" />
+                      <stop offset="100%" stopColor="var(--theme-color-2)" />
                     </linearGradient>
                   </defs>
                   <path
                     d="M5 18C5 18 8 6 10.5 6C12.5 6 12 13.5 13.5 13.5C15 13.5 16.5 7.5 19 7.5"
                     stroke="url(#logo-grad)"
-                    strokeWidth="3"
+                    strokeWidth="2.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                   />
                   <path
                     d="M19 3.5 Q19 7.5 23 7.5 Q19 7.5 19 11.5 Q19 7.5 15 7.5 Q19 7.5 19 3.5"
-                    fill="#ffffff"
+                    fill="url(#logo-grad)"
                   />
                 </svg>
               </div>
               <span className="header-logo-text">
-                <span className="header-brand-mi">MI</span>
-                <span className="header-brand-ro">RO</span>
-                <span className="header-brand-canvas">CANVAS</span>
+                <span className="header-brand-mi">miro</span>
+                <span className="header-brand-dot">·</span>
+                <span className="header-brand-canvas">canvas</span>
               </span>
             </motion.div>
 
