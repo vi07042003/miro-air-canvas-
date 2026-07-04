@@ -608,7 +608,13 @@ function App() {
           <header className="header-glass">
             <motion.div 
               className="logo-container" 
-              onClick={() => setActivePage('landing')}
+              onClick={() => {
+                if (activePage === 'landing') {
+                  window.location.reload()
+                } else {
+                  setActivePage('landing')
+                }
+              }}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               style={{ cursor: 'pointer' }}
