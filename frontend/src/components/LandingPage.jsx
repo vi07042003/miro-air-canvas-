@@ -565,7 +565,7 @@ const styles = {
   sectionTitle: {
     fontFamily: 'var(--font-title)',
     fontSize: '32px',
-    fontWeight: '700',
+    fontWeight: '500',
     letterSpacing: '-0.5px',
   },
   grid: {
