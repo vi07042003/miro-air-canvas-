@@ -1,7 +1,114 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand, FileImage, Wand2, Rotate3d, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+const FEATURES = [
+  { verb: 'just draw in',           label: 'thin air',           icon: Sparkles  },
+  { verb: 'wave your hand,',        label: 'start painting',     icon: Hand      },
+  { verb: 'describe it, we\'ll',    label: 'sketch it out',      icon: Wand2     },
+  { verb: 'spin your lines into',   label: '3D shapes',          icon: Rotate3d  },
+  { verb: 'drop a photo, get a',    label: 'trace stencil',      icon: FileImage },
+  { verb: 'draw together,',         label: 'in real-time',       icon: Users     },
+  { verb: 'your sketches,',         label: 'always saved',       icon: Image     },
+  { verb: 'clean shapes &',         label: 'sharp lines',        icon: Layers    },
+]
+
+const slideVariants = {
+  enter: (dir) => ({ y: dir > 0 ? 36 : -36, opacity: 0, filter: 'blur(5px)' }),
+  center: { y: 0, opacity: 1, filter: 'blur(0px)' },
+  exit:  (dir) => ({ y: dir > 0 ? -36 : 36, opacity: 0, filter: 'blur(5px)' }),
+}
+
+function useFeatureIndex() {
+  const [index, setIndex] = useState(0)
+  const [direction, setDirection] = useState(1)
+  useEffect(() => {
+    const id = setInterval(() => {
+      setDirection(1)
+      setIndex(prev => (prev + 1) % FEATURES.length)
+    }, 2500)
+    return () => clearInterval(id)
+  }, [])
+  return { index, direction }
+}
+
+// Shared state lifted to parent — both components receive index & direction as props
+function DynamicVerbText({ index, direction }) {
+  return (
+    <span style={{ ...styles.dynamicWrapper, minHeight: '78px' }}>
+      <AnimatePresence mode="wait" custom={direction}>
+        <motion.span
+          key={index}
+          custom={direction}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.38, ease: [0.4, 0, 0.2, 1] }}
+          style={{
+            ...styles.headline,
+            fontWeight: '100',
+            color: 'rgba(255, 255, 255, 0.47)',
+            fontStyle: 'italic',
+            display: 'inline-block',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {FEATURES[index].verb}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  )
+}
+
+function DynamicFeatureText({ index, direction }) {
+  const feature = FEATURES[index]
+  const Icon = feature.icon
+  return (
+    <span style={styles.dynamicWrapper}>
+      <AnimatePresence mode="wait" custom={direction}>
+        <motion.span
+          key={index}
+          custom={direction}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.50, ease: [0.4, 0, 0.2, 1] }}
+          style={{
+            ...styles.highlightText,
+            color: '#ffffff',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '10px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <motion.span
+            style={styles.featureIconWrap}
+            initial={{ rotate: -20, scale: 0.6, opacity: 0 }}
+            animate={{ rotate: 0,   scale: 1,   opacity: 1 }}
+            transition={{ delay: 0.12, type: 'spring', stiffness: 300, damping: 18 }}
+          >
+            <Icon size={48} style={{ display: 'block', color: '#ffffff' }} strokeWidth={1.6} />
+          </motion.span>
+          {feature.label}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  )
+}
+
+function HeadlineBlock() {
+  const { index, direction } = useFeatureIndex()
+  return (
+    <h1 style={{ ...styles.headline, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+      <DynamicVerbText index={index} direction={direction} />
+      <DynamicFeatureText index={index} direction={direction} />
+    </h1>
+  )
+}
 
 export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
   const [showManual, setShowManual] = useState(false)
@@ -12,16 +119,12 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
       <section style={styles.heroSection}>
         <div style={styles.badge}>
           <Sparkles size={14} style={{ color: 'var(--theme-color-2)' }} />
-          <span>Next-Generation Interaction</span>
+          <span>your webcam is the canvas</span>
         </div>
-        <h1 style={styles.headline}>
-          Create Magic in <br />
-          <span style={styles.highlightText}>Thin Air</span>
-        </h1>
+        <HeadlineBlock />
         <p style={styles.subheadline}>
-          MIRO Canvas is an interactive, gesture-controlled air canvas. 
-          Draw, paint, and create shapes by moving your hands in front of your webcam. 
-          No physical mouse or touch screen required.
+          point your index finger at the screen and start drawing.
+          no touch screen, no mouse — just your hand and a webcam.
         </p>
         <div style={styles.ctaContainer}>
           <motion.button 
@@ -49,7 +152,7 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
 
       {/* Feature Grid */}
       <section style={styles.featuresSection}>
-        <h2 style={styles.sectionTitle}>Engineered for Magic</h2>
+        <h2 style={styles.sectionTitle}>what it can do</h2>
         <div style={styles.grid}>
           <motion.div 
             className="glass-card" 
@@ -60,9 +163,9 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             <div style={styles.iconWrapper}>
               <Camera size={24} color="#06b6d4" />
             </div>
-            <h3 style={styles.cardTitle}>Webcam Gesture Control</h3>
+            <h3 style={styles.cardTitle}>your hand, the cursor</h3>
             <p style={styles.cardText}>
-              Powered by browser-based MediaPipe WASM. Tracks 21 coordinates on your hand in real-time with sub-millisecond latency.
+              uses mediapipe running right in your browser — no app, no install. tracks 21 points on your hand and turns it into a drawing cursor.
             </p>
           </motion.div>
 
@@ -75,9 +178,9 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             <div style={styles.iconWrapper}>
               <Layers size={24} color="#8b5cf6" />
             </div>
-            <h3 style={styles.cardTitle}>Complete Vector Tools</h3>
+            <h3 style={styles.cardTitle}>lines, shapes, anything</h3>
             <p style={styles.cardText}>
-              Draw lines, rectangles, perfect circles, or paint freehand. Control brush thickness, opacity, and neon-themed color choices.
+              freehand, straight lines, circles, rectangles — pick a tool, pick a colour, and go. brush size and opacity are yours to control.
             </p>
           </motion.div>
 
@@ -90,9 +193,9 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             <div style={styles.iconWrapper}>
               <Sparkles size={24} color="#c084fc" className="spin-animation" style={{ animationDuration: '6s' }} />
             </div>
-            <h3 style={styles.cardTitle}>Sketch With AI</h3>
+            <h3 style={styles.cardTitle}>type it, see it drawn</h3>
             <p style={styles.cardText}>
-              Describe anything you want to draw and watch our AI instantly trace and plot the outline onto your 2D canvas or 3D space.
+              describe what you want — a star, a face, a house — and the AI drops the outline straight onto the canvas for you to trace.
             </p>
           </motion.div>
 
@@ -105,9 +208,9 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             <div style={styles.iconWrapper}>
               <FileImage size={24} color="#10b981" />
             </div>
-            <h3 style={styles.cardTitle}>AI Stencil Converter</h3>
+            <h3 style={styles.cardTitle}>photo → trace outline</h3>
             <p style={styles.cardText}>
-              Upload any custom image or snapshot and let our Edge-Detection AI convert it into a trace stencil for guided 2D and 3D drawing.
+              drop any photo in, and edge detection breaks it down into a clean stencil you can draw over — great for portraits or logos.
             </p>
           </motion.div>
 
@@ -120,9 +223,9 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             <div style={styles.iconWrapper}>
               <Wand2 size={24} color="#f43f5e" />
             </div>
-            <h3 style={styles.cardTitle}>AI Doodle to Art</h3>
+            <h3 style={styles.cardTitle}>doodle → actual art</h3>
             <p style={styles.cardText}>
-              Transform your freehand sketches into rich digital artwork instantly. Colorize, enhance contours, and fill drawings using advanced ControlNet AI.
+              rough sketch on the canvas, hit enhance — the AI fills in colours, smooths the lines, and turns it into something that looks intentional.
             </p>
           </motion.div>
 
@@ -135,9 +238,9 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             <div style={styles.iconWrapper}>
               <Image size={24} color="#ec4899" />
             </div>
-            <h3 style={styles.cardTitle}>Personal User Gallery</h3>
+            <h3 style={styles.cardTitle}>your stuff, always there</h3>
             <p style={styles.cardText}>
-              All designs are secured and saved in your personal database profile. Sign in to load and edit only your sketches.
+              every sketch saves to your account automatically. log back in and it's all waiting — nothing lost between sessions.
             </p>
           </motion.div>
 
@@ -150,9 +253,9 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             <div style={styles.iconWrapper}>
               <Rotate3d size={24} color="#8b5cf6" />
             </div>
-            <h3 style={styles.cardTitle}>3D Revolve & Lathe Studio</h3>
+            <h3 style={styles.cardTitle}>draw a line, get a 3D shape</h3>
             <p style={styles.cardText}>
-              Draw a 2D line profile contour in real-time, and watch it mathematically revolve 360° around a Y-axis to model 3D vases, glasses, or chess pieces.
+              sketch a side profile and watch it spin into a 3D object — bowls, vases, bottles, chess pieces. it just works.
             </p>
           </motion.div>
 
@@ -166,9 +269,9 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             <div style={styles.iconWrapper}>
               <Users size={24} color="var(--theme-color-1)" />
             </div>
-            <h3 style={styles.cardTitle}>Real-Time Collaboration</h3>
+            <h3 style={styles.cardTitle}>draw with others, live</h3>
             <p style={styles.cardText}>
-              Host or join  drawing rooms. Sketch and model simultaneously in real-time with your friends across the web.
+              open a room, share the link, and anyone can join and draw alongside you in real-time — on the same canvas, at the same time.
             </p>
           </motion.div>
         </div>
@@ -310,7 +413,7 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
                 <div style={styles.modalHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <BookOpen size={22} color="var(--theme-color-2)" />
-                    <h2 style={styles.modalTitle}>User Guide & Controls</h2>
+                    <h2 style={styles.modalTitle}>how to use it</h2>
                   </div>
                   <button style={styles.closeBtn} onClick={() => setShowManual(false)}>
                     <X size={20} />
@@ -319,46 +422,46 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
 
                 <div style={styles.modalBody}>
                   <p style={styles.manualIntro}>
-                    MIRO Canvas converts standard webcam feeds into real-time gesture paint canvases. Follow the instructions below to learn how to interact with the device.
+                    your webcam becomes the canvas. here's how to get started.
                   </p>
 
                   <div style={styles.guideStep}>
                     <div style={styles.stepHeader}>
                       <Camera size={18} color="var(--theme-color-2)" />
-                      <span style={styles.stepTitle}>1. Camera Positioning</span>
+                      <span style={styles.stepTitle}>1. get the lighting right</span>
                     </div>
                     <p style={styles.stepText}>
-                      Ensure your room is well-lit and you sit directly in front of the lens. Place your hand approximately 1 to 2 feet away from the webcam for optimum tracking precision.
+                      sit somewhere decent-lit, face the camera straight on. hand works best about 1–2 feet away from the lens.
                     </p>
                   </div>
 
                   <div style={styles.guideStep}>
                     <div style={styles.stepHeader}>
                       <Hand size={18} color="var(--theme-color-1)" style={{ transform: 'rotate(90deg)' }} />
-                      <span style={styles.stepTitle}>2. Paint Gesture (Index Raised)</span>
+                      <span style={styles.stepTitle}>2. one finger up = draw</span>
                     </div>
                     <p style={styles.stepText}>
-                      Raise only your **index finger** (fold middle, ring, pinky, and thumb). A neon paint trail will follow your fingertip to sketch lines, curves, or shape objects.
+                      raise just your index finger, fold the rest. the canvas follows your fingertip. that's it — move to draw.
                     </p>
                   </div>
 
                   <div style={styles.guideStep}>
                     <div style={styles.stepHeader}>
                       <Hand size={18} color="var(--primary-emerald)" />
-                      <span style={styles.stepTitle}>3. Hover & Navigation Gesture (V-Sign)</span>
+                      <span style={styles.stepTitle}>3. two fingers up = hover</span>
                     </div>
                     <p style={styles.stepText}>
-                      Raise both your **index and middle fingers** split apart (like a peace sign). This activates cursor-only hover mode, letting you reposition without painting.
+                      peace sign (index + middle, spread apart) moves the cursor without drawing. use it to reposition or hover over buttons.
                     </p>
                   </div>
 
                   <div style={styles.guideStep}>
                     <div style={styles.stepHeader}>
                       <MousePointer size={18} color="var(--primary-pink)" />
-                      <span style={styles.stepTitle}>4. Mouse Safety Fallback</span>
+                      <span style={styles.stepTitle}>4. no webcam? use your mouse</span>
                     </div>
                     <p style={styles.stepText}>
-                      If you don't have a webcam or camera permissions are blocked, you can drag your mouse cursor directly on the dark canvas to paint and test all vector shapes.
+                      if there's no camera or you blocked it, just click and drag on the canvas — everything still works.
                     </p>
                   </div>
                 </div>
@@ -418,10 +521,24 @@ const styles = {
     color: '#ffffff',
   },
   highlightText: {
-    background: 'linear-gradient(135deg, var(--theme-color-1) 0%, var(--theme-color-2) 100%)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    textShadow: '0 0 40px rgba(139, 92, 246, 0.2)',
+    fontFamily: 'var(--font-display)',
+    fontSize: '64px',
+    fontWeight: '500',
+    lineHeight: '1.1',
+    letterSpacing: '-2px',
+  },
+  dynamicWrapper: {
+    display: 'inline-block',
+    minHeight: '80px',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  featureIconWrap: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    verticalAlign: 'middle',
+    marginBottom: '4px',
   },
   subheadline: {
     fontFamily: 'var(--font-title)',
@@ -475,13 +592,16 @@ const styles = {
   },
   cardTitle: {
     fontFamily: 'var(--font-title)',
-    fontSize: '20px',
-    fontWeight: '600',
+    fontSize: '17px',
+    fontWeight: '500',
+    letterSpacing: '-0.2px',
+    lineHeight: '1.3',
   },
   cardText: {
     color: 'var(--text-secondary)',
-    fontSize: '15px',
-    lineHeight: '1.5',
+    fontSize: '14px',
+    lineHeight: '1.65',
+    fontWeight: '400',
   },
   mockupSection: {
     width: '100%',
