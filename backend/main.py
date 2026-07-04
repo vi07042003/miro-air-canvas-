@@ -13,6 +13,7 @@ import json
 
 import database
 import models
+import collaboration
 
 # Ensure tables are created/updated on startup
 database.init_db()
@@ -27,6 +28,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(collaboration.router)
 
 # Authentication Security Token setup
 security = HTTPBearer()

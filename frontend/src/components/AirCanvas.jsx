@@ -13,6 +13,7 @@ import {
 import { drawShapePath } from '../utils/canvasUtils'
 import { detectAndFitShape } from '../utils/shapeSnapper'
 import ThreeDModelViewerModal from './ThreeDModelViewerModal'
+import { useCollaboration } from '../hooks/useCollaboration'
 import GlassDialog from './GlassDialog'
 
 // Split components & constants
@@ -306,7 +307,7 @@ const getPartial3DStrokes = (strokes, progress) => {
 
 const PRIMITIVE_3D_TOOLS = ['3d-cube', '3d-sphere', '3d-cylinder', '3d-pyramid', '3d-cone', '3d-prism', '3d-torus', '3d-octahedron', '3d-capsule']
 
-export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved, initialStencil, onClearInitialStencil, isActivePage }) {
+export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingSaved, initialStencil, onClearInitialStencil, isActivePage, collabRoomCode, onLeaveCollab, user }) {
   const { showToast } = useToast()
   const canvasRef = useRef(null)
   const videoRef = useRef(null)
@@ -468,6 +469,39 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   // Drawer visibility states
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(true)
   const [rightDrawerOpen, setRightDrawerOpen] = useState(true)
+
+  // Initialize client collaboration hook
+  const collaboration = useCollaboration({
+    canvasRef,
+    saveCanvasState: (isEmpty) => saveCanvasState(isEmpty),
+    user,
+    BACKEND_URL,
+    onRemoteModeSwitch: (mode) => handleModeSwitchRemote(mode),
+    onRemoteUndo: (mode) => handleUndoRemote(mode),
+    onRemoteRedo: (mode) => handleRedoRemote(mode),
+    onRemoteClear: (mode) => handleClearRemote(mode),
+    onRemoteDraw3DObject: (obj) => handleDraw3DObjectRemote(obj),
+    onRemoteSync3DObjects: (objs) => handleSync3DObjectsRemote(objs),
+    get3DObjectsData: () => stamped3DObjectsRef.current,
+    getCanvasMode: () => canvasMode,
+    onRemoteStartAISketch: (contours, w, h, targetCanvas, promptStr) => handleStartAISketchRemote(contours, w, h, targetCanvas, promptStr),
+    onRemoteCancelAISketch: () => handleCancelAISketchRemote(),
+    onRemoteCompleteAISketch: () => handleCompleteAISketchRemote()
+  })
+
+  // Auto connect if room code is passed
+  useEffect(() => {
+    if (collabRoomCode) {
+      collaboration.joinRoom(collabRoomCode)
+    }
+  }, [collabRoomCode])
+
+  // Turn off camera if collaboration is active
+  useEffect(() => {
+    if (collaboration && collaboration.active && isCameraOn) {
+      setIsCameraOn(false)
+    }
+  }, [collaboration?.active, isCameraOn])
 
   useEffect(() => {
     if (initialStencil) {
@@ -711,6 +745,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       }
     }
     showToast("Stencil applied to canvas successfully!", "success")
+    if (collaboration && collaboration.active) {
+      collaboration.broadcastCanvasState()
+    }
   }
 
   const handleApplyAISketch = ({ imageUrl, targetCanvas, prompt }) => {
@@ -750,8 +787,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
   }
 
-  const startAISketching = (contours, w, h, targetCanvas, promptStr) => {
-    cancelAISketching()
+  const startAISketching = (contours, w, h, targetCanvas, promptStr, isRemote = false) => {
+    cancelAISketching(isRemote)
 
     const canvas = canvasRef.current
     if (!canvas) return
@@ -785,9 +822,12 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
 
     setShowAiSketchLoader(true)
+    if (!isRemote && collaboration && collaboration.active) {
+      collaboration.sendStartAISketch(contours, w, h, targetCanvas, promptStr)
+    }
   }
 
-  const cancelAISketching = () => {
+  const cancelAISketching = (isRemote = false) => {
     if (!aiSketchingRef.current) return
 
     const targetCanvas = aiSketchingRef.current.targetCanvas
@@ -805,9 +845,12 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     preSketch3DObjectsRef.current = null
 
     setShowAiSketchLoader(false)
+    if (!isRemote && collaboration && collaboration.active) {
+      collaboration.sendCancelAISketch()
+    }
   }
 
-  const completeAISketching = () => {
+  const completeAISketching = (isRemote = false) => {
     if (!aiSketchingRef.current) return
 
     const targetCanvas = aiSketchingRef.current.targetCanvas
@@ -839,6 +882,12 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     preSketch3DObjectsRef.current = null
 
     setShowAiSketchLoader(false)
+    if (collaboration && collaboration.active) {
+      if (!isRemote) {
+        collaboration.sendCompleteAISketch()
+        collaboration.broadcastCanvasState()
+      }
+    }
   }
 
   useEffect(() => {
@@ -974,6 +1023,18 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const previewSize3DRef = useRef(40)
   const canvas2DDataRef = useRef(null)
 
+  const canvasModeRef = useRef('2d')
+  const undoStackRef = useRef([])
+  const undoStack3DRef = useRef([[]])
+  const redoStackRef = useRef([])
+  const redoStack3DRef = useRef([])
+
+  useEffect(() => { canvasModeRef.current = canvasMode }, [canvasMode])
+  useEffect(() => { undoStackRef.current = undoStack }, [undoStack])
+  useEffect(() => { undoStack3DRef.current = undoStack3D }, [undoStack3D])
+  useEffect(() => { redoStackRef.current = redoStack }, [redoStack])
+  useEffect(() => { redoStack3DRef.current = redoStack3D }, [redoStack3D])
+
   const drawnShapesRef = useRef([])
 
   const expandSelectionToContainIntersectingShapes = (rect) => {
@@ -1095,6 +1156,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     sel.originalRect = null
     
     saveCanvasState()
+    if (collaboration && collaboration.active) {
+      collaboration.broadcastCanvasState()
+    }
   }
 
   const cancelSelection = () => {
@@ -1150,6 +1214,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     sel.originalRect = null
     
     saveCanvasState()
+    if (collaboration && collaboration.active) {
+      collaboration.broadcastCanvasState()
+    }
   }
 
   const set3DTool = (t) => {
@@ -1452,11 +1519,18 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         }
       }, 50)
     }
+
+    if (collaboration && collaboration.active) {
+      collaboration.sendSwitchMode(newMode)
+    }
   }
 
   const handleUndo = () => {
     if (canvasMode === '3d') {
       handleUndo3D()
+      if (collaboration && collaboration.active) {
+        collaboration.sendUndo('3d')
+      }
       return
     }
     if (selectionRef.current.active) {
@@ -1473,6 +1547,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     safePutImageData(ctx, previous.imgData)
     drawnShapesRef.current = previous.shapes || []
     setUndoStack(prev => prev.slice(0, -1))
+
+    if (collaboration && collaboration.active) {
+      collaboration.sendUndo('2d')
+    }
   }
 
   const handleUndo3D = () => {
@@ -1489,6 +1567,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const handleRedo = () => {
     if (canvasMode === '3d') {
       handleRedo3D()
+      if (collaboration && collaboration.active) {
+        collaboration.sendRedo('3d')
+      }
       return
     }
     if (selectionRef.current.active) {
@@ -1504,6 +1585,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     
     setUndoStack(prev => [...prev, nextState])
     setRedoStack(prev => prev.slice(0, -1))
+
+    if (collaboration && collaboration.active) {
+      collaboration.sendRedo('2d')
+    }
   }
 
   const handleRedo3D = () => {
@@ -1514,6 +1599,121 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     
     setUndoStack3D(prev => [...prev, nextState])
     setRedoStack3D(prev => prev.slice(0, -1))
+  }
+
+  // Remote action handlers called via collaboration WebSocket callbacks
+  const handleModeSwitchRemote = (newMode) => {
+    if (newMode === canvasModeRef.current) return
+    if (selectionRef.current.active) {
+      commitSelection()
+    }
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (newMode === '3d') {
+      canvas2DDataRef.current = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      setCanvasMode('3d')
+    } else {
+      setCanvasMode('2d')
+      setTimeout(() => {
+        const canvas2 = canvasRef.current
+        if (!canvas2) return
+        const ctx2 = canvas2.getContext('2d')
+        ctx2.lineCap = 'round'
+        ctx2.lineJoin = 'round'
+        if (canvas2DDataRef.current) {
+          safePutImageData(ctx2, canvas2DDataRef.current)
+        } else {
+          ctx2.globalAlpha = 1.0
+          ctx2.fillStyle = '#0a0518'
+          ctx2.fillRect(0, 0, canvas2.width, canvas2.height)
+        }
+      }, 50)
+    }
+  }
+
+  const handleUndoRemote = (mode) => {
+    if (mode === '3d') {
+      if (undoStack3DRef.current.length <= 1) return
+      const current = undoStack3DRef.current[undoStack3DRef.current.length - 1]
+      setRedoStack3D(prev => [...prev, current])
+      const previous = undoStack3DRef.current[undoStack3DRef.current.length - 2]
+      stamped3DObjectsRef.current = [...previous]
+      setUndoStack3D(prev => prev.slice(0, -1))
+      return
+    }
+    if (selectionRef.current.active) {
+      commitSelection()
+    }
+    if (undoStackRef.current.length <= 1) return
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    const current = undoStackRef.current[undoStackRef.current.length - 1]
+    setRedoStack(prev => [...prev, current])
+    const previous = undoStackRef.current[undoStackRef.current.length - 2]
+    safePutImageData(ctx, previous.imgData)
+    drawnShapesRef.current = previous.shapes || []
+    setUndoStack(prev => prev.slice(0, -1))
+  }
+
+  const handleRedoRemote = (mode) => {
+    if (mode === '3d') {
+      if (redoStack3DRef.current.length === 0) return
+      const nextState = redoStack3DRef.current[redoStack3DRef.current.length - 1]
+      stamped3DObjectsRef.current = [...nextState]
+      setUndoStack3D(prev => [...prev, nextState])
+      setRedoStack3D(prev => prev.slice(0, -1))
+      return
+    }
+    if (selectionRef.current.active) {
+      commitSelection()
+    }
+    if (redoStackRef.current.length === 0) return
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    const nextState = redoStackRef.current[redoStackRef.current.length - 1]
+    safePutImageData(ctx, nextState.imgData)
+    drawnShapesRef.current = nextState.shapes || []
+    setUndoStack(prev => [...prev, nextState])
+    setRedoStack(prev => prev.slice(0, -1))
+  }
+
+  const handleClearRemote = (mode) => {
+    if (mode === '3d') {
+      stamped3DObjectsRef.current = []
+      save3DState()
+      return
+    }
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    ctx.globalAlpha = 1.0
+    ctx.fillStyle = '#0a0518'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    drawnShapesRef.current = []
+    saveCanvasState(true)
+  }
+
+  const handleDraw3DObjectRemote = (object) => {
+    stamped3DObjectsRef.current.push(object)
+    save3DState()
+  }
+
+  const handleSync3DObjectsRemote = (objects) => {
+    stamped3DObjectsRef.current = [...objects]
+    save3DState()
+  }
+
+  const handleStartAISketchRemote = (contours, w, h, targetCanvas, promptStr) => {
+    startAISketching(contours, w, h, targetCanvas, promptStr, true)
+  }
+
+  const handleCancelAISketchRemote = () => {
+    cancelAISketching(true)
+  }
+
+  const handleCompleteAISketchRemote = () => {
+    completeAISketching(true)
   }
 
   const handleClear = () => {
@@ -1539,6 +1739,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         ctx.fillRect(0, 0, canvas.width, canvas.height)
         drawnShapesRef.current = []
         saveCanvasState(true)
+        if (collaboration && collaboration.active) {
+          collaboration.sendClear('2d')
+        }
         setDialog(prev => ({ ...prev, isOpen: false }))
       },
       onCancel: () => setDialog(prev => ({ ...prev, isOpen: false }))
@@ -1556,6 +1759,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       onConfirm: () => {
         stamped3DObjectsRef.current = []
         save3DState()
+        if (collaboration && collaboration.active) {
+          collaboration.sendClear('3d')
+        }
         setDialog(prev => ({ ...prev, isOpen: false }))
       },
       onCancel: () => setDialog(prev => ({ ...prev, isOpen: false }))
@@ -1631,29 +1837,39 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     } else if (drawState.isDrawing3D) {
       drawState.isDrawing3D = false
       if (active3DStrokeRef.current && active3DStrokeRef.current.length > 1) {
-        stamped3DObjectsRef.current.push({
+        const newObj = {
           type: 'stroke',
           points: active3DStrokeRef.current,
           color: stateRef.current.color,
           opacity: stateRef.current.brushOpacity,
           size: stateRef.current.brushSize
-        })
+        }
+        stamped3DObjectsRef.current.push(newObj)
         save3DState()
         set3DTool('orbit')
+        
+        if (collaboration && collaboration.active) {
+          collaboration.sendDraw3DObject(newObj)
+        }
       }
       active3DStrokeRef.current = null
     } else if (drawState.isSizing3D) {
       drawState.isSizing3D = false
       const toolType = active3DToolRef.current.replace('3d-', '')
-      stamped3DObjectsRef.current.push({
+      const newObj = {
         type: toolType,
         pos: { ...previewPos3DRef.current },
         size: previewSize3DRef.current,
         color: stateRef.current.color,
         opacity: stateRef.current.brushOpacity
-      })
+      }
+      stamped3DObjectsRef.current.push(newObj)
       save3DState()
       set3DTool('orbit')
+      
+      if (collaboration && collaboration.active) {
+        collaboration.sendDraw3DObject(newObj)
+      }
     }
   }
 
@@ -1713,6 +1929,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const canvas = canvasRef.current
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
+    
+    if (collaboration && collaboration.active) {
+      collaboration.sendCursorMove(e.clientX, e.clientY)
+    }
     
     if (stateRef.current.canvasMode === '3d') {
       handleMouseMove3D(e, rect)
@@ -1997,6 +2217,20 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         ctx.lineTo(drawX, drawY)
         ctx.stroke()
       }
+      
+      if (collaboration && collaboration.active) {
+        collaboration.sendDrawPoint({
+          x: drawX / canvas.width,
+          y: drawY / canvas.height,
+          lastX: drawState.lastX / canvas.width,
+          lastY: drawState.lastY / canvas.height,
+          tool: currentTool,
+          color: currentColor,
+          brushSize: currentBrushSize,
+          brushOpacity: currentBrushOpacity
+        })
+      }
+      
       drawState.lastX = drawX
       drawState.lastY = drawY
     } else {
@@ -2114,6 +2348,29 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
     ctx.restore()
     saveCanvasState()
+
+    if (collaboration && collaboration.active) {
+      let startX = detected.params.startX !== undefined ? detected.params.startX : (detected.params.cx - (detected.params.r || detected.params.rx || 0))
+      let startY = detected.params.startY !== undefined ? detected.params.startY : (detected.params.cy - (detected.params.r || detected.params.ry || 0))
+      let endX = detected.params.endX !== undefined ? detected.params.endX : (detected.params.cx + (detected.params.r || detected.params.rx || 0))
+      let endY = detected.params.endY !== undefined ? detected.params.endY : (detected.params.cy + (detected.params.r || detected.params.ry || 0))
+      
+      if (detected.type === 'rect') {
+        endX = detected.params.startX + detected.params.w
+        endY = detected.params.startY + detected.params.h
+      }
+
+      collaboration.sendDrawShape({
+        tool: detected.type,
+        startX: startX / canvas.width,
+        startY: startY / canvas.height,
+        endX: endX / canvas.width,
+        endY: endY / canvas.height,
+        color: colorVal,
+        brushSize: sizeVal,
+        brushOpacity: opacityVal
+      })
+    }
   }
 
   const endDraw = () => {
@@ -2173,6 +2430,19 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           w: (x2 - x1) + 2 * margin,
           h: (y2 - y1) + 2 * margin
         })
+        if (collaboration && collaboration.active) {
+          const canvas = canvasRef.current
+          collaboration.sendDrawShape({
+            tool: currentTool,
+            startX: drawState.startX / canvas.width,
+            startY: drawState.startY / canvas.height,
+            endX: drawState.lastX / canvas.width,
+            endY: drawState.lastY / canvas.height,
+            color: currentColor,
+            brushSize: currentBrushSize,
+            brushOpacity: currentBrushOpacity
+          })
+        }
       }
       saveCanvasState()
     }
@@ -2213,6 +2483,19 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     })
     
     saveCanvasState()
+
+    if (collaboration && collaboration.active) {
+      collaboration.sendDrawShape({
+        tool: shapeType,
+        startX: (x - radius) / canvas.width,
+        startY: (y - radius) / canvas.height,
+        endX: (x + radius) / canvas.width,
+        endY: (y + radius) / canvas.height,
+        color: colorVal,
+        brushSize: sizeVal,
+        brushOpacity: opacityVal
+      })
+    }
   }
 
   const addParticles = (x, y, particleColor) => {
@@ -2789,6 +3072,12 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const handCanvas = handCanvasRef.current
     if (!canvas || !handCanvas) return
 
+    if (collaboration && collaboration.active) {
+      const hCtx = handCanvas.getContext('2d')
+      hCtx.clearRect(0, 0, handCanvas.width, handCanvas.height)
+      return
+    }
+
     const hCtx = handCanvas.getContext('2d')
     hCtx.clearRect(0, 0, handCanvas.width, handCanvas.height)
     hCtx.globalAlpha = 1.0
@@ -2833,6 +3122,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
 
       if (coordsTextRef.current) {
         coordsTextRef.current.innerText = `(${Math.round(x)}, ${Math.round(y)})`
+      }
+
+      if (collaboration && collaboration.active) {
+        collaboration.sendHandCursorMove(x / canvas.width, y / canvas.height)
       }
 
       addParticles(x, y, currentColor)
@@ -2897,6 +3190,10 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             mainCtx.fillStyle = '#0a0518'
             mainCtx.fillRect(0, 0, canvas.width, canvas.height)
             saveCanvasState(true)
+            
+            if (collaboration && collaboration.active) {
+              collaboration.sendClear()
+            }
             
             currentMode = 'Canvas Cleared'
             
@@ -3315,6 +3612,57 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           </div>
         </div>
 
+        {collaboration && collaboration.active && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '6px 14px',
+            background: 'rgba(255, 255, 255, 0.03)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '12px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+            height: '38px',
+            boxSizing: 'border-box'
+          }}>
+            <div className="pulse-dot" style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#10b981',
+              boxShadow: '0 0 8px #10b981'
+            }} />
+            <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--theme-color-1)', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+              Live: {collaboration.roomCode}
+            </span>
+            <div style={{ width: '1px', height: '14px', background: 'rgba(255, 255, 255, 0.15)' }} />
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: '500' }}>
+              {collaboration.participants.length} online
+            </span>
+            <button 
+              className="glass-btn" 
+              style={{
+                padding: '2px 8px',
+                fontSize: '11px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                background: 'rgba(244, 63, 94, 0.15)',
+                border: '1px solid rgba(244, 63, 94, 0.3)',
+                color: '#fda4af',
+                height: '24px',
+                display: 'flex',
+                alignItems: 'center'
+              }}
+              onClick={() => {
+                collaboration.leaveRoom()
+                if (onLeaveCollab) onLeaveCollab()
+              }}
+            >
+              Disconnect
+            </button>
+          </div>
+        )}
+
         <div style={styles.actionButtons}>
           <div style={styles.segmentedControl}>
             <button 
@@ -3646,6 +3994,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           <div className="glass-panel" style={styles.canvasContainer}>
             <div style={{ position: 'relative', width: '100%', height: '100%' }}>
               <canvas 
+                id="main-doodle-canvas"
                 ref={canvasRef}
                 style={styles.canvas}
                 onMouseDown={handleMouseDown}
@@ -3654,6 +4003,51 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                 onMouseLeave={handleMouseUp}
                 onWheel={handleWheel3D}
               />
+              
+              {/* Remote Cursors Overlay */}
+              {collaboration && collaboration.active && Object.entries(collaboration.remoteCursors || {}).map(([username, pos]) => (
+                <div
+                  key={username}
+                  style={{
+                    position: 'absolute',
+                    left: `${pos.x * 100}%`,
+                    top: `${pos.y * 100}%`,
+                    transform: 'translate(-5px, -5px)',
+                    pointerEvents: 'none',
+                    zIndex: 50,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '4px',
+                    transition: 'left 0.08s ease-out, top 0.08s ease-out'
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M3 3L10.07 19.97L12.58 12.58L19.97 10.07L3 3Z"
+                      fill={pos.color}
+                      stroke="#fff"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                  <div
+                    style={{
+                      background: 'rgba(15, 10, 30, 0.85)',
+                      border: `1px solid ${pos.color}`,
+                      borderRadius: '6px',
+                      padding: '2px 8px',
+                      fontSize: '11px',
+                      fontWeight: '600',
+                      color: '#fff',
+                      whiteSpace: 'nowrap',
+                      boxShadow: `0 2px 10px rgba(0,0,0,0.5), 0 0 8px ${pos.color}40`
+                    }}
+                  >
+                    {username}
+                  </div>
+                </div>
+              ))}
               {textInput && (
                 <input
                   type="text"
@@ -3696,77 +4090,83 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         </div>
 
         {/* Floating Right Drawer Toggle Button handle */}
-        <button 
-          className={`drawer-toggle-handle toggle-right ${rightDrawerOpen ? 'open' : 'collapsed'}`}
-          onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
-          title={rightDrawerOpen ? "Collapse Camera & Guide" : "Expand Camera & Guide"}
-        >
-          {rightDrawerOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
+        {!(collaboration && collaboration.active) && (
+          <button 
+            className={`drawer-toggle-handle toggle-right ${rightDrawerOpen ? 'open' : 'collapsed'}`}
+            onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
+            title={rightDrawerOpen ? "Collapse Camera & Guide" : "Expand Camera & Guide"}
+          >
+            {rightDrawerOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+        )}
 
         {/* Right Column (Drawer Shell for Camera & Help) */}
-        <div className={`drawer-right-column ${rightDrawerOpen ? 'open' : 'collapsed'}`}>
-          {/* Camera Feed Card */}
-          <div className={`glass-panel camera-feed-card ${rightDrawerOpen ? 'in-drawer' : 'in-pip'}`}>
-            <div style={styles.videoHeader} className="video-header-pip">
-              <Video size={16} />
-              <span>Camera Tracking Feed</span>
+        {!(collaboration && collaboration.active) && (
+          <div className={`drawer-right-column ${rightDrawerOpen ? 'open' : 'collapsed'}`}>
+            {/* Camera Feed Card */}
+            <div className={`glass-panel camera-feed-card ${rightDrawerOpen ? 'in-drawer' : 'in-pip'}`}>
+              <div style={styles.videoHeader} className="video-header-pip">
+                <Video size={16} />
+                <span>Camera Tracking Feed</span>
+              </div>
+              
+              <div style={styles.videoWrapper}>
+                {cameraLoading && (
+                  <div style={styles.cameraLoadingOverlay}>
+                    <div className="spinner" style={styles.miniSpinner}></div>
+                    <span>Tracking hand model...</span>
+                  </div>
+                )}
+                {!isCameraOn && (
+                  <div style={styles.cameraOffOverlay}>
+                    <CameraOff size={32} color="var(--text-muted)" />
+                    <span>Camera Offline</span>
+                  </div>
+                )}
+                <video 
+                  ref={videoRef}
+                  style={{
+                    ...styles.video,
+                    display: isCameraOn ? 'block' : 'none',
+                    transform: settings.mirrorCamera === 'true' ? 'scaleX(-1)' : 'none'
+                  }}
+                  playsInline
+                  muted
+                />
+                <canvas 
+                  ref={handCanvasRef}
+                  width="1200"
+                  height="700"
+                  style={styles.handOverlayCanvas}
+                />
+              </div>
+
+              <button 
+                className={`glass-btn cam-toggle-btn-pip ${isCameraOn ? 'glass-btn-danger' : 'glass-btn-primary'}`}
+                style={styles.camToggleBtn}
+                onClick={() => setIsCameraOn(!isCameraOn)}
+                disabled={collaboration && collaboration.active}
+                title={collaboration && collaboration.active ? 'Hand gestures are disabled in collaboration mode for performance' : (isCameraOn ? 'Turn off camera tracking' : 'Turn on camera hand tracking')}
+              >
+                <Camera size={16} />
+                <span>{isCameraOn ? 'Stop Camera Tracking' : 'Enable Gesture Canvas'}</span>
+              </button>
             </div>
             
-            <div style={styles.videoWrapper}>
-              {cameraLoading && (
-                <div style={styles.cameraLoadingOverlay}>
-                  <div className="spinner" style={styles.miniSpinner}></div>
-                  <span>Tracking hand model...</span>
+            {/* Help Drawer Panel */}
+            {rightDrawerOpen && (
+              <div className="glass-panel help-drawer-panel">
+                <div className="drawer-content" style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
+                  <div style={styles.drawerSectionHeader}>
+                    <Video size={16} color="var(--theme-color-2)" />
+                    <span style={styles.drawerTitle}>User Guide</span>
+                  </div>
+                  <GestureHelpCard canvasMode={canvasMode} styles={styles} />
                 </div>
-              )}
-              {!isCameraOn && (
-                <div style={styles.cameraOffOverlay}>
-                  <CameraOff size={32} color="var(--text-muted)" />
-                  <span>Camera Offline</span>
-                </div>
-              )}
-              <video 
-                ref={videoRef}
-                style={{
-                  ...styles.video,
-                  display: isCameraOn ? 'block' : 'none',
-                  transform: settings.mirrorCamera === 'true' ? 'scaleX(-1)' : 'none'
-                }}
-                playsInline
-                muted
-              />
-              <canvas 
-                ref={handCanvasRef}
-                width="1200"
-                height="700"
-                style={styles.handOverlayCanvas}
-              />
-            </div>
-
-            <button 
-              className={`glass-btn cam-toggle-btn-pip ${isCameraOn ? 'glass-btn-danger' : 'glass-btn-primary'}`}
-              style={styles.camToggleBtn}
-              onClick={() => setIsCameraOn(!isCameraOn)}
-            >
-              <Camera size={16} />
-              <span>{isCameraOn ? 'Stop Camera Tracking' : 'Enable Gesture Canvas'}</span>
-            </button>
-          </div>
-          
-          {/* Help Drawer Panel */}
-          {rightDrawerOpen && (
-            <div className="glass-panel help-drawer-panel">
-              <div className="drawer-content" style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
-                <div style={styles.drawerSectionHeader}>
-                  <Video size={16} color="var(--theme-color-2)" />
-                  <span style={styles.drawerTitle}>User Guide</span>
-                </div>
-                <GestureHelpCard canvasMode={canvasMode} styles={styles} />
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Save Modal */}

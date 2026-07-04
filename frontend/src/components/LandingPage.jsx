@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand, FileImage, Wand2, Rotate3d } from 'lucide-react'
+import { Sparkles, Camera, Image, Layers, ArrowRight, HelpCircle, BookOpen, X, MousePointer, Settings, Hand, FileImage, Wand2, Rotate3d, Users } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export default function LandingPage({ onStartCanvas }) {
+export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
   const [showManual, setShowManual] = useState(false)
 
   return (
@@ -153,6 +153,22 @@ export default function LandingPage({ onStartCanvas }) {
             <h3 style={styles.cardTitle}>3D Revolve & Lathe Studio</h3>
             <p style={styles.cardText}>
               Draw a 2D line profile contour in real-time, and watch it mathematically revolve 360° around a Y-axis to model 3D vases, glasses, or chess pieces.
+            </p>
+          </motion.div>
+
+          <motion.div 
+            className="glass-card" 
+            style={{ ...styles.card, cursor: 'pointer' }}
+            onClick={onStartCollaboration}
+            whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <div style={styles.iconWrapper}>
+              <Users size={24} color="var(--theme-color-1)" />
+            </div>
+            <h3 style={styles.cardTitle}>Real-Time Collaboration</h3>
+            <p style={styles.cardText}>
+              Host or join  drawing rooms. Sketch and model simultaneously in real-time with your friends across the web.
             </p>
           </motion.div>
         </div>

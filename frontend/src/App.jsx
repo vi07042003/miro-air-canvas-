@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Home, Image, Settings as SettingsIcon, Palette, LogIn, LogOut, User as UserIcon, Lock, X, Sparkles, Wand2, Rotate3d } from 'lucide-react'
+import { Home, Image, Settings as SettingsIcon, Palette, LogIn, LogOut, User as UserIcon, Lock, X, Sparkles, Wand2, Rotate3d, Users } from 'lucide-react'
 import LandingPage from './components/LandingPage'
 import AirCanvas from './components/AirCanvas'
 import Gallery from './components/Gallery'
@@ -10,6 +10,7 @@ import WelcomeAnimation from './components/WelcomeAnimation'
 import AIStencils from './components/AIStencils'
 import RevolveStudio from './components/RevolveStudio'
 import DoodleStudio from './components/DoodleStudio'
+import CollaborationPage from './components/CollaborationPage'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useToast } from './components/Toast'
 
@@ -40,6 +41,9 @@ function App() {
 
   // AI Stencil Generator State
   const [externalStencil, setExternalStencil] = useState(null)
+
+  // Collaboration State
+  const [collabRoomCode, setCollabRoomCode] = useState('')
 
   // Theme Configuration
   const [theme, setTheme] = useState(() => {
@@ -109,6 +113,48 @@ function App() {
     showToast(`Theme updated to ${name}`, 'theme')
   }
 
+  // Collaboration Helpers
+  const createRoom = async () => {
+    if (!user) {
+      showToast('Please sign in to host a collaborative session', 'error')
+      setActivePage('auth')
+      return null
+    }
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/collaboration/create`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        }
+      })
+      if (!res.ok) throw new Error('Failed to create room')
+      const data = await res.json()
+      return data.room_code
+    } catch (err) {
+      showToast('Error creating collaboration session', 'error')
+      console.error(err)
+      return null
+    }
+  }
+
+  const checkRoomExists = async (code) => {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/collaboration/check/${code}`)
+      if (!res.ok) return false
+      const data = await res.json()
+      return data.exists
+    } catch (err) {
+      console.error(err)
+      return false
+    }
+  }
+
+  const joinCollabRoom = (code) => {
+    setCollabRoomCode(code)
+    setActivePage('canvas')
+    showToast(`Joining room ${code}...`, 'success')
+  }
+
   // Session login success callback
   const handleLoginSuccess = (username, token, profilePicture) => {
     localStorage.setItem('token', token)
@@ -128,6 +174,10 @@ function App() {
 
   // Session logout callback
   const handleLogout = () => {
+    if (collabRoomCode) {
+      showToast('Cannot log out while in collaboration mode. Please disconnect first.', 'warning')
+      return
+    }
     localStorage.removeItem('token')
     localStorage.removeItem('username')
     localStorage.removeItem('profile_picture')
@@ -139,6 +189,10 @@ function App() {
   // Profile Click Handler
   const handleProfileClick = () => {
     if (!user) return
+    if (collabRoomCode) {
+      showToast('Cannot edit profile while in collaboration mode. Please disconnect first.', 'warning')
+      return
+    }
     setEditUsername(user.username)
     setEditPassword('')
     setEditProfilePicture(user.profilePicture || '')
@@ -239,7 +293,7 @@ function App() {
 
   // Safe navigation: always redirects to auth for protected pages
   const navigateTo = (page) => {
-    const protectedPages = ['canvas', 'gallery', 'stencils', 'revolve', 'doodle']
+    const protectedPages = ['canvas', 'gallery', 'stencils', 'revolve', 'doodle', 'collab']
     if (protectedPages.includes(page) && !user) {
       setActivePage('auth')
     } else {
@@ -365,7 +419,10 @@ function App() {
             exit="exit"
             style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
-            <LandingPage onStartCanvas={() => navigateTo('canvas')} />
+            <LandingPage 
+              onStartCanvas={() => navigateTo('canvas')} 
+              onStartCollaboration={() => navigateTo('collab')}
+            />
           </motion.div>
         )
       case 'canvas':
@@ -461,6 +518,25 @@ function App() {
             <DoodleStudio user={user} />
           </motion.div>
         )
+      case 'collab':
+        return (
+          <motion.div
+            key="collab"
+            variants={macPageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
+          >
+            <CollaborationPage
+              user={user}
+              createRoom={createRoom}
+              joinRoom={joinCollabRoom}
+              checkRoomExists={checkRoomExists}
+              onStartCanvas={() => navigateTo('canvas')}
+            />
+          </motion.div>
+        )
       default:
         return (
           <motion.div
@@ -471,7 +547,10 @@ function App() {
             exit="exit"
             style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
-            <LandingPage onStartCanvas={() => navigateTo('canvas')} />
+            <LandingPage 
+              onStartCanvas={() => navigateTo('canvas')} 
+              onStartCollaboration={() => navigateTo('collab')}
+            />
           </motion.div>
         )
     }
@@ -540,11 +619,17 @@ function App() {
 
             <nav className="nav-links">
               <motion.button 
-                className={`nav-item ${activePage === 'landing' ? 'nav-item-active' : ''}`}
-                onClick={() => setActivePage('landing')}
+                className={`nav-item ${activePage === 'landing' ? 'nav-item-active' : ''} ${collabRoomCode ? 'nav-item-locked' : ''}`}
+                onClick={() => {
+                  if (collabRoomCode) {
+                    showToast('Cannot leave the canvas while in collaboration mode. Please disconnect first.', 'warning')
+                    return
+                  }
+                  setActivePage('landing')
+                }}
                 style={{ position: 'relative' }}
-                whileHover={{ scale: 1.04, y: -1 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={collabRoomCode ? {} : { scale: 1.04, y: -1 }}
+                whileTap={collabRoomCode ? {} : { scale: 0.95 }}
               >
                 {activePage === 'landing' && (
                   <motion.div
@@ -556,6 +641,7 @@ function App() {
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Home size={19} />
                   <span>Home</span>
+                  {collabRoomCode && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
               </motion.button>
               <motion.button 
@@ -580,12 +666,18 @@ function App() {
                 </span>
               </motion.button>
               <motion.button 
-                className={`nav-item ${activePage === 'gallery' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
-                onClick={() => navigateTo('gallery')}
-                title={!user ? 'Sign in to access Gallery' : 'Gallery'}
+                className={`nav-item ${activePage === 'gallery' ? 'nav-item-active' : ''} ${(!user || collabRoomCode) ? 'nav-item-locked' : ''}`}
+                onClick={() => {
+                  if (collabRoomCode) {
+                    showToast('Cannot access Gallery while in collaboration mode. Please disconnect first.', 'warning')
+                    return
+                  }
+                  navigateTo('gallery')
+                }}
+                title={!user ? 'Sign in to access Gallery' : (collabRoomCode ? 'Gallery disabled during collaboration' : 'Gallery')}
                 style={{ position: 'relative' }}
-                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
-                whileTap={!user ? {} : { scale: 0.95 }}
+                whileHover={(!user || collabRoomCode) ? {} : { scale: 1.04, y: -1 }}
+                whileTap={(!user || collabRoomCode) ? {} : { scale: 0.95 }}
               >
                 {activePage === 'gallery' && (
                   <motion.div
@@ -597,16 +689,22 @@ function App() {
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Image size={19} />
                   <span>Gallery</span>
-                  {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                  {(!user || collabRoomCode) && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
               </motion.button>
               <motion.button 
-                className={`nav-item ${activePage === 'stencils' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
-                onClick={() => navigateTo('stencils')}
-                title={!user ? 'Sign in to generate AI stencils' : 'AI Stencil Generator'}
+                className={`nav-item ${activePage === 'stencils' ? 'nav-item-active' : ''} ${(!user || collabRoomCode) ? 'nav-item-locked' : ''}`}
+                onClick={() => {
+                  if (collabRoomCode) {
+                    showToast('Cannot access AI Stencils while in collaboration mode. Please disconnect first.', 'warning')
+                    return
+                  }
+                  navigateTo('stencils')
+                }}
+                title={!user ? 'Sign in to generate AI stencils' : (collabRoomCode ? 'AI Stencils disabled during collaboration' : 'AI Stencil Generator')}
                 style={{ position: 'relative' }}
-                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
-                whileTap={!user ? {} : { scale: 0.95 }}
+                whileHover={(!user || collabRoomCode) ? {} : { scale: 1.04, y: -1 }}
+                whileTap={(!user || collabRoomCode) ? {} : { scale: 0.95 }}
               >
                 {activePage === 'stencils' && (
                   <motion.div
@@ -618,16 +716,22 @@ function App() {
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Sparkles size={19} />
                   <span>AI Stencils</span>
-                  {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                  {(!user || collabRoomCode) && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
               </motion.button>
               <motion.button 
-                className={`nav-item ${activePage === 'revolve' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
-                onClick={() => navigateTo('revolve')}
-                title={!user ? 'Sign in to access 3D Revolve' : '3D Revolve'}
+                className={`nav-item ${activePage === 'revolve' ? 'nav-item-active' : ''} ${(!user || collabRoomCode) ? 'nav-item-locked' : ''}`}
+                onClick={() => {
+                  if (collabRoomCode) {
+                    showToast('Cannot access 3D Revolve while in collaboration mode. Please disconnect first.', 'warning')
+                    return
+                  }
+                  navigateTo('revolve')
+                }}
+                title={!user ? 'Sign in to access 3D Revolve' : (collabRoomCode ? '3D Revolve disabled during collaboration' : '3D Revolve')}
                 style={{ position: 'relative' }}
-                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
-                whileTap={!user ? {} : { scale: 0.95 }}
+                whileHover={(!user || collabRoomCode) ? {} : { scale: 1.04, y: -1 }}
+                whileTap={(!user || collabRoomCode) ? {} : { scale: 0.95 }}
               >
                 {activePage === 'revolve' && (
                   <motion.div
@@ -639,16 +743,22 @@ function App() {
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Rotate3d size={19} />
                   <span>3D Revolve</span>
-                  {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                  {(!user || collabRoomCode) && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
               </motion.button>
               <motion.button 
-                className={`nav-item ${activePage === 'doodle' ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
-                onClick={() => navigateTo('doodle')}
-                title={!user ? 'Sign in to access Doodle to Art' : 'Doodle Art'}
+                className={`nav-item ${activePage === 'doodle' ? 'nav-item-active' : ''} ${(!user || collabRoomCode) ? 'nav-item-locked' : ''}`}
+                onClick={() => {
+                  if (collabRoomCode) {
+                    showToast('Cannot access Doodle Art while in collaboration mode. Please disconnect first.', 'warning')
+                    return
+                  }
+                  navigateTo('doodle')
+                }}
+                title={!user ? 'Sign in to access Doodle to Art' : (collabRoomCode ? 'Doodle Art disabled during collaboration' : 'Doodle Art')}
                 style={{ position: 'relative' }}
-                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
-                whileTap={!user ? {} : { scale: 0.95 }}
+                whileHover={(!user || collabRoomCode) ? {} : { scale: 1.04, y: -1 }}
+                whileTap={(!user || collabRoomCode) ? {} : { scale: 0.95 }}
               >
                 {activePage === 'doodle' && (
                   <motion.div
@@ -660,15 +770,54 @@ function App() {
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Wand2 size={19}/>
                   <span>Doodle Art</span>
+                  {(!user || collabRoomCode) && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
+                </span>
+              </motion.button>
+
+              <motion.button 
+                className={`nav-item ${(activePage === 'collab' || collabRoomCode) ? 'nav-item-active' : ''} ${!user ? 'nav-item-locked' : ''}`}
+                onClick={() => {
+                  if (!user) {
+                    showToast('Please sign in to collaborate', 'error')
+                    setActivePage('auth')
+                    return
+                  }
+                  if (collabRoomCode) {
+                    setActivePage('canvas')
+                  } else {
+                    navigateTo('collab')
+                  }
+                }}
+                title={!user ? 'Sign in to access collaboration features' : (collabRoomCode ? `Active Session: ${collabRoomCode}` : 'Start real-time collaboration')}
+                style={{ position: 'relative' }}
+                whileHover={!user ? {} : { scale: 1.04, y: -1 }}
+                whileTap={!user ? {} : { scale: 0.95 }}
+              >
+                {(activePage === 'collab' || collabRoomCode) && (
+                  <motion.div
+                    layoutId="active-nav-pill"
+                    className="nav-item-active-bg"
+                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={19} />
+                  <span>{collabRoomCode ? `Live: ${collabRoomCode}` : 'Collaborate'}</span>
                   {!user && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
               </motion.button>
               <motion.button 
-                className={`nav-item ${activePage === 'settings' ? 'nav-item-active' : ''}`}
-                onClick={() => setActivePage('settings')}
+                className={`nav-item ${activePage === 'settings' ? 'nav-item-active' : ''} ${collabRoomCode ? 'nav-item-locked' : ''}`}
+                onClick={() => {
+                  if (collabRoomCode) {
+                    showToast('Cannot open Settings while in collaboration mode. Please disconnect first.', 'warning')
+                    return
+                  }
+                  setActivePage('settings')
+                }}
                 style={{ position: 'relative' }}
-                whileHover={{ scale: 1.04, y: -1 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={collabRoomCode ? {} : { scale: 1.04, y: -1 }}
+                whileTap={collabRoomCode ? {} : { scale: 0.95 }}
               >
                 {activePage === 'settings' && (
                   <motion.div
@@ -680,6 +829,7 @@ function App() {
                 <span style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <SettingsIcon size={19} />
                   <span>Settings</span>
+                  {collabRoomCode && <Lock size={13} style={{ opacity: 0.5, marginLeft: '2px' }} />}
                 </span>
               </motion.button>
             </nav>
@@ -719,6 +869,7 @@ function App() {
                       </div>
                     </div>
                   </div>
+                  
                   <motion.button 
                     className="glass-btn" 
                     style={styles.authBtn} 
@@ -732,16 +883,18 @@ function App() {
                   </motion.button>
                 </div>
               ) : (
-                <motion.button 
-                  className="glass-btn glass-btn-primary" 
-                  style={styles.authBtn} 
-                  onClick={() => setActivePage('auth')}
-                  whileHover={{ scale: 1.04, y: -1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <LogIn size={16} />
-                  <span>Sign In</span>
-                </motion.button>
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <motion.button 
+                    className="glass-btn glass-btn-primary" 
+                    style={styles.authBtn} 
+                    onClick={() => setActivePage('auth')}
+                    whileHover={{ scale: 1.04, y: -1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <LogIn size={16} />
+                    <span>Sign In</span>
+                  </motion.button>
+                </div>
               )}
             </div>
           </header>
@@ -838,10 +991,15 @@ function App() {
                   initialStencil={externalStencil}
                   onClearInitialStencil={() => setExternalStencil(null)}
                   isActivePage={activePage === 'canvas' || (activePage === 'auth' && user)}
+                  collabRoomCode={collabRoomCode}
+                  onLeaveCollab={() => setCollabRoomCode('')}
+                  user={user}
                 />
               </motion.div>
             )}
           </main>
+
+
 
           {/* Profile Edit Modal */}
           {createPortal(
