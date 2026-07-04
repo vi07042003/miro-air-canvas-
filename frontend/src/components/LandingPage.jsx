@@ -152,13 +152,24 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
 
       {/* Feature Grid */}
       <section style={styles.featuresSection}>
-        <h2 style={styles.sectionTitle}>what it can do</h2>
+        <motion.h2 
+          style={styles.sectionTitle}
+          initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
+          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+        >
+          what it can do
+        </motion.h2>
         <div style={styles.grid}>
           <motion.div 
             className="glass-card" 
             style={styles.card}
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
             whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
               <Camera size={24} color="#06b6d4" />
@@ -172,8 +183,11 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
           <motion.div 
             className="glass-card" 
             style={styles.card}
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
             whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
               <Layers size={24} color="#8b5cf6" />
@@ -187,8 +201,11 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
           <motion.div 
             className="glass-card" 
             style={styles.card}
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
             whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
               <Sparkles size={24} color="#c084fc" className="spin-animation" style={{ animationDuration: '6s' }} />
@@ -202,8 +219,11 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
           <motion.div 
             className="glass-card" 
             style={styles.card}
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
             whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
               <FileImage size={24} color="#10b981" />
@@ -217,8 +237,11 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
           <motion.div 
             className="glass-card" 
             style={styles.card}
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
             whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
               <Wand2 size={24} color="#f43f5e" />
@@ -232,8 +255,11 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
           <motion.div 
             className="glass-card" 
             style={styles.card}
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
             whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
               <Image size={24} color="#ec4899" />
@@ -247,8 +273,11 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
           <motion.div 
             className="glass-card" 
             style={styles.card}
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
             whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
               <Rotate3d size={24} color="#8b5cf6" />
@@ -262,9 +291,12 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
           <motion.div 
             className="glass-card" 
             style={{ ...styles.card, cursor: 'pointer' }}
+            initial={{ opacity: 0, y: 40, filter: 'blur(12px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, delay: 0.3, ease: "easeOut" }}
             onClick={onStartCollaboration}
             whileHover={{ y: -6, scale: 1.02, boxShadow: '0 12px 30px rgba(0,0,0,0.3)' }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
           >
             <div style={styles.iconWrapper}>
               <Users size={24} color="var(--theme-color-1)" />
@@ -278,7 +310,13 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
       </section>
 
       {/* Decorative Interactive Mockup */}
-      <section style={styles.mockupSection}>
+      <motion.section 
+        style={styles.mockupSection}
+        initial={{ opacity: 0, y: 50, filter: 'blur(15px)' }}
+        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+      >
         <div className="glass-panel" style={styles.mockupCanvas}>
           <div style={styles.mockupHeader}>
             <div style={styles.mockupDots}>
@@ -306,7 +344,7 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
             </svg>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* Manual / How It Works Modal */}
       {createPortal(
