@@ -61,6 +61,14 @@ const ICON_MAP = {
   Type
 }
 
+const getBgColor = () => {
+  if (typeof window !== 'undefined') {
+    const rootStyle = getComputedStyle(document.documentElement)
+    return rootStyle.getPropertyValue('--bg-dark-1').trim() || '#0C121C'
+  }
+  return '#0C121C'
+}
+
 const RenderIcon = ({ iconName, size = 18 }) => {
   const IconComp = ICON_MAP[iconName] || Palette
   return <IconComp size={size} />
@@ -327,7 +335,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       
       ctx.save()
       ctx.globalAlpha = 1.0
-      ctx.fillStyle = '#0a0518'
+      ctx.fillStyle = getBgColor()
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
       const scale = Math.min(canvas.width / imgData.width, canvas.height / imgData.height)
@@ -378,7 +386,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         canvas.height = roundedHeight
         ctx.lineCap = 'round'
         ctx.lineJoin = 'round'
-        ctx.fillStyle = '#0a0518'
+        ctx.fillStyle = getBgColor()
         ctx.fillRect(0, 0, roundedWidth, roundedHeight)
 
         // Mirror resolution to hand overlay canvas
@@ -398,7 +406,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           const finalCtx = canvas.getContext('2d')
 
           // Fill background
-          finalCtx.fillStyle = '#0a0518'
+          finalCtx.fillStyle = getBgColor()
           finalCtx.fillRect(0, 0, finalWidth, finalHeight)
           finalCtx.drawImage(snapshotCanvas, 0, 0, finalWidth, finalHeight)
 
@@ -1338,7 +1346,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       loadedDrawingIdRef.current = initialId
       
       ctx.globalAlpha = 1.0
-      ctx.fillStyle = '#0a0518'
+      ctx.fillStyle = getBgColor()
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       
       if (initialDrawing) {
@@ -1514,7 +1522,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           safePutImageData(ctx2, canvas2DDataRef.current)
         } else {
           ctx2.globalAlpha = 1.0
-          ctx2.fillStyle = '#0a0518'
+          ctx2.fillStyle = getBgColor()
           ctx2.fillRect(0, 0, canvas2.width, canvas2.height)
         }
       }, 50)
@@ -1625,7 +1633,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           safePutImageData(ctx2, canvas2DDataRef.current)
         } else {
           ctx2.globalAlpha = 1.0
-          ctx2.fillStyle = '#0a0518'
+          ctx2.fillStyle = getBgColor()
           ctx2.fillRect(0, 0, canvas2.width, canvas2.height)
         }
       }, 50)
@@ -1688,7 +1696,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     ctx.globalAlpha = 1.0
-    ctx.fillStyle = '#0a0518'
+    ctx.fillStyle = getBgColor()
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     drawnShapesRef.current = []
     saveCanvasState(true)
@@ -1735,7 +1743,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         const canvas = canvasRef.current
         const ctx = canvas.getContext('2d')
         ctx.globalAlpha = 1.0
-        ctx.fillStyle = '#0a0518'
+        ctx.fillStyle = getBgColor()
         ctx.fillRect(0, 0, canvas.width, canvas.height)
         drawnShapesRef.current = []
         saveCanvasState(true)
@@ -2020,7 +2028,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             safePutImageData(ctx, sel.originalCanvasData)
           }
           sel.pixels = ctx.getImageData(sel.rect.x, sel.rect.y, sel.rect.w, sel.rect.h)
-          ctx.fillStyle = '#0a0518'
+          ctx.fillStyle = getBgColor()
           ctx.fillRect(sel.rect.x, sel.rect.y, sel.rect.w, sel.rect.h)
           sel.backgroundData = ctx.getImageData(0, 0, canvas.width, canvas.height)
           
@@ -2149,8 +2157,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     
     const { tool: currentTool, color: currentColor, brushSize: currentBrushSize, brushOpacity: currentBrushOpacity, stabilizeEnabled: currentStabilizeEnabled } = stateRef.current
 
-    ctx.strokeStyle = currentTool === 'eraser' ? '#0a0518' : currentColor
-    ctx.fillStyle = currentTool === 'eraser' ? '#0a0518' : currentColor
+    ctx.strokeStyle = currentTool === 'eraser' ? getBgColor() : currentColor
+    ctx.fillStyle = currentTool === 'eraser' ? getBgColor() : currentColor
     ctx.lineWidth = currentBrushSize
     ctx.globalAlpha = currentBrushOpacity
     ctx.lineCap = 'round'
@@ -2538,7 +2546,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     const ctx = canvas.getContext('2d')
     
     ctx.globalAlpha = 1.0
-    ctx.fillStyle = '#0a0518'
+    ctx.fillStyle = getBgColor()
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
     const { rx, ry, scale } = camera3DRef.current
@@ -3187,7 +3195,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             
             const mainCtx = canvas.getContext('2d')
             mainCtx.globalAlpha = 1.0
-            mainCtx.fillStyle = '#0a0518'
+            mainCtx.fillStyle = getBgColor()
             mainCtx.fillRect(0, 0, canvas.width, canvas.height)
             saveCanvasState(true)
             
@@ -3300,7 +3308,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                 safePutImageData(mainCtx, sel.originalCanvasData)
               }
               sel.pixels = mainCtx.getImageData(sel.rect.x, sel.rect.y, sel.rect.w, sel.rect.h)
-              mainCtx.fillStyle = '#0a0518'
+              mainCtx.fillStyle = getBgColor()
               mainCtx.fillRect(sel.rect.x, sel.rect.y, sel.rect.w, sel.rect.h)
               sel.backgroundData = mainCtx.getImageData(0, 0, canvas.width, canvas.height)
               

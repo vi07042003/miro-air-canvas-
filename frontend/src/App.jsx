@@ -50,9 +50,11 @@ function App() {
     const savedName = localStorage.getItem('theme_name')
     const savedColor1 = localStorage.getItem('theme_color_1')
     const savedColor2 = localStorage.getItem('theme_color_2')
+    const savedBg1 = localStorage.getItem('theme_bg_1')
+    const savedBg2 = localStorage.getItem('theme_bg_2')
     return savedName && savedColor1 && savedColor2 
-      ? { name: savedName, color1: savedColor1, color2: savedColor2 }
-      : { name: 'Aurora Sky', color1: '#00f2fe', color2: '#4facfe' }
+      ? { name: savedName, color1: savedColor1, color2: savedColor2, bg1: savedBg1 || '#0C121C', bg2: savedBg2 || '#05080C' }
+      : { name: 'Aurora Sky', color1: '#3FA7D6', color2: '#5BC0EB', bg1: '#0C121C', bg2: '#05080C' }
   })
 
   // Glass Transparency Configuration
@@ -81,6 +83,10 @@ function App() {
     root.style.setProperty('--theme-color-1', theme.color1)
     root.style.setProperty('--theme-color-2', theme.color2)
     
+    // Set custom backgrounds if defined, otherwise use default
+    root.style.setProperty('--bg-dark-1', theme.bg1 || '#0C121C')
+    root.style.setProperty('--bg-dark-2', theme.bg2 || '#05080C')
+    
     // Hex to RGB conversion for CSS alpha glows
     const hexToRgb = (hex) => {
       let c = hex.substring(1)
@@ -105,11 +111,29 @@ function App() {
   }, [activePage])
 
   // Change theme handler
-  const handleThemeChange = (color1, color2, name) => {
-    setTheme({ color1, color2, name })
+  const handleThemeChange = (color1, color2, name, bg1, bg2) => {
+    let resolvedBg1 = bg1
+    let resolvedBg2 = bg2
+    
+    if (!bg1 || !bg2) {
+      const preset = [
+        { name: 'Aurora Sky', bg1: '#0C121C', bg2: '#05080C' },
+        { name: 'Liquid Pearl', bg1: '#16161D', bg2: '#0D0D11' },
+        { name: 'Royal Orchid', bg1: '#0E141B', bg2: '#070A0E' },
+        { name: 'Solar Flare', bg1: '#141A24', bg2: '#0A0D12' },
+        { name: 'Velvet Emerald', bg1: '#101826', bg2: '#080C13' }
+      ].find(p => p.name === name)
+      
+      resolvedBg1 = preset?.bg1 || '#0C121C'
+      resolvedBg2 = preset?.bg2 || '#05080C'
+    }
+    
+    setTheme({ color1, color2, name, bg1: resolvedBg1, bg2: resolvedBg2 })
     localStorage.setItem('theme_name', name)
     localStorage.setItem('theme_color_1', color1)
     localStorage.setItem('theme_color_2', color2)
+    localStorage.setItem('theme_bg_1', resolvedBg1)
+    localStorage.setItem('theme_bg_2', resolvedBg2)
     showToast(`Theme updated to ${name}`, 'theme')
   }
 

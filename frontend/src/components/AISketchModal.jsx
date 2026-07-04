@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Sparkles, HelpCircle, Key, Cpu, ToggleLeft, ToggleRight, Layers, Image as ImageIcon } from 'lucide-react'
+import { Sparkles, HelpCircle, Key, Cpu, ToggleLeft, ToggleRight, Layers, ChevronDown, Image as ImageIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BACKEND_URL } from '../App'
 import { useToast } from './Toast'
@@ -21,6 +21,19 @@ export default function AISketchModal({
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const [serviceUsed, setServiceUsed] = useState('')
+  const [isModelSelectOpen, setIsModelSelectOpen] = useState(false)
+
+  // Auto-close model dropdown when clicking outside
+  useEffect(() => {
+    if (!isModelSelectOpen) return
+    const handleGlobalClick = () => {
+      setIsModelSelectOpen(false)
+    }
+    document.addEventListener('click', handleGlobalClick)
+    return () => {
+      document.removeEventListener('click', handleGlobalClick)
+    }
+  }, [isModelSelectOpen])
 
   // Limit States
   const [usageCount, setUsageCount] = useState(0)
@@ -425,30 +438,105 @@ export default function AISketchModal({
                 </div>
 
                 {/* Model Select */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
                   <label style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)' }}>
                     Text-to-Image Model
                   </label>
-                  <select
-                    value={modelId}
-                    onChange={(e) => setModelId(e.target.value)}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (!generating && usageCount < maxUsage) {
+                        setIsModelSelectOpen(!isModelSelectOpen)
+                      }
+                    }}
                     className="glass-input"
                     style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                       width: '100%',
-                      background: 'rgba(10, 5, 24, 0.9)',
-                      color: '#fff',
+                      background: 'rgba(255, 255, 255, 0.05)',
                       border: '1px solid var(--glass-border)',
                       padding: '8px 12px',
                       borderRadius: '8px',
+                      color: '#fff',
                       cursor: (generating || usageCount >= maxUsage) ? 'not-allowed' : 'pointer',
-                      outline: 'none'
+                      outline: 'none',
+                      textAlign: 'left'
                     }}
                     disabled={generating || usageCount >= maxUsage}
                   >
-                    {modelOptions.map(opt => (
-                      <option key={opt.id} value={opt.id} style={{ background: '#0a0518' }}>{opt.name}</option>
-                    ))}
-                  </select>
+                    <span>
+                      {modelOptions.find(o => o.id === modelId)?.name || 'Select Model'}
+                    </span>
+                    <ChevronDown 
+                      size={14} 
+                      style={{ 
+                        transform: isModelSelectOpen ? 'rotate(180deg)' : 'rotate(0deg)', 
+                        transition: 'transform 0.3s ease',
+                        opacity: 0.7
+                      }} 
+                    />
+                  </button>
+
+                  {isModelSelectOpen && (
+                    <div
+                      className="glass-panel-heavy fade-in"
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        right: 0,
+                        marginTop: '4px',
+                        borderRadius: '12px',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        background: 'rgba(15, 23, 42, 0.95)',
+                        backdropFilter: 'blur(16px)',
+                        boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+                        zIndex: 100,
+                        overflow: 'hidden',
+                        padding: '4px'
+                      }}
+                    >
+                      {modelOptions.map((opt) => {
+                        const isSelected = opt.id === modelId
+                        return (
+                          <div
+                            key={opt.id}
+                            onClick={() => {
+                              setModelId(opt.id)
+                              setIsModelSelectOpen(false)
+                            }}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '8px 12px',
+                              fontSize: '12px',
+                              color: isSelected ? 'var(--theme-color-1)' : '#fff',
+                              cursor: 'pointer',
+                              borderRadius: '8px',
+                              background: isSelected 
+                                ? 'rgba(255, 255, 255, 0.08)' 
+                                : 'transparent',
+                              transition: 'all 0.2s ease',
+                              fontWeight: isSelected ? '600' : 'normal',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = isSelected 
+                                ? 'rgba(255, 255, 255, 0.08)' 
+                                : 'transparent'
+                            }}
+                          >
+                            {opt.name}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* API Token Input */}

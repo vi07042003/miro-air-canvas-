@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Palette, Save, Camera } from 'lucide-react'
+import { Palette, Save, Camera, ChevronDown } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 
 import auroraSkyImg from '../assets/aurora_sky.png'
@@ -9,12 +9,20 @@ import solarFlareImg from '../assets/solar_flare.png'
 import velvetEmeraldImg from '../assets/velvet_emerald.png'
 import customThemeImg from '../assets/custom_theme.png'
 
+const CUSTOM_BG_OPTIONS = [
+  { label: 'Blue–Charcoal', bg1: '#0C121C', bg2: '#05080C' },
+  { label: 'Dusty Navy Grey', bg1: '#141A24', bg2: '#0A0D12' },
+  { label: 'Deep Ocean Tint', bg1: '#101826', bg2: '#080C13' },
+  { label: 'Neutral Graphite', bg1: '#16161D', bg2: '#0D0D11' },
+  { label: 'Cold Steel Dark', bg1: '#0E141B', bg2: '#070A0E' }
+]
+
 const THEME_OPTIONS = [
-  { name: 'Aurora Sky', color1: '#00f2fe', color2: '#4facfe', image: auroraSkyImg },
-  { name: 'Liquid Pearl', color1: '#ff758c', color2: '#ff7eb3', image: liquidPearlImg },
-  { name: 'Royal Orchid', color1: '#b18cfd', color2: '#ff7ebb', image: royalOrchidImg },
-  { name: 'Solar Flare', color1: '#ff0844', color2: '#ffb199', image: solarFlareImg },
-  { name: 'Velvet Emerald', color1: '#0575e6', color2: '#00f260', image: velvetEmeraldImg }
+  { name: 'Aurora Sky', color1: '#3FA7D6', color2: '#5BC0EB', bg1: '#0C121C', bg2: '#05080C', image: auroraSkyImg },
+  { name: 'Liquid Pearl', color1: '#F2859E', color2: '#B48EAD', bg1: '#16161D', bg2: '#0D0D11', image: liquidPearlImg },
+  { name: 'Royal Orchid', color1: '#9D8DF1', color2: '#8F7AFE', bg1: '#0E141B', bg2: '#070A0E', image: royalOrchidImg },
+  { name: 'Solar Flare', color1: '#FF9B85', color2: '#EFA6A6', bg1: '#141A24', bg2: '#0A0D12', image: solarFlareImg },
+  { name: 'Velvet Emerald', color1: '#46CFA7', color2: '#3FBF7F', bg1: '#101826', bg2: '#080C13', image: velvetEmeraldImg }
 ]
 
 export default function Settings({ onThemeChange, activeThemeName, glassOpacity, onGlassOpacityChange }) {
@@ -36,12 +44,12 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
   const [localConfidence, setLocalConfidence] = useState(0.5)
 
   const activeColor1 = activeThemeName === 'Custom Theme'
-    ? (localStorage.getItem('theme_color_1') || '#da12db')
-    : (THEME_OPTIONS.find(t => t.name === activeThemeName)?.color1 || '#00f2fe')
+    ? (localStorage.getItem('theme_color_1') || '#3FA7D6')
+    : (THEME_OPTIONS.find(t => t.name === activeThemeName)?.color1 || '#3FA7D6')
 
   const activeColor2 = activeThemeName === 'Custom Theme'
-    ? (localStorage.getItem('theme_color_2') || '#13cbd6')
-    : (THEME_OPTIONS.find(t => t.name === activeThemeName)?.color2 || '#4facfe')
+    ? (localStorage.getItem('theme_color_2') || '#5BC0EB')
+    : (THEME_OPTIONS.find(t => t.name === activeThemeName)?.color2 || '#5BC0EB')
 
   // Selected theme details (local state until Saved is clicked)
   const [selectedThemeName, setSelectedThemeName] = useState(activeThemeName)
@@ -55,7 +63,7 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
       const savedColor1 = localStorage.getItem('theme_color_1')
       if (savedColor1) return savedColor1
     }
-    return localStorage.getItem('custom_theme_color_1') || '#da12db'
+    return localStorage.getItem('custom_theme_color_1') || '#3FA7D6'
   })
 
   const [customColor2, setCustomColor2] = useState(() => {
@@ -63,8 +71,31 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
       const savedColor2 = localStorage.getItem('theme_color_2')
       if (savedColor2) return savedColor2
     }
-    return localStorage.getItem('custom_theme_color_2') || '#13cbd6'
+    return localStorage.getItem('custom_theme_color_2') || '#5BC0EB'
   })
+
+  const [customBgIndex, setCustomBgIndex] = useState(() => {
+    const savedBg1 = localStorage.getItem('theme_bg_1')
+    if (savedBg1) {
+      const idx = CUSTOM_BG_OPTIONS.findIndex(opt => opt.bg1 === savedBg1)
+      if (idx !== -1) return idx
+    }
+    return 0 // default to Blue-Charcoal
+  })
+
+  const [isBgSelectOpen, setIsBgSelectOpen] = useState(false)
+
+  // Auto-close dropdown when clicking outside
+  useEffect(() => {
+    if (!isBgSelectOpen) return
+    const handleGlobalClick = () => {
+      setIsBgSelectOpen(false)
+    }
+    document.addEventListener('click', handleGlobalClick)
+    return () => {
+      document.removeEventListener('click', handleGlobalClick)
+    }
+  }, [isBgSelectOpen])
 
   // Keep custom colors and selected theme in sync with active theme when it changes
   useEffect(() => {
@@ -77,6 +108,12 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
       const savedColor2 = localStorage.getItem('theme_color_2')
       if (savedColor1) setCustomColor1(savedColor1)
       if (savedColor2) setCustomColor2(savedColor2)
+      
+      const savedBg1 = localStorage.getItem('theme_bg_1')
+      if (savedBg1) {
+        const idx = CUSTOM_BG_OPTIONS.findIndex(opt => opt.bg1 === savedBg1)
+        if (idx !== -1) setCustomBgIndex(idx)
+      }
     }
   }, [activeThemeName, activeColor1, activeColor2])
 
@@ -92,9 +129,75 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
     }
   }, [appSettings.detectionConfidence])
 
-  const isThemeChanged = selectedThemeName !== activeThemeName || 
-                         selectedColor1 !== activeColor1 || 
-                         selectedColor2 !== activeColor2
+  // Live preview of selected theme colors & backgrounds
+  useEffect(() => {
+    const root = document.documentElement
+    root.style.setProperty('--theme-color-1', selectedColor1)
+    root.style.setProperty('--theme-color-2', selectedColor2)
+    
+    let bg1, bg2
+    if (selectedThemeName === 'Custom Theme') {
+      bg1 = CUSTOM_BG_OPTIONS[customBgIndex].bg1
+      bg2 = CUSTOM_BG_OPTIONS[customBgIndex].bg2
+    } else {
+      const themePreset = THEME_OPTIONS.find(t => t.name === selectedThemeName)
+      bg1 = themePreset?.bg1 || '#0C121C'
+      bg2 = themePreset?.bg2 || '#05080C'
+    }
+    
+    root.style.setProperty('--bg-dark-1', bg1)
+    root.style.setProperty('--bg-dark-2', bg2)
+    
+    const hexToRgb = (hex) => {
+      let c = hex.substring(1)
+      if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]
+      const r = parseInt(c.substring(0, 2), 16)
+      const g = parseInt(c.substring(2, 4), 16)
+      const b = parseInt(c.substring(4, 6), 16)
+      return `${r}, ${g}, ${b}`
+    }
+    root.style.setProperty('--theme-color-1-rgb', hexToRgb(selectedColor1))
+    root.style.setProperty('--theme-color-2-rgb', hexToRgb(selectedColor2))
+  }, [selectedColor1, selectedColor2, selectedThemeName, customBgIndex])
+
+  // Revert preview on unmount if it wasn't saved
+  useEffect(() => {
+    return () => {
+      const root = document.documentElement
+      root.style.setProperty('--theme-color-1', activeColor1)
+      root.style.setProperty('--theme-color-2', activeColor2)
+      
+      let bg1, bg2
+      if (activeThemeName === 'Custom Theme') {
+        const savedBg1 = localStorage.getItem('theme_bg_1')
+        if (savedBg1) {
+          const opt = CUSTOM_BG_OPTIONS.find(o => o.bg1 === savedBg1)
+          bg1 = opt?.bg1 || '#0C121C'
+          bg2 = opt?.bg2 || '#05080C'
+        } else {
+          bg1 = '#0C121C'
+          bg2 = '#05080C'
+        }
+      } else {
+        const themePreset = THEME_OPTIONS.find(t => t.name === activeThemeName)
+        bg1 = themePreset?.bg1 || '#0C121C'
+        bg2 = themePreset?.bg2 || '#05080C'
+      }
+      root.style.setProperty('--bg-dark-1', bg1)
+      root.style.setProperty('--bg-dark-2', bg2)
+      
+      const hexToRgb = (hex) => {
+        let c = hex.substring(1)
+        if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2]
+        const r = parseInt(c.substring(0, 2), 16)
+        const g = parseInt(c.substring(2, 4), 16)
+        const b = parseInt(c.substring(4, 6), 16)
+        return `${r}, ${g}, ${b}`
+      }
+      root.style.setProperty('--theme-color-1-rgb', hexToRgb(activeColor1))
+      root.style.setProperty('--theme-color-2-rgb', hexToRgb(activeColor2))
+    }
+  }, [activeThemeName, activeColor1, activeColor2])
 
   // Revert preview transparency on unmount if it wasn't saved
   useEffect(() => {
@@ -107,13 +210,27 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
     }
   }, [glassOpacity])
 
+  const isThemeChanged = selectedThemeName !== activeThemeName || 
+                         selectedColor1 !== activeColor1 || 
+                         selectedColor2 !== activeColor2 ||
+                         (selectedThemeName === 'Custom Theme' && localStorage.getItem('theme_bg_1') !== CUSTOM_BG_OPTIONS[customBgIndex].bg1)
+
   const isSettingsChanged = appSettings.mirrorCamera !== initialAppSettings.mirrorCamera ||
-                            appSettings.detectionConfidence !== initialAppSettings.detectionConfidence ||
-                            appSettings.defaultColor !== initialAppSettings.defaultColor ||
-                            localOpacity !== glassOpacity
+                             appSettings.detectionConfidence !== initialAppSettings.detectionConfidence ||
+                             appSettings.defaultColor !== initialAppSettings.defaultColor ||
+                             localOpacity !== glassOpacity
 
   const handleSaveTheme = () => {
-    onThemeChange(selectedColor1, selectedColor2, selectedThemeName)
+    let bg1, bg2
+    if (selectedThemeName === 'Custom Theme') {
+      bg1 = CUSTOM_BG_OPTIONS[customBgIndex].bg1
+      bg2 = CUSTOM_BG_OPTIONS[customBgIndex].bg2
+    } else {
+      const themePreset = THEME_OPTIONS.find(t => t.name === selectedThemeName)
+      bg1 = themePreset?.bg1
+      bg2 = themePreset?.bg2
+    }
+    onThemeChange(selectedColor1, selectedColor2, selectedThemeName, bg1, bg2)
     setThemeSavedMessage('Theme saved successfully!')
     setTimeout(() => setThemeSavedMessage(''), 3000)
   }
@@ -348,6 +465,122 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
                               style={styles.customColorPickerInput}
                             />
                             <span style={styles.colorHexText}>{customColor2}</span>
+                          </div>
+                        </div>
+                        <div style={styles.customColorInputGroup}>
+                          <label style={styles.customColorLabel}>Background Bias</label>
+                          <div style={{ position: 'relative', width: '150px' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setIsBgSelectOpen(!isBgSelectOpen)
+                              }}
+                              className="glass-btn"
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                width: '100%',
+                                padding: '6px 12px',
+                                fontSize: '12px',
+                                background: 'rgba(255, 255, 255, 0.05)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                borderRadius: '8px',
+                                color: '#fff',
+                                cursor: 'pointer',
+                                outline: 'none',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              }}
+                            >
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{
+                                  width: '8px',
+                                  height: '8px',
+                                  borderRadius: '50%',
+                                  background: CUSTOM_BG_OPTIONS[customBgIndex].bg1,
+                                  border: '1px solid rgba(255,255,255,0.2)'
+                                }} />
+                                {CUSTOM_BG_OPTIONS[customBgIndex].label}
+                              </span>
+                              <ChevronDown 
+                                size={14} 
+                                style={{ 
+                                  transform: isBgSelectOpen ? 'rotate(180deg)' : 'rotate(0deg)', 
+                                  transition: 'transform 0.3s ease',
+                                  opacity: 0.7,
+                                  marginLeft: '6px'
+                                }} 
+                              />
+                            </button>
+
+                            {isBgSelectOpen && (
+                              <div
+                                className="glass-panel-heavy fade-in"
+                                style={{
+                                  position: 'absolute',
+                                  bottom: '100%',
+                                  right: 0,
+                                  marginBottom: '8px',
+                                  width: '180px',
+                                  borderRadius: '12px',
+                                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                                  background: 'rgba(15, 23, 42, 0.95)',
+                                  backdropFilter: 'blur(16px)',
+                                  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05)',
+                                  zIndex: 100,
+                                  overflow: 'hidden',
+                                  padding: '4px'
+                                }}
+                              >
+                                {CUSTOM_BG_OPTIONS.map((opt, idx) => {
+                                  const isSelected = idx === customBgIndex
+                                  return (
+                                    <div
+                                      key={opt.label}
+                                      onClick={() => {
+                                        setCustomBgIndex(idx)
+                                        setIsBgSelectOpen(false)
+                                      }}
+                                      style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        padding: '8px 12px',
+                                        fontSize: '12px',
+                                        color: isSelected ? 'var(--theme-color-1)' : '#fff',
+                                        cursor: 'pointer',
+                                        borderRadius: '8px',
+                                        background: isSelected 
+                                          ? 'rgba(255, 255, 255, 0.08)' 
+                                          : 'transparent',
+                                        transition: 'all 0.2s ease',
+                                        position: 'relative',
+                                        fontWeight: isSelected ? '600' : 'normal',
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)'
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = isSelected 
+                                          ? 'rgba(255, 255, 255, 0.08)' 
+                                          : 'transparent'
+                                      }}
+                                    >
+                                      {/* Colored preview dot */}
+                                      <span style={{
+                                        width: '8px',
+                                        height: '8px',
+                                        borderRadius: '50%',
+                                        background: opt.bg1,
+                                        border: '1px solid rgba(255,255,255,0.2)'
+                                      }} />
+                                      <span>{opt.label}</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

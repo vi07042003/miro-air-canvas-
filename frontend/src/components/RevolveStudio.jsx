@@ -4,8 +4,16 @@ import { motion } from 'framer-motion'
 import { project3DPoint, shadeColor } from '../utils/3dUtils'
 import { useToast } from './Toast'
 import SaveSketchModal from './SaveSketchModal'
-import { styles as modalStyles } from './AirCanvas.constants'
+import { PRESET_COLORS, styles as modalStyles } from './AirCanvas.constants'
 import { BACKEND_URL } from '../App'
+
+const getBgColor = () => {
+  if (typeof window !== 'undefined') {
+    const rootStyle = getComputedStyle(document.documentElement)
+    return rootStyle.getPropertyValue('--bg-dark-1').trim() || '#0C121C'
+  }
+  return '#0C121C'
+}
 
 export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, onDrawingSaved }) {
   const { showToast } = useToast()
@@ -73,16 +81,26 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
     }
   }, [initialDrawing])
 
-  // Colors available for mesh
-  const COLORS = [
-    { hex: '#00f2fe', name: 'Neon Cyan' },
-    { hex: '#8b5cf6', name: 'Violet' },
-    { hex: '#ec4899', name: 'Pink' },
-    { hex: '#10b981', name: 'Emerald' },
-    { hex: '#f59e0b', name: 'Amber' },
-    { hex: '#ef4444', name: 'Red' },
-    { hex: '#ffffff', name: 'White' }
-  ]
+  // Colors available for mesh, matching AirCanvas preset palette
+  const COLORS = PRESET_COLORS.map(colorHex => {
+    const nameMap = {
+      '#3FA7D6': 'Softened Electric Blue',
+      '#5BC0EB': 'Airy Cyan',
+      '#4DA3A6': 'Teal-Blue Hybrid',
+      '#9D8DF1': 'Hazy Lavender',
+      '#B48EAD': 'Muted Orchid',
+      '#8F7AFE': 'Glitched Indigo',
+      '#46CFA7': 'Aqua-Mint Fusion',
+      '#3FBF7F': 'Toned-down Green',
+      '#7DD3A0': 'Pastel Tech Green',
+      '#F2859E': 'Dusty Rose Neon',
+      '#EFA6A6': 'Faded Coral',
+      '#FF9B85': 'Warm Soft Glow',
+      '#ffffff': 'White',
+      '#000000': 'Black'
+    }
+    return { hex: colorHex, name: nameMap[colorHex] || 'Color' }
+  })
 
   // Initialize and Redraw 2D profile canvas
   useEffect(() => {
@@ -311,7 +329,7 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
     ctx.clearRect(0, 0, w, h)
     
     // Render standard dark canvas limits
-    ctx.fillStyle = '#0a0518'
+    ctx.fillStyle = getBgColor()
     ctx.fillRect(0, 0, w, h)
     
     // Draw 3D floor grid & axes helpers
@@ -936,7 +954,7 @@ const styles = {
     border: '1px solid rgba(255, 255, 255, 0.08)'
   },
   canvas2D: {
-    background: '#0a0518',
+    background: 'var(--bg-dark-1, #0C121C)',
     cursor: 'crosshair',
     maxWidth: '100%',
     maxHeight: '100%',
@@ -944,7 +962,7 @@ const styles = {
     objectFit: 'contain'
   },
   canvas3D: {
-    background: '#0a0518',
+    background: 'var(--bg-dark-1, #0C121C)',
     cursor: 'grab',
     maxWidth: '100%',
     maxHeight: '100%',

@@ -877,7 +877,15 @@ export const drawModel = (canvas, objects, cameraState, renderMode, lightAngle) 
   const width = canvas.width;
   const height = canvas.height;
   
-  ctx.fillStyle = '#0a0518';
+  const getBgColor = () => {
+    if (typeof window !== 'undefined') {
+      const rootStyle = getComputedStyle(document.documentElement)
+      return rootStyle.getPropertyValue('--bg-dark-1').trim() || '#0C121C'
+    }
+    return '#0C121C'
+  }
+  
+  ctx.fillStyle = getBgColor();
   ctx.fillRect(0, 0, width, height);
   
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';

@@ -2,6 +2,14 @@ import { useState, useEffect, useRef } from 'react'
 import { useToast } from '../components/Toast'
 import { drawShapePath } from '../utils/canvasUtils'
 
+const getBgColor = () => {
+  if (typeof window !== 'undefined') {
+    const rootStyle = getComputedStyle(document.documentElement)
+    return rootStyle.getPropertyValue('--bg-dark-1').trim() || '#0C121C'
+  }
+  return '#0C121C'
+}
+
 export function useCollaboration({
   canvasRef,
   saveCanvasState,
@@ -209,7 +217,7 @@ export function useCollaboration({
           img.onload = () => {
             ctx.save()
             ctx.globalAlpha = 1.0
-            ctx.fillStyle = '#0a0518'
+            ctx.fillStyle = getBgColor()
             ctx.fillRect(0, 0, canvas.width, canvas.height)
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
             ctx.restore()
@@ -233,7 +241,7 @@ export function useCollaboration({
           img.onload = () => {
             ctx.save()
             ctx.globalAlpha = 1.0
-            ctx.fillStyle = '#0a0518'
+            ctx.fillStyle = getBgColor()
             ctx.fillRect(0, 0, canvas.width, canvas.height)
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
             ctx.restore()
@@ -249,8 +257,8 @@ export function useCollaboration({
 
       case 'draw-point':
         ctx.save()
-        ctx.strokeStyle = msg.tool === 'eraser' ? '#0a0518' : msg.color
-        ctx.fillStyle = msg.tool === 'eraser' ? '#0a0518' : msg.color
+        ctx.strokeStyle = msg.tool === 'eraser' ? getBgColor() : msg.color
+        ctx.fillStyle = msg.tool === 'eraser' ? getBgColor() : msg.color
         ctx.lineWidth = msg.brushSize
         ctx.globalAlpha = msg.brushOpacity
         ctx.lineCap = 'round'
@@ -324,7 +332,7 @@ export function useCollaboration({
         } else {
           ctx.save()
           ctx.globalAlpha = 1.0
-          ctx.fillStyle = '#0a0518'
+          ctx.fillStyle = getBgColor()
           ctx.fillRect(0, 0, canvas.width, canvas.height)
           ctx.restore()
           saveCanvasState(true)

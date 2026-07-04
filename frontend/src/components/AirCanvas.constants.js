@@ -1,10 +1,16 @@
 export const PRESET_COLORS = [
-  '#06b6d4', // Neon Cyan
-  '#8b5cf6', // Violet
-  '#ec4899', // Pink
-  '#10b981', // Emerald
-  '#f59e0b', // Amber
-  '#ef4444', // Red
+  '#3FA7D6', // Softened Electric Blue
+  '#5BC0EB', // Airy Cyan
+  '#4DA3A6', // Teal-Blue Hybrid
+  '#9D8DF1', // Hazy Lavender
+  '#B48EAD', // Muted Orchid
+  '#8F7AFE', // Glitched Indigo
+  '#46CFA7', // Aqua-Mint Fusion
+  '#3FBF7F', // Toned-down Neon Green
+  '#7DD3A0', // Pastel Tech Green
+  '#F2859E', // Dusty Rose Neon
+  '#EFA6A6', // Faded Coral
+  '#FF9B85', // Warm Soft Glow
   '#ffffff', // White
   '#000000'  // Black
 ]
@@ -235,7 +241,7 @@ export const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#0a0518',
+    background: 'var(--bg-dark-1, #0C121C)',
     padding: '0',
     border: '1px solid rgba(255,255,255,0.1)',
     height: '830px',

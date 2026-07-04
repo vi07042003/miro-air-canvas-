@@ -212,7 +212,7 @@ export default function ThreeDModelViewerModal({ isOpen, onClose, objects, onDow
                   position: 'relative',
                   borderRadius: '12px',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
-                  background: '#0a0518',
+                  background: 'var(--bg-dark-1, #0C121C)',
                   overflow: 'hidden',
                   cursor: 'grab',
                   height: '420px',

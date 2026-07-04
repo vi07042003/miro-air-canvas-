@@ -8,17 +8,18 @@
   --font-accent: 'Nohemi', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   /* Theme color options */
-  --primary-cyan: #06b6d4;
-  --primary-violet: #8b5cf6;
-  --primary-pink: #ec4899;
-  --primary-emerald: #10b981;
-  --primary-amber: #f59e0b;
+  --primary-cyan: #5BC0EB;
+  --primary-violet: #8F7AFE;
+  --primary-pink: #F2859E;
+  --primary-emerald: #46CFA7;
+  --primary-amber: #FF9B85;
 
-  /* Active Theme (default: Violet-Cyan split) */
-  --theme-color-1: var(--primary-violet);
-  --theme-color-2: var(--primary-cyan);
+  /* Active Theme (default: Aurora Sky) */
+  --theme-color-1: #3FA7D6;
+  --theme-color-2: #5BC0EB;
 
-  --bg-dark: #0a0518;
+  --bg-dark-1: #0C121C;
+  --bg-dark-2: #05080C;
   --glass-opacity-val: 0.05;
   --glass-bg: rgba(255, 255, 255, var(--glass-opacity-val));
   --glass-border: rgba(255, 255, 255, calc(var(--glass-opacity-val) * 1.6));
@@ -39,7 +40,7 @@
 
 body {
   font-family: var(--font-body);
-  background: radial-gradient(circle at 50% 50%, #080314 0%, #020006 100%);
+  background: radial-gradient(circle at 50% 50%, var(--bg-dark-1, #0C121C) 0%, var(--bg-dark-2, #05080C) 100%);
   color: var(--text-primary);
   overflow-x: hidden;
   min-height: 100vh;

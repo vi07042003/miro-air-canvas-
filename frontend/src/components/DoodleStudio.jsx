@@ -4,6 +4,14 @@ import { Sparkles, Wand2, Download, Trash2, Eraser, Paintbrush, RotateCcw } from
 import { BACKEND_URL } from '../App'
 import { useToast } from './Toast'
 
+const getBgColor = () => {
+  if (typeof window !== 'undefined') {
+    const rootStyle = getComputedStyle(document.documentElement)
+    return rootStyle.getPropertyValue('--bg-dark-1').trim() || '#0C121C'
+  }
+  return '#0C121C'
+}
+
 export default function DoodleStudio({ user }) {
   const { showToast } = useToast()
   
@@ -46,13 +54,19 @@ export default function DoodleStudio({ user }) {
   const [countdownStr, setCountdownStr] = useState('')
 
   const PRESET_COLORS = [
-    { hex: '#ffffff', name: 'White' },
-    { hex: '#00f2fe', name: 'Neon Cyan' },
-    { hex: '#8b5cf6', name: 'Violet' },
-    { hex: '#ec4899', name: 'Pink' },
-    { hex: '#10b981', name: 'Emerald' },
-    { hex: '#f59e0b', name: 'Amber' },
-    { hex: '#ef4444', name: 'Red' }
+    { hex: '#3FA7D6', name: 'Softened Electric Blue' },
+    { hex: '#5BC0EB', name: 'Airy Cyan' },
+    { hex: '#4DA3A6', name: 'Teal-Blue' },
+    { hex: '#9D8DF1', name: 'Lavender' },
+    { hex: '#B48EAD', name: 'Muted Orchid' },
+    { hex: '#8F7AFE', name: 'Indigo' },
+    { hex: '#46CFA7', name: 'Aqua-Mint' },
+    { hex: '#3FBF7F', name: 'Cyber Green' },
+    { hex: '#7DD3A0', name: 'Pastel Green' },
+    { hex: '#F2859E', name: 'Dusty Rose' },
+    { hex: '#EFA6A6', name: 'Faded Coral' },
+    { hex: '#FF9B85', name: 'Coral Glow' },
+    { hex: '#ffffff', name: 'White' }
   ]
 
   // Fetch Gemini configuration status on mount
@@ -109,7 +123,7 @@ export default function DoodleStudio({ user }) {
     canvas.height = rect.height || 800
     
     // Fill canvas with default deep slate/black background
-    ctx.fillStyle = '#0a0518'
+    ctx.fillStyle = getBgColor()
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     
     fetchUsage()
@@ -182,7 +196,7 @@ export default function DoodleStudio({ user }) {
       canvas.height = rect.height || 800
       
       // Restore content
-      ctx.fillStyle = '#0a0518'
+      ctx.fillStyle = getBgColor()
       ctx.fillRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(tempCanvas, 0, 0, canvas.width, canvas.height)
     }
@@ -217,7 +231,7 @@ export default function DoodleStudio({ user }) {
     const ctx = canvas.getContext('2d')
     ctx.beginPath()
     ctx.arc(pos.x, pos.y, brushSize / 2, 0, Math.PI * 2)
-    ctx.fillStyle = activeTool === 'eraser' ? '#0a0518' : brushColor
+    ctx.fillStyle = activeTool === 'eraser' ? getBgColor() : brushColor
     ctx.fill()
   }
 
@@ -231,7 +245,7 @@ export default function DoodleStudio({ user }) {
     ctx.beginPath()
     ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y)
     ctx.lineTo(pos.x, pos.y)
-    ctx.strokeStyle = activeTool === 'eraser' ? '#0a0518' : brushColor
+    ctx.strokeStyle = activeTool === 'eraser' ? getBgColor() : brushColor
     ctx.lineWidth = brushSize
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
@@ -305,7 +319,7 @@ export default function DoodleStudio({ user }) {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
-    ctx.fillStyle = '#0a0518'
+    ctx.fillStyle = getBgColor()
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     setDetectedObject('')
     setSketchDescription('')
@@ -452,7 +466,7 @@ export default function DoodleStudio({ user }) {
           position: 'relative',
           borderRadius: '16px',
           border: '1px solid rgba(255,255,255,0.1)',
-          background: '#0a0518',
+          background: 'var(--bg-dark-1, #0c121c)',
           overflow: 'hidden',
           cursor: activeTool === 'eraser' ? 'cell' : 'crosshair'
         }}>
