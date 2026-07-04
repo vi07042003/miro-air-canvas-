@@ -436,7 +436,7 @@ const styles = {
   title: {
     fontFamily: 'var(--font-display)',
     fontSize: '36px',
-    fontWeight: '800',
+    fontWeight: '500',
     margin: 0,
     background: 'linear-gradient(135deg, #ffffff 40%, #a1a1aa 100%)',
     WebkitBackgroundClip: 'text',

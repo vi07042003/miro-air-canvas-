@@ -620,7 +620,7 @@ const styles = {
   title: {
     fontFamily: 'var(--font-title)',
     fontSize: '36px',
-    fontWeight: '800',
+    fontWeight: '500',
     marginBottom: '32px',
     letterSpacing: '-1px',
     background: 'linear-gradient(135deg, #ffffff 40%, #a1a1aa 100%)',
