@@ -3988,13 +3988,13 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         </div>
 
         {/* Floating Left Drawer Toggle Button handle */}
-        <button 
+        {/* <button 
           className={`drawer-toggle-handle toggle-left ${leftDrawerOpen ? 'open' : 'collapsed'}`}
           onClick={() => setLeftDrawerOpen(!leftDrawerOpen)}
           title={leftDrawerOpen ? "Collapse Tools" : "Expand Tools"}
         >
           {leftDrawerOpen ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-        </button>
+        </button> */}
 
         {/* Center Canvas Column */}
         <div className="canvas-main-column">
@@ -4098,7 +4098,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         </div>
 
         {/* Floating Right Drawer Toggle Button handle */}
-        {!(collaboration && collaboration.active) && (
+        {/* {!(collaboration && collaboration.active) && (
           <button 
             className={`drawer-toggle-handle toggle-right ${rightDrawerOpen ? 'open' : 'collapsed'}`}
             onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
@@ -4106,7 +4106,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           >
             {rightDrawerOpen ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
           </button>
-        )}
+        )} */}
 
         {/* Right Column (Drawer Shell for Camera & Help) */}
         {!(collaboration && collaboration.active) && (
