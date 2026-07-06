@@ -25,14 +25,18 @@ export function useCollaboration({
   getCanvasMode,
   onRemoteStartAISketch,
   onRemoteCancelAISketch,
-  onRemoteCompleteAISketch
+  onRemoteCompleteAISketch,
+  onRemoteChatMessage,
+  onRemoteSyncChatMessages,
+  getChatMessages,
+  onRemoteTyping
 }) {
   const { showToast } = useToast()
   const [active, setActive] = useState(false)
   const [roomCode, setRoomCode] = useState('')
   const [participants, setParticipants] = useState([])
   const [remoteCursors, setRemoteCursors] = useState({})
-  
+
   const socketRef = useRef(null)
   const callbacksRef = useRef({})
   callbacksRef.current = {
@@ -48,9 +52,13 @@ export function useCollaboration({
     getCanvasMode,
     onRemoteStartAISketch,
     onRemoteCancelAISketch,
-    onRemoteCompleteAISketch
+    onRemoteCompleteAISketch,
+    onRemoteChatMessage,
+    onRemoteSyncChatMessages,
+    getChatMessages,
+    onRemoteTyping
   }
-  
+
   // Assign a consistent user color for cursors
   const [userColor] = useState(() => {
     const colors = ['#00f2fe', '#4facfe', '#ff007f', '#a855f7', '#10b981', '#fbbf24', '#f43f5e', '#ec4899']
@@ -126,7 +134,7 @@ export function useCollaboration({
       setActive(true)
       setRoomCode(code)
       showToast(`Connected to session ${code}!`, 'success')
-      
+
       // Request initial canvas state from other participants
       setTimeout(() => {
         sendJsonMessage({
@@ -173,8 +181,7 @@ export function useCollaboration({
   // Handle all incoming remote payloads
   const handleRemoteMessage = (msg) => {
     const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas ? canvas.getContext('2d') : null
 
     switch (msg.type) {
       case 'user-joined':
@@ -195,35 +202,39 @@ export function useCollaboration({
         break
 
       case 'request-canvas-sync':
+        if (!canvas) break
         // If we are the older user in the room, send our canvas snapshot to sync the new user
         // We can check if we are the first participant in the list (who is not the requester)
         const activeParticipants = callbacksRef.current.participants.filter(p => p.username !== msg.requester)
         const amOldest = activeParticipants.length > 0 && activeParticipants[0].username === callbacksRef.current.user?.username
-        
+
         if (amOldest || activeParticipants.length === 0) {
           sendJsonMessage({
             type: 'canvas-sync',
             targetUser: msg.requester,
             imageData: canvas.toDataURL(),
             threedObjects: callbacksRef.current.get3DObjectsData ? callbacksRef.current.get3DObjectsData() : [],
-            canvasMode: callbacksRef.current.getCanvasMode ? callbacksRef.current.getCanvasMode() : '2d'
+            canvasMode: callbacksRef.current.getCanvasMode ? callbacksRef.current.getCanvasMode() : '2d',
+            chatMessages: callbacksRef.current.getChatMessages ? callbacksRef.current.getChatMessages() : []
           })
         }
         break
 
       case 'canvas-sync':
         if (msg.targetUser === callbacksRef.current.user?.username) {
-          const img = new Image()
-          img.onload = () => {
-            ctx.save()
-            ctx.globalAlpha = 1.0
-            ctx.fillStyle = getBgColor()
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-            ctx.restore()
-            saveCanvasState(false)
+          if (canvas && ctx) {
+            const img = new Image()
+            img.onload = () => {
+              ctx.save()
+              ctx.globalAlpha = 1.0
+              ctx.fillStyle = getBgColor()
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+              ctx.restore()
+              saveCanvasState(false)
+            }
+            img.src = msg.imageData
           }
-          img.src = msg.imageData
 
           if (msg.threedObjects && callbacksRef.current.onRemoteSync3DObjects) {
             callbacksRef.current.onRemoteSync3DObjects(msg.threedObjects)
@@ -232,22 +243,28 @@ export function useCollaboration({
           if (msg.canvasMode && callbacksRef.current.onRemoteModeSwitch) {
             callbacksRef.current.onRemoteModeSwitch(msg.canvasMode)
           }
+
+          if (msg.chatMessages && callbacksRef.current.onRemoteSyncChatMessages) {
+            callbacksRef.current.onRemoteSyncChatMessages(msg.chatMessages)
+          }
         }
         break
 
       case 'broadcast-canvas-state':
         {
-          const img = new Image()
-          img.onload = () => {
-            ctx.save()
-            ctx.globalAlpha = 1.0
-            ctx.fillStyle = getBgColor()
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-            ctx.restore()
-            saveCanvasState(false)
+          if (canvas && ctx) {
+            const img = new Image()
+            img.onload = () => {
+              ctx.save()
+              ctx.globalAlpha = 1.0
+              ctx.fillStyle = getBgColor()
+              ctx.fillRect(0, 0, canvas.width, canvas.height)
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+              ctx.restore()
+              saveCanvasState(false)
+            }
+            img.src = msg.imageData
           }
-          img.src = msg.imageData
 
           if (msg.threedObjects && callbacksRef.current.onRemoteSync3DObjects) {
             callbacksRef.current.onRemoteSync3DObjects(msg.threedObjects)
@@ -256,6 +273,7 @@ export function useCollaboration({
         break
 
       case 'draw-point':
+        if (!canvas || !ctx) break
         ctx.save()
         ctx.strokeStyle = msg.tool === 'eraser' ? getBgColor() : msg.color
         ctx.fillStyle = msg.tool === 'eraser' ? getBgColor() : msg.color
@@ -263,7 +281,7 @@ export function useCollaboration({
         ctx.globalAlpha = msg.brushOpacity
         ctx.lineCap = 'round'
         ctx.lineJoin = 'round'
-        
+
         ctx.beginPath()
         if (msg.tool === 'spray') {
           const radius = Math.max(10, msg.brushSize * 2.5)
@@ -295,13 +313,14 @@ export function useCollaboration({
         break
 
       case 'draw-shape':
+        if (!canvas || !ctx) break
         ctx.save()
         ctx.strokeStyle = msg.color
         ctx.lineWidth = msg.brushSize
         ctx.globalAlpha = msg.brushOpacity
         ctx.lineCap = 'round'
         ctx.lineJoin = 'round'
-        
+
         if (msg.tool === 'pencil') {
           ctx.lineWidth = 2
           ctx.globalAlpha = 1.0
@@ -329,7 +348,7 @@ export function useCollaboration({
       case 'clear':
         if (callbacksRef.current.onRemoteClear) {
           callbacksRef.current.onRemoteClear(msg.mode || '2d')
-        } else {
+        } else if (canvas && ctx) {
           ctx.save()
           ctx.globalAlpha = 1.0
           ctx.fillStyle = getBgColor()
@@ -392,6 +411,18 @@ export function useCollaboration({
         }))
         break
 
+      case 'chat-message':
+        if (callbacksRef.current.onRemoteChatMessage) {
+          callbacksRef.current.onRemoteChatMessage(msg)
+        }
+        break
+
+      case 'typing':
+        if (callbacksRef.current.onRemoteTyping) {
+          callbacksRef.current.onRemoteTyping(msg)
+        }
+        break
+
       default:
         break
     }
@@ -404,11 +435,11 @@ export function useCollaboration({
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
-    
+
     // Normalized coordinates (0 to 1) relative to canvas size
     const x = ((clientX - rect.left) * scaleX) / canvas.width
     const y = ((clientY - rect.top) * scaleY) / canvas.height
-    
+
     sendJsonMessage({
       type: 'cursor-move',
       x,
@@ -531,6 +562,25 @@ export function useCollaboration({
     })
   }
 
+  // Broadcast collaborative chat message updates
+  const sendChatMessage = (action, chatMsg) => {
+    if (!active) return
+    sendJsonMessage({
+      type: 'chat-message',
+      action, // 'send' | 'edit' | 'delete'
+      chat: chatMsg
+    })
+  }
+
+  // Broadcast typing status
+  const sendTypingStatus = (typing) => {
+    if (!active) return
+    sendJsonMessage({
+      type: 'typing',
+      typing
+    })
+  }
+
   // Close socket on unmount
   useEffect(() => {
     return () => {
@@ -562,6 +612,8 @@ export function useCollaboration({
     sendUndo,
     sendRedo,
     sendDraw3DObject,
-    broadcastCanvasState
+    broadcastCanvasState,
+    sendChatMessage,
+    sendTypingStatus
   }
 }

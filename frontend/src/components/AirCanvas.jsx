@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Palette, Eraser, Circle as CircleIcon, Trash2, Undo, Redo, Download, Save, Camera, CameraOff, Video, Crosshair, Zap, Triangle,
-  Pencil, ChevronDown, Box, Image as ImageIcon, Paintbrush, ChevronLeft, ChevronRight, Type
+  Pencil, ChevronDown, Box, Image as ImageIcon, Paintbrush, ChevronLeft, ChevronRight, Type, MessageSquare
 } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import { useToast } from './Toast'
@@ -15,6 +15,7 @@ import { detectAndFitShape } from '../utils/shapeSnapper'
 import ThreeDModelViewerModal from './ThreeDModelViewerModal'
 import { useCollaboration } from '../hooks/useCollaboration'
 import GlassDialog from './GlassDialog'
+import ChatModal from './ChatModal'
 
 // Split components & constants
 import SmoothSlider from './SmoothSlider'
@@ -478,6 +479,84 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const [leftDrawerOpen, setLeftDrawerOpen] = useState(true)
   const [rightDrawerOpen, setRightDrawerOpen] = useState(true)
 
+  // Collaborative Chat States
+  const [chatMessages, setChatMessages] = useState([])
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [typingUsers, setTypingUsers] = useState([])
+  const chatMessagesRef = useRef([])
+  chatMessagesRef.current = chatMessages
+
+  const handleRemoteTyping = (msgPayload) => {
+    const { sender, typing } = msgPayload
+    if (!sender) return
+    setTypingUsers(prev => {
+      if (typing) {
+        if (prev.includes(sender)) return prev
+        return [...prev, sender]
+      } else {
+        return prev.filter(u => u !== sender)
+      }
+    })
+  }
+
+  const handleSendMessage = (text, replyTo, file = null) => {
+    const newMsg = {
+      id: `${user?.username || 'user'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      sender: user?.username || 'Anonymous',
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      replyTo: replyTo ? { id: replyTo.id, sender: replyTo.sender, text: replyTo.text } : null,
+      file,
+      edited: false
+    }
+    setChatMessages(prev => [...prev, newMsg])
+    if (collaboration && collaboration.active) {
+      collaboration.sendChatMessage('send', newMsg)
+    }
+  }
+
+  const handleEditMessage = (id, newText) => {
+    setChatMessages(prev => prev.map(msg => {
+      if (msg.id === id) {
+        const updated = { ...msg, text: newText, edited: true }
+        if (collaboration && collaboration.active) {
+          collaboration.sendChatMessage('edit', updated)
+        }
+        return updated
+      }
+      return msg
+    }))
+  }
+
+  const handleDeleteMessage = (id, mode = 'everyone') => {
+    setChatMessages(prev => prev.filter(msg => msg.id !== id))
+    if (mode === 'everyone' && collaboration && collaboration.active) {
+      collaboration.sendChatMessage('delete', { id })
+    }
+  }
+
+  const handleRemoteChatMessage = (msgPayload) => {
+    const { action, chat, sender } = msgPayload
+    if (action === 'send') {
+      const formattedChat = { ...chat, sender: sender || chat.sender }
+      setChatMessages(prev => [...prev, formattedChat])
+      showToast(`New message from ${formattedChat.sender}`, 'info')
+    } else if (action === 'edit') {
+      setChatMessages(prev => prev.map(msg => {
+        if (msg.id === chat.id) {
+          return { ...msg, text: chat.text, edited: true }
+        }
+        return msg
+      }))
+    } else if (action === 'delete') {
+      setChatMessages(prev => prev.filter(msg => msg.id !== chat.id))
+    }
+  }
+
+  const handleRemoteSyncChatMessages = (messages) => {
+    setChatMessages(messages || [])
+  }
+
   // Initialize client collaboration hook
   const collaboration = useCollaboration({
     canvasRef,
@@ -494,7 +573,11 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     getCanvasMode: () => canvasMode,
     onRemoteStartAISketch: (contours, w, h, targetCanvas, promptStr) => handleStartAISketchRemote(contours, w, h, targetCanvas, promptStr),
     onRemoteCancelAISketch: () => handleCancelAISketchRemote(),
-    onRemoteCompleteAISketch: () => handleCompleteAISketchRemote()
+    onRemoteCompleteAISketch: () => handleCompleteAISketchRemote(),
+    onRemoteChatMessage: (msgPayload) => handleRemoteChatMessage(msgPayload),
+    onRemoteSyncChatMessages: (messages) => handleRemoteSyncChatMessages(messages),
+    getChatMessages: () => chatMessagesRef.current,
+    onRemoteTyping: (msgPayload) => handleRemoteTyping(msgPayload)
   })
 
   // Auto connect if room code is passed
@@ -3752,14 +3835,26 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
             <Save size={16} />
             <span>Save to files</span>
           </button>
-          <button 
-            className={`glass-btn ${rightDrawerOpen ? 'glass-btn-active' : ''}`}
-            onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
-            title={rightDrawerOpen ? "Collapse Camera & Guide" : "Expand Camera & Guide"}
-            style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', height: '38px', borderRadius: '10px' }}
-          >
-            <Video size={16} />
-          </button>
+          {collaboration && collaboration.active ? (
+            <button 
+              className={`glass-btn ${rightDrawerOpen ? 'glass-btn-active' : ''}`}
+              onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
+              title={rightDrawerOpen ? "Close Chat Panel" : "Open Chat Panel"}
+              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', height: '38px', borderRadius: '10px', gap: '6px' }}
+            >
+              <MessageSquare size={16} />
+              <span>Chat</span>
+            </button>
+          ) : (
+            <button 
+              className={`glass-btn ${rightDrawerOpen ? 'glass-btn-active' : ''}`}
+              onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
+              title={rightDrawerOpen ? "Collapse Camera & Guide" : "Expand Camera & Guide"}
+              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', height: '38px', borderRadius: '10px' }}
+            >
+              <Video size={16} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -4108,73 +4203,96 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           </button>
         )} */}
 
-        {/* Right Column (Drawer Shell for Camera & Help) */}
-        {!(collaboration && collaboration.active) && (
-          <div className={`drawer-right-column ${rightDrawerOpen ? 'open' : 'collapsed'}`}>
-            {/* Camera Feed Card */}
-            <div className={`glass-panel camera-feed-card ${rightDrawerOpen ? 'in-drawer' : 'in-pip'}`}>
-              <div style={styles.videoHeader} className="video-header-pip">
-                <Video size={16} />
-                <span>Camera Tracking Feed</span>
+        {/* Right Column (Drawer Shell for Camera & Help OR Chat) */}
+        <div className={`drawer-right-column ${rightDrawerOpen ? 'open' : 'collapsed'}`}>
+          {collaboration && collaboration.active ? (
+            rightDrawerOpen && (
+              <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0 }}>
+                <ChatModal
+                  isOpen={true}
+                  onClose={() => setRightDrawerOpen(false)}
+                  user={user}
+                  chatMessages={chatMessages}
+                  onSendMessage={handleSendMessage}
+                  onEditMessage={handleEditMessage}
+                  onDeleteMessage={handleDeleteMessage}
+                  inline={true}
+                  onTyping={(typing) => {
+                    if (collaboration && collaboration.active) {
+                      collaboration.sendTypingStatus(typing)
+                    }
+                  }}
+                  typingUsers={typingUsers}
+                />
+              </div>
+            )
+          ) : (
+            <>
+              {/* Camera Feed Card */}
+              <div className={`glass-panel camera-feed-card ${rightDrawerOpen ? 'in-drawer' : 'in-pip'}`}>
+                <div style={styles.videoHeader} className="video-header-pip">
+                  <Video size={16} />
+                  <span>Camera Tracking Feed</span>
+                </div>
+                
+                <div style={styles.videoWrapper}>
+                  {cameraLoading && (
+                    <div style={styles.cameraLoadingOverlay}>
+                      <div className="spinner" style={styles.miniSpinner}></div>
+                      <span>Tracking hand model...</span>
+                    </div>
+                  )}
+                  {!isCameraOn && (
+                    <div style={styles.cameraOffOverlay}>
+                      <CameraOff size={32} color="var(--text-muted)" />
+                      <span>Camera Offline</span>
+                    </div>
+                  )}
+                  <video 
+                    ref={videoRef}
+                    style={{
+                      ...styles.video,
+                      display: isCameraOn ? 'block' : 'none',
+                      transform: settings.mirrorCamera === 'true' ? 'scaleX(-1)' : 'none'
+                    }}
+                    playsInline
+                    muted
+                  />
+                  <canvas 
+                    ref={handCanvasRef}
+                    width="1200"
+                    height="700"
+                    style={styles.handOverlayCanvas}
+                  />
+                </div>
+
+                <button 
+                  className={`glass-btn cam-toggle-btn-pip ${isCameraOn ? 'glass-btn-danger' : 'glass-btn-primary'}`}
+                  style={styles.camToggleBtn}
+                  onClick={() => setIsCameraOn(!isCameraOn)}
+                  disabled={collaboration && collaboration.active}
+                  title={collaboration && collaboration.active ? 'Hand gestures are disabled in collaboration mode for performance' : (isCameraOn ? 'Turn off camera tracking' : 'Turn on camera hand tracking')}
+                >
+                  <Camera size={16} />
+                  <span>{isCameraOn ? 'Stop Camera Tracking' : 'Enable Gesture Canvas'}</span>
+                </button>
               </div>
               
-              <div style={styles.videoWrapper}>
-                {cameraLoading && (
-                  <div style={styles.cameraLoadingOverlay}>
-                    <div className="spinner" style={styles.miniSpinner}></div>
-                    <span>Tracking hand model...</span>
+              {/* Help Drawer Panel */}
+              {rightDrawerOpen && (
+                <div className="glass-panel help-drawer-panel">
+                  <div className="drawer-content" style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
+                    <div style={styles.drawerSectionHeader}>
+                      <Video size={16} color="var(--theme-color-2)" />
+                      <span style={styles.drawerTitle}>User Guide</span>
+                    </div>
+                    <GestureHelpCard canvasMode={canvasMode} styles={styles} />
                   </div>
-                )}
-                {!isCameraOn && (
-                  <div style={styles.cameraOffOverlay}>
-                    <CameraOff size={32} color="var(--text-muted)" />
-                    <span>Camera Offline</span>
-                  </div>
-                )}
-                <video 
-                  ref={videoRef}
-                  style={{
-                    ...styles.video,
-                    display: isCameraOn ? 'block' : 'none',
-                    transform: settings.mirrorCamera === 'true' ? 'scaleX(-1)' : 'none'
-                  }}
-                  playsInline
-                  muted
-                />
-                <canvas 
-                  ref={handCanvasRef}
-                  width="1200"
-                  height="700"
-                  style={styles.handOverlayCanvas}
-                />
-              </div>
-
-              <button 
-                className={`glass-btn cam-toggle-btn-pip ${isCameraOn ? 'glass-btn-danger' : 'glass-btn-primary'}`}
-                style={styles.camToggleBtn}
-                onClick={() => setIsCameraOn(!isCameraOn)}
-                disabled={collaboration && collaboration.active}
-                title={collaboration && collaboration.active ? 'Hand gestures are disabled in collaboration mode for performance' : (isCameraOn ? 'Turn off camera tracking' : 'Turn on camera hand tracking')}
-              >
-                <Camera size={16} />
-                <span>{isCameraOn ? 'Stop Camera Tracking' : 'Enable Gesture Canvas'}</span>
-              </button>
-            </div>
-            
-            {/* Help Drawer Panel */}
-            {rightDrawerOpen && (
-              <div className="glass-panel help-drawer-panel">
-                <div className="drawer-content" style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
-                  <div style={styles.drawerSectionHeader}>
-                    <Video size={16} color="var(--theme-color-2)" />
-                    <span style={styles.drawerTitle}>User Guide</span>
-                  </div>
-                  <GestureHelpCard canvasMode={canvasMode} styles={styles} />
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Save Modal */}
