@@ -60,7 +60,7 @@ function App() {
   // Glass Transparency Configuration
   const [glassOpacity, setGlassOpacity] = useState(() => {
     const saved = localStorage.getItem('glass_opacity')
-    return saved ? parseInt(saved, 10) : 80
+    return saved ? parseInt(saved, 10) : 20
   })
 
   // Apply glass transparency dynamically to :root
