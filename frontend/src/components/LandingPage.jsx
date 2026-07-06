@@ -150,17 +150,130 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
         </div>
       </section>
 
+      {/* Decorative Interactive Mockup */}
+      <motion.section 
+        style={styles.mockupSection}
+        initial={{ opacity: 0, y: 50, filter: 'blur(15px)' }}
+        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 0.9, ease: "easeOut" }}
+      >
+        <div className="glass-panel" style={styles.mockupCanvas}>
+          <div style={styles.mockupHeader}>
+            <span style={styles.mockupTitle}>miro_canvas_workspace.sketch</span>
+          </div>
+          <div style={styles.mockupContent}>
+            {/* Draw a floating mock vector sketch inside */}
+            <svg width="100%" height="240" viewBox="0 0 600 240" style={styles.mockupSvg}>
+              {/* Dynamic light glowing paths */}
+              <motion.path 
+                d="M50,150 Q150,50 250,120 T450,80" 
+                fill="none" 
+                stroke="var(--theme-color-1)" 
+                strokeWidth="6" 
+                strokeLinecap="round" 
+                animate={{ pathLength: [0, 1, 1, 0] }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  times: [0, 0.7, 0.9, 1]
+                }}
+              />
+              <motion.path 
+                d="M100,180 Q250,220 380,120 T520,160" 
+                fill="none" 
+                stroke="var(--theme-color-2)" 
+                strokeWidth="4" 
+                strokeLinecap="round" 
+                animate={{ pathLength: [0, 1, 1, 0] }}
+                transition={{
+                  duration: 6,
+                  delay: 0.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  times: [0, 0.7, 0.9, 1]
+                }}
+              />
+              <motion.circle 
+                cx="250" 
+                cy="120" 
+                r="40" 
+                fill="none" 
+                stroke="var(--primary-pink)" 
+                strokeWidth="2" 
+                strokeDasharray="5,5" 
+                animate={{ scale: [0, 0, 1, 1, 0], opacity: [0, 0, 0.8, 0.8, 0] }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  times: [0, 0.35, 0.45, 0.85, 1]
+                }}
+              />
+              <motion.rect 
+                x="360" 
+                y="40" 
+                width="70" 
+                height="50" 
+                rx="8" 
+                fill="none" 
+                stroke="var(--primary-emerald)" 
+                strokeWidth="3" 
+                animate={{ scale: [0, 0, 1, 1, 0], opacity: [0, 0, 0.8, 0.8, 0] }}
+                transition={{
+                  duration: 6,
+                  repeat: Infinity,
+                  times: [0, 0.6, 0.7, 0.85, 1]
+                }}
+              />
+              
+              {/* Simulated Hand pointer */}
+              <g>
+                <animateMotion 
+                  dur="6s" 
+                  repeatCount="indefinite" 
+                  path="M50,150 Q150,50 250,120 T450,80" 
+                  keyTimes="0;0.7;0.9;1"
+                  keyPoints="0;1;1;0"
+                  calcMode="linear"
+                />
+                <circle cx="0" cy="0" r="12" fill="rgba(6, 182, 212, 0.4)" />
+                <circle cx="0" cy="0" r="5" fill="#06b6d4" />
+                <g transform="translate(8, 8) scale(0.04)" style={{ filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.5))' }}>
+                  <path 
+                    d="M384 112c0-26.51-21.49-48-48-48-9.06 0-17.43 2.53-24.58 6.9C304.28 30.54 270.82 0 230 0c-35.31 0-65.7 22.86-77.16 54.77C146.5 51.13 138.41 48 128 48c-35.35 0-64 28.65-64 64v192c0 24.3-8.87 46.55-23.49 63.8C15.82 396.11 0 428.16 0 464c0 26.51 21.49 48 48 48h220.57c66.75 0 126.96-41.6 150.91-104.22l34.82-90.93C474.33 266.69 480 242.01 480 217V160c0-26.51-21.49-48-48-48-9.06 0-17.43 2.53-24.58 6.9-7.14-40.46-40.6-70.9-81.42-70.9z" 
+                    fill="#fff" 
+                  />
+                </g>
+                <text x="35" y="5" fill="#a1a1aa" fontSize="11" fontFamily="monospace">INDEX_FINGER_TIP (DRAWING)</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </motion.section>
+
       {/* Feature Grid */}
       <section style={styles.featuresSection}>
-        <motion.h2 
-          style={styles.sectionTitle}
-          initial={{ opacity: 0, y: 30, filter: 'blur(10px)' }}
-          whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        >
-          what it can do
-        </motion.h2>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', textAlign: 'center' }}>
+          <motion.h2 
+            style={styles.sectionTitle}
+            initial={{ opacity: 0, y: 25, filter: 'blur(8px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+          >
+            What MIRO Canvas Can Do
+          </motion.h2>
+          <motion.p
+            style={styles.sectionSubtitle}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7, delay: 0.1, ease: "easeOut" }}
+          >
+            Explore the advanced drawing mechanics, AI tracing stencils, and interactive 3D tools built right into your browser.
+          </motion.p>
+        </div>
         <div style={styles.grid}>
           <motion.div 
             className="glass-card" 
@@ -309,42 +422,7 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
         </div>
       </section>
 
-      {/* Decorative Interactive Mockup */}
-      <motion.section 
-        style={styles.mockupSection}
-        initial={{ opacity: 0, y: 50, filter: 'blur(15px)' }}
-        whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-        viewport={{ once: true, margin: "-100px" }}
-        transition={{ duration: 0.9, ease: "easeOut" }}
-      >
-        <div className="glass-panel" style={styles.mockupCanvas}>
-          <div style={styles.mockupHeader}>
-            <div style={styles.mockupDots}>
-              <span style={{...styles.dot, backgroundColor: '#ef4444'}}></span>
-              <span style={{...styles.dot, backgroundColor: '#eab308'}}></span>
-              <span style={{...styles.dot, backgroundColor: '#22c55e'}}></span>
-            </div>
-            <span style={styles.mockupTitle}>miro_canvas_workspace.sketch</span>
-          </div>
-          <div style={styles.mockupContent}>
-            {/* Draw a floating mock vector sketch inside */}
-            <svg width="100%" height="240" viewBox="0 0 600 240" style={styles.mockupSvg}>
-              {/* Dynamic light glowing paths */}
-              <path d="M50,150 Q150,50 250,120 T450,80" fill="none" stroke="var(--theme-color-1)" strokeWidth="6" strokeLinecap="round" style={{ opacity: 0.8 }} />
-              <path d="M100,180 Q250,220 380,120 T520,160" fill="none" stroke="var(--theme-color-2)" strokeWidth="4" strokeLinecap="round" style={{ opacity: 0.6 }} />
-              <circle cx="250" cy="120" r="40" fill="none" stroke="var(--primary-pink)" strokeWidth="2" strokeDasharray="5,5" />
-              <rect x="360" y="40" width="70" height="50" rx="8" fill="none" stroke="var(--primary-emerald)" strokeWidth="3" />
-              
-              {/* Simulated Hand pointer */}
-              <g transform="translate(450, 80)">
-                <circle cx="0" cy="0" r="10" fill="rgba(6, 182, 212, 0.4)" />
-                <circle cx="0" cy="0" r="4" fill="#06b6d4" />
-                <text x="15" y="5" fill="#a1a1aa" fontSize="11" fontFamily="monospace">INDEX_FINGER_TIP (DRAWING)</text>
-              </g>
-            </svg>
-          </div>
-        </div>
-      </motion.section>
+
 
       {/* Manual / How It Works Modal */}
       {createPortal(
@@ -602,9 +680,19 @@ const styles = {
   },
   sectionTitle: {
     fontFamily: 'var(--font-title)',
-    fontSize: '32px',
-    fontWeight: '500',
-    letterSpacing: '-0.5px',
+    fontSize: '44px',
+    fontWeight: '700',
+    letterSpacing: '-1px',
+    color: '#ffffff',
+  },
+  sectionSubtitle: {
+    fontFamily: 'var(--font-body)',
+    fontSize: '16px',
+    fontWeight: '400',
+    color: 'var(--text-secondary)',
+    maxWidth: '560px',
+    lineHeight: '1.5',
+    margin: '0 auto',
   },
   grid: {
     display: 'grid',

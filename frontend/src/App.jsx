@@ -589,6 +589,540 @@ function App() {
         <div className="ambient-glow glow-3"></div>
         <div className="ambient-glow glow-4"></div>
         <div className="ambient-glow glow-5"></div>
+
+        {/* Interactive Hand-drawn Sketch Doodles (visible only on landing page, draggable) */}
+        {activePage === 'landing' && (
+          <div className="glass-shapes-container">
+            {/* SVG wobble filter definitions */}
+            <svg style={{ position: 'absolute', width: 0, height: 0 }}>
+              <defs>
+                <filter id="wobble" x="-20%" y="-20%" width="140%" height="140%">
+                  <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" result="noise" />
+                  <feDisplacementMap in="SourceGraphic" in2="noise" scale="8" xChannelSelector="R" yChannelSelector="G" />
+                </filter>
+              </defs>
+            </svg>
+
+            {/* 1. Doodle Star (Drawing itself slowly on mount) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              className="glass-shape-draggable shape-star"
+            >
+              <div className="glass-shape float-1">
+                <svg viewBox="0 0 100 100" width="200" height="200" className="doodle-svg">
+                  <motion.path
+                    d="M 50 15 L 63 40 L 90 40 L 68 57 L 76 83 L 50 67 L 24 83 L 32 57 L 10 40 L 37 40 Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 4.5, ease: "easeInOut" }}
+                  />
+                  <motion.path
+                    d="M 48 16 L 64 39 L 88 41 L 67 58 L 77 81 L 51 66 L 26 84 L 31 56 L 11 39 L 38 39 Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 5.0, delay: 0.8, ease: "easeInOut" }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 2. Doodle Paper Plane (Swoops in slowly and draws on mount) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ x: 250, y: -150, opacity: 0, rotate: 30, scale: 0.6 }}
+              animate={{ x: 0, y: 0, opacity: 0.55, rotate: 0, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 22, damping: 9, delay: 0.2 }}
+              className="glass-shape-draggable shape-plane"
+            >
+              <div className="glass-shape float-2">
+                <svg viewBox="0 0 100 100" width="200" height="200" className="doodle-svg">
+                  <motion.path
+                    d="M 15 55 L 85 20 L 45 65 Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 4.0, delay: 0.8 }}
+                  />
+                  <motion.path
+                    d="M 45 65 L 55 85 L 70 50"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.5, delay: 2.0 }}
+                  />
+                  <motion.path
+                    d="M 45 65 L 85 20"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.5, delay: 1.4 }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 3. Doodle House (Self-drawing wobbly house on mount) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 1.5, delay: 0.4 }}
+              className="glass-shape-draggable shape-house"
+            >
+              <div className="glass-shape float-1">
+                <svg viewBox="0 0 100 100" width="220" height="220" className="doodle-svg">
+                  <motion.path 
+                    d="M 15 45 L 50 15 L 85 45 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 4.2, delay: 0.5, ease: "easeInOut" }}
+                  />
+                  <motion.path 
+                    d="M 22 45 L 22 85 L 78 85 L 78 45" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 4.8, delay: 1.2, ease: "easeInOut" }}
+                  />
+                  <motion.path 
+                    d="M 42 85 L 42 60 L 58 60 L 58 85" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="1.8" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.2, delay: 2.2, ease: "easeInOut" }}
+                  />
+                  <motion.path 
+                    d="M 40 35 L 60 35" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="1.8" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.5, delay: 2.8, ease: "easeInOut" }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 4. Doodle Flower (Self-drawing wobbly flower on mount) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 1.5, delay: 0.5 }}
+              className="glass-shape-draggable shape-flower"
+            >
+              <div className="glass-shape float-2">
+                <svg viewBox="0 0 100 100" width="220" height="220" className="doodle-svg">
+                  <motion.path 
+                    d="M 50 40 A 10 10 0 1 1 49.9 40 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.5, delay: 0.5 }}
+                  />
+                  <motion.path 
+                    d="M 50 30 C 45 20, 35 20, 40 33 C 28 30, 25 40, 38 43 C 28 48, 32 58, 42 50 C 45 60, 55 60, 50 48 C 60 50, 64 40, 52 38 C 60 30, 55 20, 50 30 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="1.8" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 5.2, delay: 1.2 }}
+                  />
+                  <motion.path 
+                    d="M 50 50 L 50 85" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.5, delay: 2.5 }}
+                  />
+                  <motion.path 
+                    d="M 50 65 C 60 62, 65 70, 50 75" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="1.8" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.8, delay: 3.2 }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 5. Doodle Heart (Self-drawing wobbly heart on mount) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 1.5, delay: 0.6 }}
+              className="glass-shape-draggable shape-heart"
+            >
+              <div className="glass-shape float-1">
+                <svg viewBox="0 0 100 100" width="180" height="180" className="doodle-svg">
+                  <motion.path 
+                    d="M 50 30 C 60 10, 90 20, 50 80 C 10 20, 40 10, 50 30 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 4.8, delay: 0.6, ease: "easeInOut" }}
+                  />
+                  <motion.path 
+                    d="M 49 32 C 58 13, 87 22, 49 77 C 13 22, 41 13, 49 32 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="1.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 5.2, delay: 1.2, ease: "easeInOut" }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 6. Doodle Smiley (Self-drawing wobbly smiley on mount) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 1.5, delay: 0.7 }}
+              className="glass-shape-draggable shape-smiley"
+            >
+              <div className="glass-shape float-2">
+                <svg viewBox="0 0 100 100" width="180" height="180" className="doodle-svg">
+                  <motion.path 
+                    d="M 50 15 A 35 35 0 1 1 49.9 15 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 4.5, delay: 0.4, ease: "easeInOut" }}
+                  />
+                  <motion.path 
+                    d="M 33 55 C 40 70, 60 70, 67 55" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.5, delay: 1.8, ease: "easeInOut" }}
+                  />
+                  <motion.path 
+                    d="M 38 40 A 3 3 0 1 1 37.9 40 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.0, delay: 2.8 }}
+                  />
+                  <motion.path 
+                    d="M 62 40 A 3 3 0 1 1 61.9 40 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.0, delay: 3.0 }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 7. Doodle Clock (Self-drawing clock in blank space) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 1.5, delay: 0.8 }}
+              className="glass-shape-draggable shape-clock"
+            >
+              <div className="glass-shape float-1">
+                <svg viewBox="0 0 100 100" width="180" height="180" className="doodle-svg">
+                  <motion.path 
+                    d="M 50 15 A 35 35 0 1 1 49.9 15 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 4.5, delay: 0.6, ease: "easeInOut" }}
+                  />
+                  <motion.path 
+                    d="M 50 50 L 50 30" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.0, delay: 2.0, ease: "easeInOut" }}
+                  />
+                  <motion.path 
+                    d="M 50 50 L 68 50" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.5, delay: 2.5, ease: "easeInOut" }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 8. Doodle Music Notes (Self-drawing music notes in blank space) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 1.5, delay: 0.9 }}
+              className="glass-shape-draggable shape-music"
+            >
+              <div className="glass-shape float-2">
+                <svg viewBox="0 0 100 100" width="180" height="180" className="doodle-svg">
+                  <motion.path 
+                    d="M 35 70 L 35 25" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.0, delay: 0.8 }}
+                  />
+                  <motion.path 
+                    d="M 35 70 A 10 7 0 1 1 25 65 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.0, delay: 1.2 }}
+                  />
+                  <motion.path 
+                    d="M 65 60 L 65 15" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.0, delay: 1.5 }}
+                  />
+                  <motion.path 
+                    d="M 65 60 A 10 7 0 1 1 55 55 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.0, delay: 1.9 }}
+                  />
+                  <motion.path 
+                    d="M 35 25 L 65 15 L 65 23 L 35 33 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.5, delay: 2.4 }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 9. Doodle Cloud (Self-drawing cloud in blank space) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 1.5, delay: 1.0 }}
+              className="glass-shape-draggable shape-cloud"
+            >
+              <div className="glass-shape float-1">
+                <svg viewBox="0 0 100 100" width="200" height="200" className="doodle-svg">
+                  <motion.path 
+                    d="M 25 60 C 15 60, 10 50, 18 40 C 12 30, 25 15, 45 20 C 55 10, 75 15, 78 30 C 88 32, 90 48, 80 58 C 75 65, 30 65, 25 60 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 5.0, delay: 0.8 }}
+                  />
+                  <motion.path 
+                    d="M 35 72 L 30 82" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.0, delay: 2.5 }}
+                  />
+                  <motion.path 
+                    d="M 52 75 L 47 85" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.0, delay: 2.9 }}
+                  />
+                  <motion.path 
+                    d="M 68 72 L 63 82" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.0, delay: 3.3 }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+            {/* 10. Doodle Bulb (Self-drawing lightbulb in blank space) */}
+            <motion.div 
+              drag 
+              dragMomentum={false}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 0.55, scale: 1 }}
+              whileHover={{ scale: 1.10, opacity: 0.95 }}
+              whileTap={{ scale: 0.95 }}
+              transition={{ duration: 1.5, delay: 1.1 }}
+              className="glass-shape-draggable shape-bulb"
+            >
+              <div className="glass-shape float-2">
+                <svg viewBox="0 0 100 100" width="180" height="180" className="doodle-svg">
+                  <motion.path 
+                    d="M 35 55 C 22 45, 25 20, 50 20 C 75 20, 78 45, 65 55 C 62 65, 38 65, 35 55 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2.5" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 4.8, delay: 0.8 }}
+                  />
+                  <motion.path 
+                    d="M 45 58 L 45 42 L 50 48 L 55 42 L 55 58" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.2, delay: 1.8 }}
+                  />
+                  <motion.path 
+                    d="M 40 68 L 60 68 M 43 74 L 57 74 M 47 80 L 53 80" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 2.5, delay: 2.8 }}
+                  />
+                  <motion.path 
+                    d="M 20 25 L 28 31 M 50 10 L 50 16 M 80 25 L 72 31 M 15 45 L 22 45 M 85 45 L 78 45" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 3.0, delay: 3.5 }}
+                  />
+                </svg>
+              </div>
+            </motion.div>
+
+          </div>
+        )}
       </div>
 
       <AnimatePresence mode="wait">
