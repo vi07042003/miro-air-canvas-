@@ -20,7 +20,7 @@
 
   --bg-dark-1: #0C121C;
   --bg-dark-2: #05080C;
-  --glass-opacity-val: 0.05;
+  --glass-opacity-val: 0.24;
   --glass-bg: rgba(255, 255, 255, var(--glass-opacity-val));
   --glass-border: rgba(255, 255, 255, calc(var(--glass-opacity-val) * 1.6));
   --glass-shadow: rgba(0, 0, 0, 0.3);
