@@ -159,95 +159,245 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
         transition={{ duration: 0.9, ease: "easeOut" }}
       >
         <div className="glass-panel" style={styles.mockupCanvas}>
+          {/* Title Bar */}
           <div style={styles.mockupHeader}>
-            <span style={styles.mockupTitle}>miro_canvas_workspace.sketch</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center' }}>
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M2 4h12M2 8h8M2 12h10" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <span style={styles.mockupTitle}>miro_canvas_workspace.sketch</span>
+            </div>
           </div>
-          <div style={styles.mockupContent}>
-            {/* Draw a floating mock vector sketch inside */}
-            <svg width="100%" height="240" viewBox="0 0 600 240" style={styles.mockupSvg}>
-              {/* Dynamic light glowing paths */}
-              <motion.path 
-                d="M50,150 Q150,50 250,120 T450,80" 
-                fill="none" 
-                stroke="var(--theme-color-1)" 
-                strokeWidth="6" 
-                strokeLinecap="round" 
-                animate={{ pathLength: [0, 1, 1, 0] }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  times: [0, 0.7, 0.9, 1]
-                }}
-              />
-              <motion.path 
-                d="M100,180 Q250,220 380,120 T520,160" 
-                fill="none" 
-                stroke="var(--theme-color-2)" 
-                strokeWidth="4" 
-                strokeLinecap="round" 
-                animate={{ pathLength: [0, 1, 1, 0] }}
-                transition={{
-                  duration: 6,
-                  delay: 0.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  times: [0, 0.7, 0.9, 1]
-                }}
-              />
-              <motion.circle 
-                cx="250" 
-                cy="120" 
-                r="40" 
-                fill="none" 
-                stroke="var(--primary-pink)" 
-                strokeWidth="2" 
-                strokeDasharray="5,5" 
-                animate={{ scale: [0, 0, 1, 1, 0], opacity: [0, 0, 0.8, 0.8, 0] }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  times: [0, 0.35, 0.45, 0.85, 1]
-                }}
-              />
-              <motion.rect 
-                x="360" 
-                y="40" 
-                width="70" 
-                height="50" 
-                rx="8" 
-                fill="none" 
-                stroke="var(--primary-emerald)" 
-                strokeWidth="3" 
-                animate={{ scale: [0, 0, 1, 1, 0], opacity: [0, 0, 0.8, 0.8, 0] }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  times: [0, 0.6, 0.7, 0.85, 1]
-                }}
-              />
-              
-              {/* Simulated Hand pointer */}
-              <g>
-                <animateMotion 
-                  dur="6s" 
-                  repeatCount="indefinite" 
-                  path="M50,150 Q150,50 250,120 T450,80" 
-                  keyTimes="0;0.7;0.9;1"
-                  keyPoints="0;1;1;0"
-                  calcMode="linear"
+
+          {/* Editor Body */}
+          <div style={{ display: 'flex', height: '280px' }}>
+            {/* Left Sidebar */}
+            <div style={styles.mockupSidebar}>
+              {[
+                { icon: '✦', active: true, color: 'var(--theme-color-1)' },
+                { icon: '◈', active: false, color: 'var(--text-muted)' },
+                { icon: '⬡', active: false, color: 'var(--text-muted)' },
+                { icon: '⌘', active: false, color: 'var(--text-muted)' },
+                { icon: '⤢', active: false, color: 'var(--text-muted)' },
+              ].map((item, i) => (
+                <div key={i} style={{
+                  ...styles.sidebarIcon,
+                  background: item.active ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  borderLeft: item.active ? '2px solid var(--theme-color-1)' : '2px solid transparent',
+                  color: item.color,
+                }}>
+                  {item.icon}
+                </div>
+              ))}
+            </div>
+
+            {/* Canvas Area */}
+            <div style={styles.mockupContent}>
+              <svg width="100%" height="100%" viewBox="0 0 580 260" style={styles.mockupSvg}>
+                <defs>
+                  <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+                    <path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5"/>
+                  </pattern>
+                  <filter id="glow1">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                  <filter id="glow2">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                    <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                  </filter>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+
+                {/*
+                  ============================================================
+                  SCENE 1 (0–8s): HOUSE sketch drawn stroke by stroke
+                  House centered at ~(200, 140), size ~120×90
+                  Strokes: left wall, right wall, bottom, door, roof L, roof R, window
+                  ============================================================
+                */}
+
+                {/* House — left wall */}
+                <motion.path d="M140,220 L140,155"
+                  fill="none" stroke="var(--theme-color-1)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow1)"
+                  animate={{ pathLength: [0,1,1,0,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.07, 0.55, 0.60, 0.95, 1] }}
                 />
-                <circle cx="0" cy="0" r="12" fill="rgba(6, 182, 212, 0.4)" />
-                <circle cx="0" cy="0" r="5" fill="#06b6d4" />
-                <g transform="translate(8, 8) scale(0.04)" style={{ filter: 'drop-shadow(0 2px 5px rgba(0,0,0,0.5))' }}>
-                  <path 
-                    d="M384 112c0-26.51-21.49-48-48-48-9.06 0-17.43 2.53-24.58 6.9C304.28 30.54 270.82 0 230 0c-35.31 0-65.7 22.86-77.16 54.77C146.5 51.13 138.41 48 128 48c-35.35 0-64 28.65-64 64v192c0 24.3-8.87 46.55-23.49 63.8C15.82 396.11 0 428.16 0 464c0 26.51 21.49 48 48 48h220.57c66.75 0 126.96-41.6 150.91-104.22l34.82-90.93C474.33 266.69 480 242.01 480 217V160c0-26.51-21.49-48-48-48-9.06 0-17.43 2.53-24.58 6.9-7.14-40.46-40.6-70.9-81.42-70.9z" 
-                    fill="#fff" 
-                  />
-                </g>
-                <text x="35" y="5" fill="#a1a1aa" fontSize="11" fontFamily="monospace">INDEX_FINGER_TIP (DRAWING)</text>
-              </g>
-            </svg>
+                {/* House — right wall */}
+                <motion.path d="M260,155 L260,220"
+                  fill="none" stroke="var(--theme-color-1)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow1)"
+                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.07, 0.12, 0.55, 0.60, 1] }}
+                />
+                {/* House — floor */}
+                <motion.path d="M140,220 L260,220"
+                  fill="none" stroke="var(--theme-color-1)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow1)"
+                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.12, 0.17, 0.55, 0.60, 1] }}
+                />
+                {/* House — roof left slope */}
+                <motion.path d="M140,155 L200,100"
+                  fill="none" stroke="var(--theme-color-2)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow2)"
+                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.17, 0.22, 0.55, 0.60, 1] }}
+                />
+                {/* House — roof right slope */}
+                <motion.path d="M200,100 L260,155"
+                  fill="none" stroke="var(--theme-color-2)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow2)"
+                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.22, 0.27, 0.55, 0.60, 1] }}
+                />
+                {/* House — door */}
+                <motion.path d="M185,220 L185,185 Q200,178 215,185 L215,220"
+                  fill="none" stroke="var(--theme-color-1)" strokeWidth="2" strokeLinecap="round" filter="url(#glow1)"
+                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.27, 0.35, 0.55, 0.60, 1] }}
+                />
+                {/* House — window */}
+                <motion.path d="M155,175 L175,175 L175,195 L155,195 Z"
+                  fill="none" stroke="var(--primary-pink)" strokeWidth="1.8" strokeLinecap="round" filter="url(#glow2)"
+                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.35, 0.42, 0.55, 0.60, 1] }}
+                />
+                {/* Window cross */}
+                <motion.path d="M165,175 L165,195 M155,185 L175,185"
+                  fill="none" stroke="var(--primary-pink)" strokeWidth="1.2" strokeLinecap="round"
+                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.42, 0.46, 0.55, 0.60, 1] }}
+                />
+                {/* Chimney */}
+                <motion.path d="M230,120 L230,104 L242,104 L242,114"
+                  fill="none" stroke="var(--primary-emerald)" strokeWidth="2" strokeLinecap="round"
+                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.46, 0.50, 0.55, 0.60, 1] }}
+                />
+                {/* Smoke puff */}
+                <motion.path d="M236,100 Q233,92 238,87 Q243,82 238,76"
+                  fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeLinecap="round"
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,0.7,0.7,0,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.50, 0.54, 0.57, 0.62, 1] }}
+                />
+
+                {/*
+                  ============================================================
+                  SCENE 2 (8–16s): THREE FLYING BIRDS drawn one by one
+                  Bird = two curved wings: M cx,cy Q cx-20,cy-15 cx-38,cy  Q cx-20,cy+5 cx,cy
+                                            M cx,cy Q cx+20,cy-15 cx+38,cy  Q cx+20,cy+5 cx,cy
+                  ============================================================
+                */}
+
+                {/* Bird 1 — left wing */}
+                <motion.path d="M160,100 Q140,82 120,100 Q140,108 160,100"
+                  fill="none" stroke="var(--theme-color-1)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow1)"
+                  animate={{ pathLength: [0,0,0,0,1,1,0], opacity:[0,0,0,0,1,1,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.60, 0.62, 0.65, 0.70, 0.90, 1] }}
+                />
+                {/* Bird 1 — right wing */}
+                <motion.path d="M160,100 Q180,82 200,100 Q180,108 160,100"
+                  fill="none" stroke="var(--theme-color-1)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow1)"
+                  animate={{ pathLength: [0,0,0,0,1,1,0], opacity:[0,0,0,0,1,1,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.60, 0.62, 0.70, 0.75, 0.90, 1] }}
+                />
+
+                {/* Bird 2 — left wing */}
+                <motion.path d="M260,75 Q240,57 218,74 Q240,82 260,75"
+                  fill="none" stroke="var(--theme-color-2)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow2)"
+                  animate={{ pathLength: [0,0,0,0,1,1,0], opacity:[0,0,0,0,1,1,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.60, 0.62, 0.75, 0.80, 0.90, 1] }}
+                />
+                {/* Bird 2 — right wing */}
+                <motion.path d="M260,75 Q280,57 302,74 Q280,82 260,75"
+                  fill="none" stroke="var(--theme-color-2)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow2)"
+                  animate={{ pathLength: [0,0,0,0,1,1,0], opacity:[0,0,0,0,1,1,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.60, 0.62, 0.80, 0.84, 0.90, 1] }}
+                />
+
+                {/* Bird 3 (small, far) — left wing */}
+                <motion.path d="M370,55 Q358,44 345,54 Q358,60 370,55"
+                  fill="none" stroke="var(--primary-pink)" strokeWidth="2" strokeLinecap="round" filter="url(#glow2)"
+                  animate={{ pathLength: [0,0,0,0,1,1,0], opacity:[0,0,0,0,1,1,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.60, 0.62, 0.84, 0.87, 0.90, 1] }}
+                />
+                {/* Bird 3 (small, far) — right wing */}
+                <motion.path d="M370,55 Q382,44 395,54 Q382,60 370,55"
+                  fill="none" stroke="var(--primary-pink)" strokeWidth="2" strokeLinecap="round" filter="url(#glow2)"
+                  animate={{ pathLength: [0,0,0,0,1,1,0], opacity:[0,0,0,0,1,1,0] }}
+                  transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.60, 0.62, 0.87, 0.90, 0.92, 1] }}
+                />
+
+                {/*
+                  CURSOR — follows house strokes (scene 1) then birds (scene 2)
+                  Two separate animateMotion paths that swap in/out via opacity
+                */}
+
+                {/* Cursor scene 1 — traces around the house */}
+                <motion.g animate={{ opacity: [1,1,0,0,1] }} transition={{ duration: 16, repeat: Infinity, times: [0, 0.54, 0.60, 0.95, 1] }}>
+                  <g>
+                    <animateMotion dur="8.6s" repeatCount="indefinite"
+                      path="M140,220 L140,155 L260,155 L260,220 L140,220 L200,100 L260,155 M200,100 L140,155 M185,220 L185,185 Q200,178 215,185 L215,220 M155,175 L175,175 L175,195 L155,195 L155,175 M230,120 L230,104 L242,104 L242,114"
+                    />
+                    <circle cx="0" cy="0" r="12" fill="rgba(6,182,212,0.18)" />
+                    <circle cx="0" cy="0" r="5" fill="#06b6d4" filter="url(#glow1)" />
+                    <circle cx="0" cy="0" r="2" fill="#fff" />
+                    <text x="14" y="-7" fill="rgba(161,161,170,0.85)" fontSize="8" fontFamily="monospace">INDEX_TIP · DRAWING</text>
+                  </g>
+                </motion.g>
+
+                {/* Cursor scene 2 — traces the birds */}
+                <motion.g animate={{ opacity: [0,0,1,1,0] }} transition={{ duration: 16, repeat: Infinity, times: [0, 0.60, 0.65, 0.92, 1] }}>
+                  <g>
+                    <animateMotion dur="5.2s" repeatCount="indefinite"
+                      path="M120,100 Q140,82 160,100 Q180,82 200,100 M218,74 Q240,57 260,75 Q280,57 302,74 M345,54 Q358,44 370,55 Q382,44 395,54"
+                    />
+                    <circle cx="0" cy="0" r="12" fill="rgba(6,182,212,0.18)" />
+                    <circle cx="0" cy="0" r="5" fill="#06b6d4" filter="url(#glow1)" />
+                    <circle cx="0" cy="0" r="2" fill="#fff" />
+                    <text x="14" y="-7" fill="rgba(161,161,170,0.85)" fontSize="8" fontFamily="monospace">INDEX_TIP · DRAWING</text>
+                  </g>
+                </motion.g>
+
+                {/* Corner ruler ticks */}
+                <line x1="0" y1="0" x2="20" y2="0" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+                <line x1="0" y1="0" x2="0" y2="20" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
+              </svg>
+            </div>
+
+            {/* Right Properties panel */}
+            <div style={styles.mockupRightPanel}>
+              <div style={styles.propLabel}>Stroke</div>
+              <div style={styles.propRow}>
+                <div style={{ ...styles.propSwatch, background: 'var(--theme-color-1)' }} />
+                <span style={styles.propValue}>#06b6d4</span>
+              </div>
+              <div style={styles.propLabel}>Width</div>
+              <div style={styles.propSliderTrack}>
+                <div style={{ ...styles.propSliderFill, width: '60%' }} />
+                <div style={styles.propSliderThumb} />
+              </div>
+              <div style={styles.propLabel}>Opacity</div>
+              <div style={styles.propSliderTrack}>
+                <div style={{ ...styles.propSliderFill, width: '85%' }} />
+                <div style={{ ...styles.propSliderThumb, left: '85%' }} />
+              </div>
+              <div style={{ height: '12px' }} />
+              <div style={styles.propLabel}>Layers</div>
+              {['House', 'Birds', 'Smoke'].map((l, i) => (
+                <div key={i} style={{ ...styles.propRow, gap: '6px', marginBottom: '3px' }}>
+                  <div style={{ width: '6px', height: '6px', borderRadius: '2px', background: i === 0 ? 'var(--theme-color-1)' : i === 1 ? 'var(--theme-color-2)' : 'var(--primary-pink)', flexShrink: 0 }} />
+                  <span style={{ ...styles.propValue, fontSize: '9px' }}>{l}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Status Bar */}
+          <div style={styles.mockupStatusBar}>
+            <span style={styles.statusItem}>● READY</span>
+            <span style={styles.statusItem}>Hand Tracking: ACTIVE</span>
+            <span style={{ flex: 1 }} />
+            <span style={styles.statusItem}>Zoom 100%</span>
+            <span style={styles.statusItem}>Canvas 1920×1080</span>
+            <span style={styles.statusItem}>FPS 60</span>
           </div>
         </div>
       </motion.section>
@@ -736,38 +886,156 @@ const styles = {
   },
   mockupCanvas: {
     width: '100%',
-    maxWidth: '800px',
+    maxWidth: '900px',
     overflow: 'hidden',
     border: '1px solid rgba(255, 255, 255, 0.1)',
+    borderRadius: '14px',
+    boxShadow: '0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)',
   },
   mockupHeader: {
-    background: 'rgba(0, 0, 0, 0.2)',
+    background: 'rgba(10, 10, 15, 0.85)',
     borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-    padding: '12px 18px',
+    padding: '10px 16px',
     display: 'flex',
     alignItems: 'center',
-    gap: '16px',
+    gap: '12px',
   },
   mockupDots: {
     display: 'flex',
     gap: '6px',
   },
   dot: {
-    width: '10px',
-    height: '10px',
+    width: '11px',
+    height: '11px',
     borderRadius: '50%',
   },
   mockupTitle: {
     fontFamily: 'monospace',
     fontSize: '12px',
     color: 'var(--text-muted)',
+    letterSpacing: '0.5px',
+  },
+  mockupBadge: {
+    fontSize: '9px',
+    fontWeight: '700',
+    letterSpacing: '1px',
+    color: '#10b981',
+    background: 'rgba(16, 185, 129, 0.12)',
+    border: '1px solid rgba(16, 185, 129, 0.25)',
+    borderRadius: '4px',
+    padding: '2px 6px',
+  },
+  mockupBadgeGray: {
+    fontSize: '9px',
+    fontWeight: '500',
+    color: 'var(--text-muted)',
+    background: 'rgba(255,255,255,0.05)',
+    border: '1px solid rgba(255,255,255,0.08)',
+    borderRadius: '4px',
+    padding: '2px 6px',
+  },
+  mockupSidebar: {
+    width: '42px',
+    flexShrink: 0,
+    background: 'rgba(8, 8, 12, 0.7)',
+    borderRight: '1px solid rgba(255,255,255,0.06)',
+    display: 'flex',
+    flexDirection: 'column',
+    paddingTop: '8px',
+    gap: '2px',
+  },
+  sidebarIcon: {
+    width: '42px',
+    height: '38px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '15px',
+    cursor: 'pointer',
+    transition: 'background 0.2s',
   },
   mockupContent: {
-    padding: '20px',
-    background: 'rgba(0, 0, 0, 0.15)',
+    flex: 1,
+    background: 'rgba(0, 0, 0, 0.25)',
+    overflow: 'hidden',
   },
   mockupSvg: {
     display: 'block',
+    width: '100%',
+    height: '100%',
+  },
+  mockupRightPanel: {
+    width: '110px',
+    flexShrink: 0,
+    background: 'rgba(8, 8, 12, 0.7)',
+    borderLeft: '1px solid rgba(255,255,255,0.06)',
+    padding: '12px 10px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '5px',
+  },
+  propLabel: {
+    fontSize: '9px',
+    fontWeight: '600',
+    letterSpacing: '0.8px',
+    color: 'var(--text-muted)',
+    textTransform: 'uppercase',
+    marginTop: '4px',
+  },
+  propRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  propSwatch: {
+    width: '14px',
+    height: '14px',
+    borderRadius: '3px',
+    flexShrink: 0,
+    border: '1px solid rgba(255,255,255,0.1)',
+  },
+  propValue: {
+    fontSize: '10px',
+    fontFamily: 'monospace',
+    color: 'var(--text-secondary)',
+  },
+  propSliderTrack: {
+    position: 'relative',
+    height: '4px',
+    background: 'rgba(255,255,255,0.08)',
+    borderRadius: '2px',
+    overflow: 'visible',
+  },
+  propSliderFill: {
+    height: '100%',
+    background: 'linear-gradient(90deg, var(--theme-color-1), var(--theme-color-2))',
+    borderRadius: '2px',
+  },
+  propSliderThumb: {
+    position: 'absolute',
+    left: '60%',
+    top: '50%',
+    transform: 'translate(-50%, -50%)',
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    background: '#fff',
+    border: '1.5px solid var(--theme-color-1)',
+  },
+  mockupStatusBar: {
+    background: 'rgba(8, 8, 12, 0.85)',
+    borderTop: '1px solid rgba(255,255,255,0.06)',
+    padding: '5px 14px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '16px',
+  },
+  statusItem: {
+    fontSize: '9px',
+    fontFamily: 'monospace',
+    color: 'var(--text-muted)',
+    letterSpacing: '0.5px',
+    whiteSpace: 'nowrap',
   },
   modalBg: {
     position: 'fixed',
