@@ -217,8 +217,8 @@ body::before {
       rgba(255, 255, 255, calc(var(--glass-opacity-val) * 0.2)) 49%,
       rgba(255, 255, 255, calc(var(--glass-opacity-val) * 0.1)) 50%,
       rgba(0, 0, 0, 0.15) 100%);
-  backdrop-filter: blur(28px) saturate(190%);
-  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
   border: 1px solid rgba(255, 255, 255, calc(var(--glass-opacity-val) * 2.4));
   border-radius: 24px;
   box-shadow:
@@ -247,8 +247,8 @@ body::before {
       rgba(255, 255, 255, calc(var(--glass-opacity-val) * 0.4)) 49%,
       rgba(255, 255, 255, calc(var(--glass-opacity-val) * 0.1)) 50%,
       rgba(0, 0, 0, 0.25) 100%);
-  backdrop-filter: blur(40px) saturate(220%);
-  -webkit-backdrop-filter: blur(40px) saturate(220%);
+  backdrop-filter: blur(40px) saturate(220%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(220%) !important;
   border: 1px solid rgba(255, 255, 255, calc(var(--glass-opacity-val) * 4.0));
   border-radius: 28px;
   box-shadow:
@@ -275,8 +275,8 @@ body::before {
   background: linear-gradient(135deg,
       rgba(255, 255, 255, calc(var(--glass-opacity-val) * 0.6)) 0%,
       rgba(255, 255, 255, calc(var(--glass-opacity-val) * 0.1)) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid rgba(255, 255, 255, calc(var(--glass-opacity-val) * 1.6));
   border-radius: 20px;
   padding: 24px;
@@ -760,9 +760,9 @@ body::before {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(255, 255, 255, 0.01);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
   z-index: 2000;
   display: flex;
   align-items: center;
