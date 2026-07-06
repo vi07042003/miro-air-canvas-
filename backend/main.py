@@ -655,11 +655,16 @@ def doodle_to_art(
     return doodle_art.handle_doodle_to_art(payload, current_user, db)
 
 @app.get("/api/ai-sketch/gemini-status")
-def get_gemini_status():
+def get_gemini_status(db: Session = Depends(database.get_db)):
     import os
     from dotenv import load_dotenv
-    load_dotenv(override=True)
-    key = os.getenv("GEMINI_API_KEY")
+    # 1. Check database first (user-configured key, persists across restarts)
+    db_setting = db.query(models.Setting).filter(models.Setting.key == "GEMINI_API_KEY").first()
+    key = db_setting.value if db_setting and db_setting.value else None
+    # 2. Fall back to environment variable (Render env vars / .env file)
+    if not key:
+        load_dotenv(override=True)
+        key = os.getenv("GEMINI_API_KEY")
     configured = bool(key)
     masked_key = ""
     if key:
@@ -670,7 +675,7 @@ def get_gemini_status():
     return {"configured": configured, "masked_key": masked_key}
 
 @app.post("/api/ai-sketch/update-gemini-key")
-def update_gemini_key(payload: Dict[str, Any]):
+def update_gemini_key(payload: Dict[str, Any], db: Session = Depends(database.get_db)):
     new_key = (payload.get("api_key") or "").strip()
     if not new_key:
         raise HTTPException(status_code=400, detail="API key is required")
@@ -706,34 +711,20 @@ def update_gemini_key(payload: Dict[str, Any]):
             status_code=400,
             detail=f"Could not verify API key due to connection error: {str(e)}"
         )
-        
+
+    # Save to database (persists across container restarts on Render)
+    db_setting = db.query(models.Setting).filter(models.Setting.key == "GEMINI_API_KEY").first()
+    if db_setting:
+        db_setting.value = new_key
+    else:
+        db_setting = models.Setting(key="GEMINI_API_KEY", value=new_key)
+        db.add(db_setting)
+    db.commit()
+
+    # Also update the in-memory environment variable so it takes effect immediately
     import os
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
-    
-    lines = []
-    if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            lines = f.readlines()
-            
-    key_found = False
-    new_line = f"GEMINI_API_KEY={new_key}\n"
-    for i, line in enumerate(lines):
-        if line.strip().startswith("GEMINI_API_KEY="):
-            lines[i] = new_line
-            key_found = True
-            break
-            
-    if not key_found:
-        if lines and not lines[-1].endswith("\n"):
-            lines[-1] += "\n"
-        lines.append(new_line)
-        
-    try:
-        with open(env_path, "w") as f:
-            f.writelines(lines)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to write to .env file: {str(e)}")
-        
+    os.environ["GEMINI_API_KEY"] = new_key
+
     return {"message": "Gemini API key updated successfully"}
 
 MAX_STENCIL_USAGE = 10

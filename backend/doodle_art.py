@@ -85,6 +85,7 @@ def describe_sketch_via_huggingface(image_bytes: bytes, hf_token: str) -> str:
 def describe_sketch_via_gemini(image_bytes: bytes) -> tuple:
     """
     Call Gemini 2.5 Flash API directly using the backend's GEMINI_API_KEY.
+    Checks the database first (user-configured), then falls back to env var.
     Returns (description_str, status_code_int).
     """
     import os
@@ -95,10 +96,25 @@ def describe_sketch_via_gemini(image_bytes: bytes) -> tuple:
     import ssl
     import base64
 
-    load_dotenv(override=True)
-    api_key = os.getenv("GEMINI_API_KEY")
+    # 1. Try to get key from database (user-configured, survives Render restarts)
+    api_key = None
+    try:
+        import database, models
+        db = next(database.get_db())
+        db_setting = db.query(models.Setting).filter(models.Setting.key == "GEMINI_API_KEY").first()
+        if db_setting and db_setting.value:
+            api_key = db_setting.value
+        db.close()
+    except Exception:
+        pass
+
+    # 2. Fall back to environment variable (Render env vars / local .env)
     if not api_key:
-        print("GEMINI_API_KEY not configured in backend/.env")
+        load_dotenv(override=True)
+        api_key = os.getenv("GEMINI_API_KEY")
+
+    if not api_key:
+        print("GEMINI_API_KEY not configured in database or environment")
         return "", 401
 
     try:
