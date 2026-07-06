@@ -349,7 +349,7 @@ function App() {
       scaleY: 1, 
       borderRadius: "24px",
       y: 0,
-      filter: "blur(0px) contrast(1)",
+      filter: "none",
       transformOrigin: "center top",
       transition: { 
         y: {
@@ -1636,7 +1636,7 @@ function App() {
                         scaleY: 1, 
                         borderRadius: "24px",
                         y: 0,
-                        filter: "blur(0px)",
+                        filter: "none",
                         transformOrigin: "center bottom",
                         transition: { 
                           y: {
