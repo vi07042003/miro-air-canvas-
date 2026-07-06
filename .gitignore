@@ -1,1 +1,20 @@
+
+# Backend secrets
 backend/.env
+
+# Frontend secrets & local env
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# Build outputs
+frontend/dist/
+frontend/node_modules/
+
+# Python cache
+**/__pycache__/
+*.pyc
+*.pyo
+
+# SQLite dev DB (not used in production)
+backend/*.db
