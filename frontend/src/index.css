@@ -684,18 +684,11 @@ body::before {
   top: calc(100% + 10px);
   right: 0;
   width: 240px;
-  background: linear-gradient(135deg,
-      rgba(255, 255, 255, calc(var(--glass-opacity-val) * 1.6)) 0%,
-      rgba(255, 255, 255, calc(var(--glass-opacity-val) * 0.4)) 49%,
-      rgba(255, 255, 255, calc(var(--glass-opacity-val) * 0.1)) 50%,
-      rgba(0, 0, 0, 0.25) 100%);
-  backdrop-filter: blur(28px) saturate(200%);
-  -webkit-backdrop-filter: blur(28px) saturate(200%);
-  border: 1px solid rgba(255, 255, 255, calc(var(--glass-opacity-val) * 4.0));
+  background: #172237 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   border-radius: 20px;
   padding: 18px;
   box-shadow:
-    inset 1px 1px 0px rgba(255, 255, 255, calc(var(--glass-opacity-val) * 4.0)),
     0 15px 40px rgba(0, 0, 0, 0.6),
     0 0 20px rgba(var(--theme-color-1-rgb), 0.15);
   display: flex;

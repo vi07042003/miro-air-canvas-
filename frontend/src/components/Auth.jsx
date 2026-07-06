@@ -53,7 +53,7 @@ export default function Auth({ onLoginSuccess }) {
 
   return (
     <div className="fade-in" style={styles.container}>
-      <div className="glass-panel-heavy" style={styles.card}>
+      <div className="theme-modal-panel" style={styles.card}>
         <div style={styles.header}>
           <div className="logo-icon" style={styles.logoIcon}>
             <Sparkles size={20} color="#fff" />
