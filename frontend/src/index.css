@@ -259,6 +259,29 @@ body::before {
   overflow: hidden;
 }
 
+.theme-modal-panel {
+  background: #172237 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 28px;
+  box-shadow:
+    0 20px 50px 0 rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(91, 192, 235, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.theme-modal-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .glass-panel-heavy::before {
   content: '';
   position: absolute;
@@ -459,15 +482,15 @@ body::before {
   box-shadow: none;
 }
 
-.header-glass > :nth-child(1) {
+.header-glass> :nth-child(1) {
   justify-self: start;
 }
 
-.header-glass > :nth-child(2) {
+.header-glass> :nth-child(2) {
   justify-self: center;
 }
 
-.header-glass > :nth-child(3) {
+.header-glass> :nth-child(3) {
   justify-self: end;
 }
 
@@ -760,9 +783,7 @@ body::before {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  background: rgba(15, 23, 42, 0.65) !important;
   z-index: 2000;
   display: flex;
   align-items: center;
@@ -1332,9 +1353,11 @@ body::before {
   0% {
     transform: translateY(0px) rotate(0deg);
   }
+
   50% {
     transform: translateY(-16px) rotate(4deg);
   }
+
   100% {
     transform: translateY(0px) rotate(0deg);
   }
@@ -1344,9 +1367,11 @@ body::before {
   0% {
     transform: translateY(0px) rotate(0deg);
   }
+
   50% {
     transform: translateY(-12px) rotate(-3deg);
   }
+
   100% {
     transform: translateY(0px) rotate(0deg);
   }
@@ -1395,10 +1420,13 @@ body::before {
 
 /* Typing Indicator Dot Animation */
 @keyframes typingBlink {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
     opacity: 0.4;
   }
+
   50% {
     transform: translateY(-4px);
     opacity: 1;
