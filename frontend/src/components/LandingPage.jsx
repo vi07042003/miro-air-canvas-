@@ -114,7 +114,7 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
   const [showManual, setShowManual] = useState(false)
 
   return (
-    <div className="fade-in" style={styles.container}>
+    <div className="fade-in landing-page-container" style={styles.container}>
       {/* Hero Section */}
       <section style={styles.heroSection}>
         <div style={styles.badge}>
@@ -158,10 +158,15 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
         viewport={{ once: true, margin: "-100px" }}
         transition={{ duration: 0.9, ease: "easeOut" }}
       >
-        <div className="glass-panel" style={styles.mockupCanvas}>
+        <div className="glass-panel mockup-canvas" style={styles.mockupCanvas}>
           {/* Title Bar */}
           <div style={styles.mockupHeader}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center' }}>
+            <div style={styles.mockupDots}>
+              <div style={{ ...styles.dot, backgroundColor: '#ff5f56' }} />
+              <div style={{ ...styles.dot, backgroundColor: '#ffbd2e' }} />
+              <div style={{ ...styles.dot, backgroundColor: '#27c93f' }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, justifyContent: 'center', marginRight: '51px' }}>
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                 <path d="M2 4h12M2 8h8M2 12h10" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round"/>
               </svg>
@@ -193,7 +198,7 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
 
             {/* Canvas Area */}
             <div style={styles.mockupContent}>
-              <svg width="100%" height="100%" viewBox="0 0 580 260" style={styles.mockupSvg}>
+              <svg width="100%" height="100%" viewBox="60 35 400 200" style={styles.mockupSvg}>
                 <defs>
                   <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
                     <path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.5"/>
@@ -391,7 +396,7 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
           </div>
 
           {/* Status Bar */}
-          <div style={styles.mockupStatusBar}>
+          <div style={styles.mockupStatusBar} className="mockup-status-bar">
             <span style={styles.statusItem}>● READY</span>
             <span style={styles.statusItem}>Hand Tracking: ACTIVE</span>
             <span style={{ flex: 1 }} />

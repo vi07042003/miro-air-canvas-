@@ -1868,13 +1868,23 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     })
   }
 
+  const getEventCoords = (e, rect, canvas) => {
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX
+    const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY
+    return {
+      clientX,
+      clientY,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    }
+  }
+
   const handleMouseDown3D = (e, rect) => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    const sx = (e.clientX - rect.left) * scaleX
-    const sy = (e.clientY - rect.top) * scaleY
+    const { x: sx, y: sy } = getEventCoords(e, rect, canvas)
     const tool3d = active3DToolRef.current
     
     if (tool3d === 'orbit') {
@@ -1901,10 +1911,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const handleMouseMove3D = (e, rect) => {
     const canvas = canvasRef.current
     if (!canvas) return
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    const sx = (e.clientX - rect.left) * scaleX
-    const sy = (e.clientY - rect.top) * scaleY
+    const { x: sx, y: sy } = getEventCoords(e, rect, canvas)
     const tool3d = active3DToolRef.current
     const drawState = drawingRef.current
     
@@ -1989,10 +1996,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       return
     }
     
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    const x = (e.clientX - rect.left) * scaleX
-    const y = (e.clientY - rect.top) * scaleY
+    const { clientX, clientY, x, y } = getEventCoords(e, rect, canvas)
     
     if (stateRef.current.tool === 'select') {
       if (textInputRef.current) {
@@ -2030,19 +2034,16 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     if (!canvas) return
     const rect = canvas.getBoundingClientRect()
     
+    const { clientX, clientY, x, y } = getEventCoords(e, rect, canvas)
+    
     if (collaboration && collaboration.active) {
-      collaboration.sendCursorMove(e.clientX, e.clientY)
+      collaboration.sendCursorMove(clientX, clientY)
     }
     
     if (stateRef.current.canvasMode === '3d') {
       handleMouseMove3D(e, rect)
       return
     }
-    
-    const scaleX = canvas.width / rect.width
-    const scaleY = canvas.height / rect.height
-    const x = (e.clientX - rect.left) * scaleX
-    const y = (e.clientY - rect.top) * scaleY
     
     if (stateRef.current.tool === 'select') {
       e.preventDefault()
@@ -4113,6 +4114,18 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
+                onTouchStart={(e) => {
+                  e.preventDefault()
+                  handleMouseDown(e)
+                }}
+                onTouchMove={(e) => {
+                  e.preventDefault()
+                  handleMouseMove(e)
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  handleMouseUp()
+                }}
                 onWheel={handleWheel3D}
               />
               

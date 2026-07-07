@@ -212,9 +212,11 @@ export default function DoodleStudio({ user }) {
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
+    const clientX = e.touches && e.touches.length > 0 ? e.touches[0].clientX : e.clientX
+    const clientY = e.touches && e.touches.length > 0 ? e.touches[0].clientY : e.clientY
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
     }
   }
 
@@ -476,6 +478,18 @@ export default function DoodleStudio({ user }) {
             onMouseMove={draw}
             onMouseUp={stopDrawing}
             onMouseLeave={stopDrawing}
+            onTouchStart={(e) => {
+              e.preventDefault()
+              startDrawing(e)
+            }}
+            onTouchMove={(e) => {
+              e.preventDefault()
+              draw(e)
+            }}
+            onTouchEnd={(e) => {
+              e.preventDefault()
+              stopDrawing()
+            }}
             style={{ width: '100%', height: '100%', display: 'block' }}
           />
         </div>

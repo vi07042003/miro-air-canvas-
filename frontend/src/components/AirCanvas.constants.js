@@ -70,7 +70,7 @@ export const styles = {
   container: {
     maxWidth: '100%',
     margin: '0 auto',
-    padding: '10px 40px',
+    padding: '24px 40px 10px 40px',
     display: 'flex',
     flexDirection: 'column',
     gap: '20px',

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { Home, Image, Settings as SettingsIcon, Palette, LogIn, LogOut, User as UserIcon, Lock, X, Sparkles, Wand2, Rotate3d, Users } from 'lucide-react'
+import { Home, Image, Settings as SettingsIcon, Palette, LogIn, LogOut, User as UserIcon, Lock, X, Sparkles, Wand2, Rotate3d, Users, Menu } from 'lucide-react'
 import LandingPage from './components/LandingPage'
 import AirCanvas from './components/AirCanvas'
 import Gallery from './components/Gallery'
@@ -21,6 +21,7 @@ function App() {
   const { showToast } = useToast()
   const [showWelcome, setShowWelcome] = useState(true)
   const [activePage, setActivePage] = useState('landing')
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
   
   // User Session State
   const [user, setUser] = useState(() => {
@@ -525,7 +526,8 @@ function App() {
             initial="initial"
             animate="animate"
             exit="exit"
-            style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
+            className="page-wrapper"
+            style={{ width: '100%', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <AIStencils 
               user={user}
@@ -544,7 +546,8 @@ function App() {
             initial="initial"
             animate="animate"
             exit="exit"
-            style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
+            className="page-wrapper"
+            style={{ width: '100%', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <RevolveStudio 
               user={user} 
@@ -562,7 +565,8 @@ function App() {
             initial="initial"
             animate="animate"
             exit="exit"
-            style={{ width: '100%', padding: '0 40px', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
+            className="page-wrapper"
+            style={{ width: '100%', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <DoodleStudio user={user} />
           </motion.div>
@@ -575,7 +579,8 @@ function App() {
             initial="initial"
             animate="animate"
             exit="exit"
-            style={{ gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
+            className="page-wrapper"
+            style={{ width: '100%', gridColumn: 1, gridRow: 1, transformStyle: 'preserve-3d' }}
           >
             <CollaborationPage
               user={user}
@@ -1424,7 +1429,7 @@ function App() {
             </nav>
 
             {/* User Session Nav Panel */}
-            <div style={styles.authPanel}>
+            <div className="header-auth" style={styles.authPanel}>
               {user ? (
                 <div style={styles.userInfoRow}>
                   <div className="user-badge-wrapper">
@@ -1486,13 +1491,200 @@ function App() {
                 </div>
               )}
             </div>
+
+            <button
+              className="mobile-menu-toggle glass-btn"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              title="Toggle Menu"
+            >
+              <Menu size={20} />
+            </button>
           </header>
 
+          {/* Mobile Menu Drawer Overlay */}
+          <AnimatePresence>
+            {showMobileMenu && (
+              <div className="mobile-menu-backdrop" onClick={() => setShowMobileMenu(false)}>
+                <motion.div
+                  initial={{ x: '100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: '100%' }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                  className="mobile-menu-drawer"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mobile-menu-header">
+                    <div className="logo-container" style={{ pointerEvents: 'none' }}>
+                      <div className="logo-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                          <path
+                            d="M5 18C5 18 8 6 10.5 6C12.5 6 12 13.5 13.5 13.5C15 13.5 16.5 7.5 19 7.5"
+                            stroke="url(#logo-grad)"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
+                      <span className="header-logo-text">
+                        <span className="header-brand-mi" style={{ fontSize: '20px' }}>miro</span>
+                      </span>
+                    </div>
+                    <button 
+                      className="glass-btn" 
+                      onClick={() => setShowMobileMenu(false)}
+                      style={{ padding: '6px', borderRadius: '50%', minWidth: 'auto', width: '32px', height: '32px' }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <div className="mobile-menu-links">
+                    <button 
+                      className={`mobile-nav-item ${activePage === 'landing' ? 'active' : ''} ${collabRoomCode ? 'locked' : ''}`}
+                      onClick={() => {
+                        if (collabRoomCode) {
+                          showToast('Cannot leave the canvas while in collaboration mode. Please disconnect first.', 'warning')
+                          return
+                        }
+                        setActivePage('landing')
+                        setShowMobileMenu(false)
+                      }}
+                    >
+                      <Home size={18} />
+                      <span>Home</span>
+                    </button>
+
+                    <button 
+                      className={`mobile-nav-item ${activePage === 'canvas' ? 'active' : ''} ${!user ? 'locked' : ''}`}
+                      onClick={() => {
+                        navigateTo('canvas')
+                        setShowMobileMenu(false)
+                      }}
+                    >
+                      <Palette size={18} />
+                      <span>Canvas</span>
+                    </button>
+
+                    <button 
+                      className={`mobile-nav-item ${activePage === 'gallery' ? 'active' : ''} ${(!user || collabRoomCode) ? 'locked' : ''}`}
+                      onClick={() => {
+                        if (collabRoomCode) return
+                        navigateTo('gallery')
+                        setShowMobileMenu(false)
+                      }}
+                    >
+                      <Image size={18} />
+                      <span>Gallery</span>
+                    </button>
+
+                    <button 
+                      className={`mobile-nav-item ${activePage === 'stencils' ? 'active' : ''} ${(!user || collabRoomCode) ? 'locked' : ''}`}
+                      onClick={() => {
+                        if (collabRoomCode) return
+                        navigateTo('stencils')
+                        setShowMobileMenu(false)
+                      }}
+                    >
+                      <Sparkles size={18} />
+                      <span>AI Stencils</span>
+                    </button>
+
+                    <button 
+                      className={`mobile-nav-item ${activePage === 'revolve' ? 'active' : ''} ${(!user || collabRoomCode) ? 'locked' : ''}`}
+                      onClick={() => {
+                        if (collabRoomCode) return
+                        navigateTo('revolve')
+                        setShowMobileMenu(false)
+                      }}
+                    >
+                      <Rotate3d size={18} />
+                      <span>3D Revolve</span>
+                    </button>
+
+                    <button 
+                      className={`mobile-nav-item ${activePage === 'doodle' ? 'active' : ''} ${(!user || collabRoomCode) ? 'locked' : ''}`}
+                      onClick={() => {
+                        if (collabRoomCode) return
+                        navigateTo('doodle')
+                        setShowMobileMenu(false)
+                      }}
+                    >
+                      <Wand2 size={18} />
+                      <span>Doodle Art</span>
+                    </button>
+
+                    <button 
+                      className={`mobile-nav-item ${(activePage === 'collab' || collabRoomCode) ? 'active' : ''} ${!user ? 'locked' : ''}`}
+                      onClick={() => {
+                        if (!user) {
+                          showToast('Please sign in to collaborate', 'error')
+                          setActivePage('auth')
+                        } else if (collabRoomCode) {
+                          setActivePage('canvas')
+                        } else {
+                          navigateTo('collab')
+                        }
+                        setShowMobileMenu(false)
+                      }}
+                    >
+                      <Users size={18} />
+                      <span>{collabRoomCode ? `Live: ${collabRoomCode}` : 'Collaborate'}</span>
+                    </button>
+
+                    <button 
+                      className={`mobile-nav-item ${activePage === 'settings' ? 'active' : ''} ${collabRoomCode ? 'locked' : ''}`}
+                      onClick={() => {
+                        if (collabRoomCode) return
+                        setActivePage('settings')
+                        setShowMobileMenu(false)
+                      }}
+                    >
+                      <SettingsIcon size={18} />
+                      <span>Settings</span>
+                    </button>
+                  </div>
+
+                  <div className="mobile-menu-footer">
+                    {user ? (
+                      <div className="mobile-user-section">
+                        <div className="mobile-user-info" onClick={() => { handleProfileClick(); setShowMobileMenu(false); }}>
+                          {user.profilePicture ? (
+                            <img src={user.profilePicture} className="mobile-user-avatar" alt="Profile" />
+                          ) : (
+                            <div className="mobile-user-avatar-placeholder">
+                              <UserIcon size={16} color="var(--theme-color-2)" />
+                            </div>
+                          )}
+                          <span className="mobile-user-name">{user.username}</span>
+                        </div>
+                        <button 
+                          className="glass-btn mobile-logout-btn" 
+                          onClick={() => { handleLogout(); setShowMobileMenu(false); }}
+                        >
+                          <LogOut size={16} />
+                          <span>Log Out</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button 
+                        className="glass-btn glass-btn-primary mobile-signin-btn" 
+                        onClick={() => { setActivePage('auth'); setShowMobileMenu(false); }}
+                      >
+                        <LogIn size={16} />
+                        <span>Sign In</span>
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
+
           {/* Main Content Area */}
-          <main style={{ 
+          <main className="main-content-area" style={{ 
             minHeight: 'calc(100vh - 73px)', 
-            padding: '24px', 
-            position: 'relative', 
+            position: 'relative',  
             overflowX: 'hidden',
             display: 'grid',
             gridTemplateColumns: '100%',

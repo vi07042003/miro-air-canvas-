@@ -44,6 +44,7 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
   const [saving, setSaving] = useState(false)
   const [dbMessage, setDbMessage] = useState('')
   const loadedDrawingIdRef = useRef(null)
+  const touchStartDistRef = useRef(null)
 
   // Keep saveTitle synced with initialDrawing
   useEffect(() => {
@@ -459,18 +460,63 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
   }, [profilePoints, rx, ry, zoom, segments, renderMode, meshColor, panX, panY])
 
   // Drag to rotate handlers on 3D viewport
+  const getTouchDistance = (touches) => {
+    const dx = touches[0].clientX - touches[1].clientX
+    const dy = touches[0].clientY - touches[1].clientY
+    return Math.sqrt(dx * dx + dy * dy)
+  }
+
   const handle3DMouseDown = (e) => {
-    // If middle click (button 1), right click (button 2) or Shift key is held: it's a pan operation
-    const isPan = e.shiftKey || e.button === 1 || e.button === 2
+    const isTouch = !!e.touches
+    
+    if (isTouch && e.touches.length === 2) {
+      touchStartDistRef.current = getTouchDistance(e.touches)
+      setDragMode('pan')
+      setDragStart({
+        x: (e.touches[0].clientX + e.touches[1].clientX) / 2,
+        y: (e.touches[0].clientY + e.touches[1].clientY) / 2
+      })
+      setIsDragging3D(true)
+      return
+    }
+
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY
+
+    const isPan = isTouch 
+      ? false 
+      : (e.shiftKey || e.button === 1 || e.button === 2)
+
     setDragMode(isPan ? 'pan' : 'rotate')
-    setDragStart({ x: e.clientX, y: e.clientY })
+    setDragStart({ x: clientX, y: clientY })
     setIsDragging3D(true)
   }
 
   const handle3DMouseMove = (e) => {
     if (!isDragging3D || !dragStart) return
-    const dx = e.clientX - dragStart.x
-    const dy = e.clientY - dragStart.y
+    const isTouch = !!e.touches
+    
+    if (isTouch && e.touches.length === 2 && touchStartDistRef.current !== null) {
+      const dist = getTouchDistance(e.touches)
+      const diff = dist - touchStartDistRef.current
+      setZoom(prev => Math.max(0.4, Math.min(6.0, prev + diff * 0.01)))
+      touchStartDistRef.current = dist
+
+      const currentTouchX = (e.touches[0].clientX + e.touches[1].clientX) / 2
+      const currentTouchY = (e.touches[0].clientY + e.touches[1].clientY) / 2
+      const dx = currentTouchX - dragStart.x
+      const dy = currentTouchY - dragStart.y
+      setPanX(prev => prev + dx)
+      setPanY(prev => prev + dy)
+      setDragStart({ x: currentTouchX, y: currentTouchY })
+      return
+    }
+
+    const clientX = isTouch ? e.touches[0].clientX : e.clientX
+    const clientY = isTouch ? e.touches[0].clientY : e.clientY
+
+    const dx = clientX - dragStart.x
+    const dy = clientY - dragStart.y
     
     if (dragMode === 'pan') {
       setPanX(prev => prev + dx)
@@ -479,12 +525,13 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
       setRy(prev => prev + dx * 0.01)
       setRx(prev => prev + dy * 0.01)
     }
-    setDragStart({ x: e.clientX, y: e.clientY })
+    setDragStart({ x: clientX, y: clientY })
   }
 
   const handle3DMouseUp = () => {
     setIsDragging3D(false)
     setDragStart(null)
+    touchStartDistRef.current = null
   }
 
   const handle3DWheel = (e) => {
@@ -615,7 +662,7 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
   }
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="revolve-studio-container">
       <div style={styles.header}>
         <h2 style={styles.title}>
           <Rotate3d size={22} color="var(--theme-color-2)" className="spin-animation" style={{ animationDuration: '10s' }} />
@@ -626,7 +673,7 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
         </p>
       </div>
 
-      <div style={styles.workspaceGrid}>
+      <div style={styles.workspaceGrid} className="revolve-workspace-grid">
         {/* 2D Profile Drawing Pad */}
         <div className="glass-panel" style={{ ...styles.canvasPanel, flex: 1 }}>
           <div style={styles.panelTitleRow}>
@@ -695,6 +742,18 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
               onMouseMove={handle3DMouseMove}
               onMouseUp={handle3DMouseUp}
               onMouseLeave={handle3DMouseUp}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                handle3DMouseDown(e)
+              }}
+              onTouchMove={(e) => {
+                e.preventDefault()
+                handle3DMouseMove(e)
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault()
+                handle3DMouseUp()
+              }}
               onWheel={handle3DWheel}
               onContextMenu={(e) => e.preventDefault()}
             />
@@ -707,7 +766,7 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
 
         {/* Controls Sidebar */}
         <div 
-          className="glass-panel" 
+          className="glass-panel revolve-controls-panel" 
           style={{
             ...styles.controlsPanel,
             width: controlsOpen ? '300px' : '0px',
