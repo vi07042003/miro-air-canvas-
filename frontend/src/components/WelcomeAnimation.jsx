@@ -203,11 +203,11 @@ export default function WelcomeAnimation({ onComplete }) {
       {/* Skip Button hint at bottom */}
       <motion.div 
         initial={{ opacity: 0 }}
-        animate={{ opacity: 0.5 }}
-        transition={{ delay: 2.2, duration: 0.8 }}
+        animate={{ opacity: 0.6 }}
+        transition={{ delay: 0.8, duration: 0.8 }}
         style={styles.skipHint}
       >
-        <span>Click anywhere to skip intro</span>
+        <span>Skip this loading by clicking anywhere</span>
       </motion.div>
     </motion.div>
   )
