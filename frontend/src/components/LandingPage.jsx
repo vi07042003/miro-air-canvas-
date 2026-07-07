@@ -873,13 +873,13 @@ const styles = {
   },
   cardTitle: {
     fontFamily: 'var(--font-title)',
-    fontSize: '17px',
-    fontWeight: '500',
+    fontSize: '20px',
+    fontWeight: '600',
     letterSpacing: '-0.2px',
     lineHeight: '1.3',
   },
   cardText: {
-    color: 'var(--text-secondary)',
+    color: 'var(--text-primary)',
     fontSize: '14px',
     lineHeight: '1.65',
     fontWeight: '400',
