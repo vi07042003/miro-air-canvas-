@@ -108,6 +108,7 @@ function App() {
     
     root.style.setProperty('--theme-color-1-rgb', hexToRgb(theme.color1))
     root.style.setProperty('--theme-color-2-rgb', hexToRgb(theme.color2))
+    root.style.setProperty('--bg-dark-1-rgb', hexToRgb(theme.bg1 || '#0C121C'))
   }, [theme])
 
   // Reset editing drawing when user leaves the drawing workspaces
@@ -115,6 +116,23 @@ function App() {
     if (activePage !== 'canvas' && activePage !== 'revolve') {
       setEditingDrawing(null)
     }
+  }, [activePage])
+
+  // Track window scroll status for styling the sticky header
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    setScrolled(false)
   }, [activePage])
 
   // Change theme handler
@@ -1146,7 +1164,7 @@ function App() {
           >
 
           {/* Main Glass Header */}
-          <header className="header-glass">
+          <header className={`header-glass ${scrolled ? 'header-scrolled' : ''}`}>
             <motion.div 
               className="logo-container" 
               onClick={() => {

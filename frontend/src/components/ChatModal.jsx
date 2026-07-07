@@ -11,6 +11,7 @@ export default function ChatModal({
   onSendMessage,
   onEditMessage,
   onDeleteMessage,
+  onDeleteAllMessages = () => {},
   inline = false,
   onTyping = () => {},
   typingUsers = []
@@ -28,6 +29,7 @@ export default function ChatModal({
   const { showToast } = useToast()
   const [openDropdownId, setOpenDropdownId] = useState(null)
   const [deleteConfirmMsg, setDeleteConfirmMsg] = useState(null)
+  const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false)
 
   useEffect(() => {
     const handleOutsideClick = () => {
@@ -209,9 +211,21 @@ export default function ChatModal({
           <MessageSquare size={18} color="var(--theme-color-1)" />
           <span style={styles.title}>Session Chat</span>
         </div>
-        <button style={styles.closeBtn} onClick={onClose}>
-          <X size={18} color="#d4d4d8" />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {chatMessages.length > 0 && (
+            <button 
+              className="chat-delete-all-btn"
+              onClick={() => setShowDeleteAllConfirm(true)}
+              title="Clear All Messages"
+            >
+              <Trash2 size={14} style={{ marginRight: '4px' }} />
+              <span style={{ fontSize: '11px', fontWeight: '600' }}>Clear All</span>
+            </button>
+          )}
+          <button style={styles.closeBtn} onClick={onClose}>
+            <X size={18} color="#d4d4d8" />
+          </button>
+        </div>
       </div>
 
       {/* Messages list */}
@@ -597,6 +611,45 @@ export default function ChatModal({
                   className="glass-btn"
                   style={{ ...styles.deleteBtnOption, background: 'transparent', borderColor: 'transparent', color: 'var(--text-muted)' }}
                   onClick={() => setDeleteConfirmMsg(null)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete All Confirmation Modal Overlay */}
+      <AnimatePresence>
+        {showDeleteAllConfirm && (
+          <div style={styles.modalOverlay}>
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-panel-heavy"
+              style={styles.deleteConfirmModal}
+            >
+              <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#ffffff', fontWeight: '600' }}>Clear all messages?</h4>
+              <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                Are you sure you want to delete all messages in this session? This action cannot be undone.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  className="glass-btn-danger"
+                  style={styles.deleteBtnOption}
+                  onClick={() => {
+                    onDeleteAllMessages()
+                    setShowDeleteAllConfirm(false)
+                  }}
+                >
+                  Clear chat for everyone
+                </button>
+                <button
+                  className="glass-btn"
+                  style={{ ...styles.deleteBtnOption, background: 'transparent', borderColor: 'transparent', color: 'var(--text-muted)' }}
+                  onClick={() => setShowDeleteAllConfirm(false)}
                 >
                   Cancel
                 </button>

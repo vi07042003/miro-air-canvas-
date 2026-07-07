@@ -535,6 +535,13 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
     }
   }
 
+  const handleDeleteAllMessages = () => {
+    setChatMessages([])
+    if (collaboration && collaboration.active) {
+      collaboration.sendChatMessage('delete_all', null)
+    }
+  }
+
   const handleRemoteChatMessage = (msgPayload) => {
     const { action, chat, sender } = msgPayload
     if (action === 'send') {
@@ -550,6 +557,8 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
       }))
     } else if (action === 'delete') {
       setChatMessages(prev => prev.filter(msg => msg.id !== chat.id))
+    } else if (action === 'delete_all') {
+      setChatMessages([])
     }
   }
 
@@ -4216,6 +4225,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
                   onSendMessage={handleSendMessage}
                   onEditMessage={handleEditMessage}
                   onDeleteMessage={handleDeleteMessage}
+                  onDeleteAllMessages={handleDeleteAllMessages}
                   inline={true}
                   onTyping={(typing) => {
                     if (collaboration && collaboration.active) {
