@@ -62,11 +62,12 @@ function App() {
   const [glassOpacity, setGlassOpacity] = useState(() => {
     const saved = localStorage.getItem('glass_opacity')
     const savedVal = saved ? parseInt(saved, 10) : null
-    // Migrate users with the old bad default (80 = nearly invisible) to the good default (20)
+    // New users (no saved value) get a 50% glass transparency default
+    // Migrate users stuck on the old bad default (80 = nearly invisible) too
     // Users who explicitly picked a custom value (anything except 80) keep their choice
     if (savedVal === null || savedVal === 80) {
-      localStorage.setItem('glass_opacity', '20')
-      return 20
+      localStorage.setItem('glass_opacity', '50')
+      return 50
     }
     return savedVal
   })
