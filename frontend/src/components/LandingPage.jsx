@@ -225,55 +225,55 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
                 {/* House — left wall */}
                 <motion.path d="M140,220 L140,155"
                   fill="none" stroke="var(--theme-color-1)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow1)"
-                  animate={{ pathLength: [0,1,1,0,0,0] }}
+                  animate={{ pathLength: [0,1,1,0,0,0], opacity: [0,1,1,0,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.07, 0.55, 0.60, 0.95, 1] }}
                 />
                 {/* House — right wall */}
                 <motion.path d="M260,155 L260,220"
                   fill="none" stroke="var(--theme-color-1)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow1)"
-                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,1,1,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.07, 0.12, 0.55, 0.60, 1] }}
                 />
                 {/* House — floor */}
                 <motion.path d="M140,220 L260,220"
                   fill="none" stroke="var(--theme-color-1)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow1)"
-                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,1,1,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.12, 0.17, 0.55, 0.60, 1] }}
                 />
                 {/* House — roof left slope */}
                 <motion.path d="M140,155 L200,100"
                   fill="none" stroke="var(--theme-color-2)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow2)"
-                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,1,1,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.17, 0.22, 0.55, 0.60, 1] }}
                 />
                 {/* House — roof right slope */}
                 <motion.path d="M200,100 L260,155"
                   fill="none" stroke="var(--theme-color-2)" strokeWidth="2.5" strokeLinecap="round" filter="url(#glow2)"
-                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,1,1,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.22, 0.27, 0.55, 0.60, 1] }}
                 />
                 {/* House — door */}
                 <motion.path d="M185,220 L185,185 Q200,178 215,185 L215,220"
                   fill="none" stroke="var(--theme-color-1)" strokeWidth="2" strokeLinecap="round" filter="url(#glow1)"
-                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,1,1,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.27, 0.35, 0.55, 0.60, 1] }}
                 />
                 {/* House — window */}
                 <motion.path d="M155,175 L175,175 L175,195 L155,195 Z"
                   fill="none" stroke="var(--primary-pink)" strokeWidth="1.8" strokeLinecap="round" filter="url(#glow2)"
-                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,1,1,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.35, 0.42, 0.55, 0.60, 1] }}
                 />
                 {/* Window cross */}
                 <motion.path d="M165,175 L165,195 M155,185 L175,185"
                   fill="none" stroke="var(--primary-pink)" strokeWidth="1.2" strokeLinecap="round"
-                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,1,1,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.42, 0.46, 0.55, 0.60, 1] }}
                 />
                 {/* Chimney */}
                 <motion.path d="M230,120 L230,104 L242,104 L242,114"
                   fill="none" stroke="var(--primary-emerald)" strokeWidth="2" strokeLinecap="round"
-                  animate={{ pathLength: [0,0,1,1,0,0] }}
+                  animate={{ pathLength: [0,0,1,1,0,0], opacity: [0,0,1,1,0,0] }}
                   transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", times: [0, 0.46, 0.50, 0.55, 0.60, 1] }}
                 />
                 {/* Smoke puff */}
