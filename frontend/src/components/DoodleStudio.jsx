@@ -43,6 +43,7 @@ export default function DoodleStudio({ user }) {
   const [showKeyInput, setShowKeyInput] = useState(false)
   const [tempKey, setTempKey] = useState('')
   const [isSavingKey, setIsSavingKey] = useState(false)
+  const [isDeletingKey, setIsDeletingKey] = useState(false)
 
   const analysisTimeoutRef = useRef(null)
   const lastAnalysisTimeRef = useRef(0)
@@ -108,6 +109,29 @@ export default function DoodleStudio({ user }) {
       showToast("Error communicating with backend.", "error")
     } finally {
       setIsSavingKey(false)
+    }
+  }
+
+  const deleteGeminiKey = async () => {
+    setIsDeletingKey(true)
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/ai-sketch/delete-gemini-key`, {
+        method: 'DELETE'
+      })
+      if (res.ok) {
+        showToast("Gemini API key removed successfully.", "success")
+        setTempKey('')
+        setShowKeyInput(false)
+        await checkGeminiStatus()
+      } else {
+        const errData = await res.json()
+        showToast(errData.detail || "Failed to delete API key.", "error")
+      }
+    } catch (err) {
+      console.error("Error deleting Gemini key:", err)
+      showToast("Error communicating with backend.", "error")
+    } finally {
+      setIsDeletingKey(false)
     }
   }
 
@@ -621,20 +645,40 @@ export default function DoodleStudio({ user }) {
               </span>
             </div>
             
-            <button
-              type="button"
-              onClick={() => setShowKeyInput(!showKeyInput)}
-              className="glass-btn"
-              style={{
-                padding: '2px 8px',
-                fontSize: '10.5px',
-                minWidth: 'auto',
-                height: '24px',
-                borderColor: 'rgba(255,255,255,0.1)'
-              }}
-            >
-              {showKeyInput ? "Close" : isGeminiConfigured ? "Change Key" : "Configure Key"}
-            </button>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setShowKeyInput(!showKeyInput)}
+                className="glass-btn"
+                style={{
+                  padding: '2px 8px',
+                  fontSize: '10.5px',
+                  minWidth: 'auto',
+                  height: '24px',
+                  borderColor: 'rgba(255,255,255,0.1)'
+                }}
+              >
+                {showKeyInput ? "Close" : isGeminiConfigured ? "Change Key" : "Configure Key"}
+              </button>
+              {isGeminiConfigured && (
+                <button
+                  type="button"
+                  onClick={deleteGeminiKey}
+                  disabled={isDeletingKey}
+                  className="glass-btn"
+                  style={{
+                    padding: '2px 8px',
+                    fontSize: '10.5px',
+                    minWidth: 'auto',
+                    height: '24px',
+                    borderColor: 'rgba(255, 80, 80, 0.25)',
+                    color: 'rgba(255, 100, 100, 0.9)'
+                  }}
+                >
+                  {isDeletingKey ? "Deleting..." : "Delete Key"}
+                </button>
+              )}
+            </div>
           </div>
           
           {!isGeminiConfigured && !showKeyInput && (

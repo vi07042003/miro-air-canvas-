@@ -727,6 +727,18 @@ def update_gemini_key(payload: Dict[str, Any], db: Session = Depends(database.ge
 
     return {"message": "Gemini API key updated successfully"}
 
+@app.delete("/api/ai-sketch/delete-gemini-key")
+def delete_gemini_key(db: Session = Depends(database.get_db)):
+    """Remove the stored Gemini API key from the database and environment."""
+    import os
+    db_setting = db.query(models.Setting).filter(models.Setting.key == "GEMINI_API_KEY").first()
+    if db_setting:
+        db.delete(db_setting)
+        db.commit()
+    # Clear the in-memory env var so the change takes effect immediately
+    os.environ.pop("GEMINI_API_KEY", None)
+    return {"message": "Gemini API key deleted successfully"}
+
 MAX_STENCIL_USAGE = 10
 
 def generate_ai_stencil(keyword: str) -> str:
