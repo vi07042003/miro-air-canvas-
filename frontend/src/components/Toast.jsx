@@ -115,23 +115,81 @@ const TOAST_STYLES = `
     z-index: 8;
   }
 
-  /* Water Condensation Beads on the Glass */
-  .condensation-bead {
+  /* Glass Reflections and Sheen */
+  .glass-reflection-highlight-top {
     position: absolute;
-    background: rgba(255, 255, 255, 0.22);
-    border-radius: 50%;
-    box-shadow: 
-      inset -1px -1px 2px rgba(0,0,0,0.6), 
-      inset 1px 1px 1px rgba(255,255,255,0.7), 
-      1px 1.5px 2px rgba(0,0,0,0.35);
-    filter: blur(0.3px);
+    top: 1px;
+    left: 20px;
+    right: 20px;
+    height: 4px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.45) 0%, transparent 100%);
+    border-radius: 2px;
     pointer-events: none;
-    opacity: 0.75;
+    z-index: 4;
   }
+
+  .glass-reflection-highlight-bottom {
+    position: absolute;
+    bottom: 1px;
+    left: 20px;
+    right: 20px;
+    height: 3px;
+    background: linear-gradient(to top, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+    border-radius: 1.5px;
+    pointer-events: none;
+    z-index: 4;
+  }
+
+  .glass-reflection-diagonal {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      115deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      rgba(255, 255, 255, 0.08) 12%,
+      transparent 12%,
+      transparent 38%,
+      rgba(255, 255, 255, 0.07) 38%,
+      rgba(255, 255, 255, 0.14) 40%,
+      rgba(255, 255, 255, 0.07) 42%,
+      transparent 42%,
+      transparent 100%
+    );
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .glass-reflection-specular-left {
+    position: absolute;
+    top: -20px;
+    left: -20px;
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 4;
+    filter: blur(2px);
+  }
+
+  .glass-reflection-specular-right {
+    position: absolute;
+    bottom: -30px;
+    right: -10px;
+    width: 100px;
+    height: 80px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, transparent 75%);
+    pointer-events: none;
+    z-index: 4;
+    filter: blur(3px);
+  }
+
 
   /* Water Ripple Animation */
   @keyframes ripple-wave {
-    0% {v
+    0% {
       transform: translate(-50%, -50%) scale(0.05);
       opacity: 0.85;
     }
@@ -591,12 +649,12 @@ export const ToastProvider = ({ children }) => {
               {/* Inner Ripple spreading on impact */}
               <div className="water-ripple-layer" />
 
-              {/* Condensation beads on glass */}
-              <div className="condensation-bead" style={{ width: '4px', height: '4px', top: '15%', left: '8%' }} />
-              <div className="condensation-bead" style={{ width: '5px', height: '5px', top: '70%', left: '15%' }} />
-              <div className="condensation-bead" style={{ width: '3px', height: '3px', top: '25%', left: '85%' }} />
-              <div className="condensation-bead" style={{ width: '4px', height: '4px', top: '60%', left: '92%' }} />
-              <div className="condensation-bead" style={{ width: '6px', height: '6px', top: '45%', left: '94%' }} />
+              {/* Glass reflections & sheen */}
+              <div className="glass-reflection-highlight-top" />
+              <div className="glass-reflection-highlight-bottom" />
+              <div className="glass-reflection-diagonal" />
+              <div className="glass-reflection-specular-left" />
+              <div className="glass-reflection-specular-right" />
 
               {/* Water sheen overlay gradient */}
               <div style={{
