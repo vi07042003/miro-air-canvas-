@@ -1113,13 +1113,14 @@ const styles = {
   },
   stepTitle: {
     fontWeight: '600',
-    fontSize: '14px',
+    fontSize: '17px',
+    fontStyle: 'italic',
     color: '#fff',
     fontFamily: 'var(--font-accent)',
   },
   stepText: {
     fontSize: '13px',
-    color: 'var(--text-secondary)',
+    color: 'var(--text-primary)',
     lineHeight: '1.4',
   },
   modalFooter: {
