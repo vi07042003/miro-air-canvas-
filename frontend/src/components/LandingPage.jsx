@@ -643,7 +643,7 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
                     scaleY: 1, 
                     borderRadius: "24px",
                     y: 0,
-                    filter: "none",
+                    filter: "blur(0px)",
                     transformOrigin: "center bottom",
                     transition: { 
                       y: {
