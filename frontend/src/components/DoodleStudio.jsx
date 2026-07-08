@@ -477,12 +477,22 @@ export default function DoodleStudio({ user }) {
           </div>
           <button 
             onClick={clearCanvas} 
+            disabled={isCanvasBlank}
             className="glass-btn" 
-            title="Clear drawing"
-            style={{ padding: '6px 12px', minWidth: 'auto', display: 'flex', alignItems: 'center', gap: '6px', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+            title={isCanvasBlank ? "Canvas is already empty" : "Clear drawing"}
+            style={{ 
+              padding: '6px 12px', 
+              minWidth: 'auto', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '6px', 
+              borderColor: isCanvasBlank ? 'rgba(255, 255, 255, 0.05)' : 'rgba(239, 68, 68, 0.3)',
+              opacity: isCanvasBlank ? 0.4 : 1,
+              cursor: isCanvasBlank ? 'not-allowed' : 'pointer'
+            }}
           >
-            <Trash2 size={14} color="#f87171" />
-            <span style={{ color: '#f87171', fontSize: '12px' }}>Clear</span>
+            <Trash2 size={14} color={isCanvasBlank ? "rgba(255, 255, 255, 0.4)" : "#f87171"} />
+            <span style={{ color: isCanvasBlank ? "rgba(255, 255, 255, 0.4)" : '#f87171', fontSize: '12px' }}>Clear</span>
           </button>
         </div>
 
@@ -622,7 +632,7 @@ export default function DoodleStudio({ user }) {
           lineHeight: '1.4'
         }}>
           <span style={{ color: 'var(--theme-color-1)' }}>💡</span>
-          <span><strong>Tip:</strong> Click <strong>"Analyze Sketch"</strong> first to let the AI understand your drawing, then click <strong>"Generate Art"</strong> to create your image!</span>
+          <span><strong>Tip:</strong> Click <strong>"Generate Art"</strong> to automatically analyze your drawing and render it into beautiful artwork! Optionally, click <strong>"Analyze Sketch"</strong> first to preview what shape the AI detects.</span>
         </div>
 
         {/* Gemini API Key Configuration Panel */}
@@ -1017,15 +1027,15 @@ export default function DoodleStudio({ user }) {
             <button
               type="submit"
               className="glass-btn glass-btn-primary"
-              disabled={generating || usageCount >= maxUsage || !detectedObject}
-              title={!detectedObject ? "Please click 'Analyze Sketch' first" : "Generate artwork"}
+              disabled={generating || usageCount >= maxUsage || isCanvasBlank}
+              title={isCanvasBlank ? "Please draw something on the canvas first" : "Generate artwork"}
               style={{
                 fontSize: '12px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                opacity: (!detectedObject && !generating) ? 0.4 : 1,
-                cursor: !detectedObject ? 'not-allowed' : 'pointer'
+                opacity: (isCanvasBlank || generating) ? 0.4 : 1,
+                cursor: isCanvasBlank ? 'not-allowed' : 'pointer'
               }}
             >
               {generating ? (
