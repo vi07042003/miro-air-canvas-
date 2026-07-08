@@ -86,7 +86,7 @@ export default function CollaborationPage({
       <div style={styles.header}>
         <div style={styles.headerTitleRow}>
           <div className="logo-icon" style={{ padding: '8px', width: '48px', height: '48px' }}>
-            <Users size={24} color="#ffffff" />
+            <Users size={35} color="#ffffff" />
           </div>
           <div>
             <h1 style={styles.title}>Live Collaboration</h1>
