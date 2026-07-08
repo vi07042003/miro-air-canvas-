@@ -412,7 +412,7 @@ export default function AIStencils({ user, onApplyStencil }) {
 
 const styles = {
   pageContainer: {
-    width: '100%',
+    width: '90%',
     maxWidth: '100%',
     margin: '0 auto',
     padding: '0',

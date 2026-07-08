@@ -910,7 +910,7 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
 
 const styles = {
   container: {
-    width: '100%',
+    width: '90%',
     maxWidth: '100%',
     margin: '0 auto',
     padding: '0',
@@ -976,7 +976,7 @@ const styles = {
     flexDirection: 'column',
     gap: '12px',
     padding: '16px',
-    height: '100%',
+    height: '90%',
     minHeight: 0
   },
   panelTitleRow: {
@@ -1045,7 +1045,7 @@ const styles = {
     flexDirection: 'column',
     gap: '20px',
     padding: '16px',
-    height: '100%',
+    height: '90%',
     minHeight: 0,
     overflowY: 'auto'
   },
