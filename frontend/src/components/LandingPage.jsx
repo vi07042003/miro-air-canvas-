@@ -677,8 +677,8 @@ export default function LandingPage({ onStartCanvas, onStartCollaboration }) {
                     }
                   }
                 }}
-                className="glass-panel-heavy modal-content-scroll"
-                style={{ ...styles.modalContent, transformStyle: 'preserve-3d', overflow: 'hidden' }}
+                className="glass-panel-heavy modal-content-scroll how-it-works-modal-content"
+                style={{ ...styles.modalContent, transformStyle: 'preserve-3d', overflowY: 'auto' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <div style={styles.modalHeader}>

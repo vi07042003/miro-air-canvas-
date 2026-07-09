@@ -116,7 +116,7 @@ export default function AIStencils({ user, onApplyStencil }) {
   const usagePercentage = Math.min(100, (usage.count / usage.max) * 100)
 
   return (
-    <div style={styles.pageContainer}>
+    <div className="ai-stencils-container" style={styles.pageContainer}>
       {/* Page Header */}
       <div style={styles.header}>
         <div style={styles.headerTitleRow}>
@@ -130,7 +130,7 @@ export default function AIStencils({ user, onApplyStencil }) {
         </div>
       </div>
 
-      <div style={styles.contentGrid}>
+      <div className="ai-stencils-grid" style={styles.contentGrid}>
         {/* Left Column - Forms & Limits */}
         <div style={styles.leftColumn}>
           <div className="glass-panel-heavy" style={{ ...styles.panel, flex: 1 }}>

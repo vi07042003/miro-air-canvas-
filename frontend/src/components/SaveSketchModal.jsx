@@ -110,7 +110,7 @@ export default function SaveSketchModal({
               }
             }}
             className="glass-panel-heavy modal-content-scroll"
-            style={{ ...styles.modalContent, transformStyle: 'preserve-3d', overflow: 'hidden' }}
+            style={{ ...styles.modalContent, transformStyle: 'preserve-3d', overflowY: 'auto' }}
             onClick={e => e.stopPropagation()}
           >
             <h2 style={styles.modalTitle}>{initialDrawing ? 'Update Sketch in Database' : 'Save Sketch to Database'}</h2>

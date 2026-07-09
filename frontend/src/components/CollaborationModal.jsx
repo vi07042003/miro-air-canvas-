@@ -156,7 +156,7 @@ export default function CollaborationModal({
             }
           }
         }}
-        className="glass-panel-heavy"
+        className="glass-panel-heavy modal-content-scroll"
         style={styles.modalContent}
         onClick={(e) => e.stopPropagation()}
       >

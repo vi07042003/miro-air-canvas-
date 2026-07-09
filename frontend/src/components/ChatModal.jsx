@@ -202,7 +202,7 @@ export default function ChatModal({
       animate={inline ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
       exit={inline ? { opacity: 0 } : { opacity: 0, y: 30, scale: 0.95 }}
       transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-      className={inline ? "" : "glass-panel-heavy"}
+      className={inline ? "" : "glass-panel-heavy chat-modal-window"}
       style={containerStyle}
     >
       {/* Header */}

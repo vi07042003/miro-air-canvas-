@@ -1884,8 +1884,8 @@ function App() {
                         }
                       }
                     }}
-                    className="glass-panel-heavy"
-                    style={{ ...styles.modalContent, transformStyle: 'preserve-3d', overflow: 'hidden' }}
+                    className="glass-panel-heavy modal-content-scroll profile-modal-content"
+                    style={{ ...styles.modalContent, transformStyle: 'preserve-3d', overflowY: 'auto' }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div style={styles.modalHeader}>

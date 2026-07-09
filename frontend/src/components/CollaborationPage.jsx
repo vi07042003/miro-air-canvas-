@@ -95,7 +95,7 @@ export default function CollaborationPage({
         </div>
       </div>
 
-      <div style={styles.contentGrid}>
+      <div className="collab-content-grid" style={styles.contentGrid}>
         {/* Left Column - Create Room */}
         <div style={styles.column}>
           <div className="glass-panel-heavy" style={styles.panel}>

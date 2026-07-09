@@ -1828,4 +1828,165 @@ body::before {
   .main-content-area {
     padding: 12px 8px !important;
   }
+
+  /* Modal Content Scrolling & Responsiveness */
+  .modal-content-scroll {
+    width: 95% !important;
+    max-width: 100% !important;
+    margin: auto !important;
+    padding: 16px 14px !important;
+    gap: 16px !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+
+  /* Chat Modal responsiveness */
+  .chat-modal-window {
+    width: 90% !important;
+    max-width: 380px !important;
+    height: 70vh !important;
+    max-height: 480px !important;
+    bottom: 80px !important;
+    right: 5% !important;
+    left: auto !important;
+  }
+
+  /* Doodle Studio grid stacking on mobile */
+  .doodle-studio-grid {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    overflow-y: visible !important;
+    gap: 24px !important;
+    padding-bottom: 80px !important;
+  }
+  
+  .doodle-studio-grid > div {
+    height: 540px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Collaboration Page Grid stacking on mobile */
+  .collab-content-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+
+  /* Settings Page responsive styling */
+  .settings-container {
+    padding: 16px 12px !important;
+    gap: 20px !important;
+  }
+
+  /* Hide Revolve Studio toggle handle on mobile as drawer is open/stacked inline */
+  .revolve-workspace-grid button.drawer-toggle-handle {
+    display: none !important;
+  }
+
+  /* AI Stencils Page Responsiveness */
+  .ai-stencils-container {
+    height: auto !important;
+    overflow-y: visible !important;
+    padding-bottom: 80px !important;
+  }
+
+  .ai-stencils-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    height: auto !important;
+  }
+
+  .ai-stencils-grid form > div {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .ai-stencils-grid button[style*="minWidth"],
+  .ai-stencils-grid button[style*="min-width"] {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  .ai-stencils-grid div[style*="minHeight"],
+  .ai-stencils-grid div[style*="min-height"] {
+    min-height: 280px !important;
+    height: 280px !important;
+  }
+
+  .ai-stencils-grid div[style*="marginTop: '20px'"],
+  .ai-stencils-grid div[style*="margin-top: 20px"] {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  /* AirCanvas Mobile Layout Fixes */
+  .aircanvas-container {
+    padding: 12px 10px 10px 10px !important;
+    gap: 12px !important;
+  }
+
+  .aircanvas-topbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .aircanvas-topbar > div:first-child {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  .aircanvas-actions {
+    width: 100% !important;
+    gap: 6px !important;
+  }
+
+  .aircanvas-actions button {
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+    height: 32px !important;
+    flex-grow: 1 !important;
+    justify-content: center !important;
+  }
+
+  .aircanvas-actions button svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .aircanvas-workspace .canvas-main-column {
+    height: 100% !important;
+  }
+
+  .aircanvas-workspace .canvas-main-column > .glass-panel {
+    flex: 1 !important;
+    height: auto !important;
+  }
+
+  /* Profile Modal responsiveness */
+  .profile-modal-content {
+    max-width: 360px !important;
+    padding: 16px !important;
+    gap: 14px !important;
+  }
+
+  .profile-modal-content form {
+    gap: 12px !important;
+  }
+
+  /* How It Works Modal responsiveness */
+  .how-it-works-modal-content {
+    max-width: 440px !important;
+    padding: 16px !important;
+    gap: 14px !important;
+  }
+
+  .how-it-works-modal-content p {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+  }
+
+  .how-it-works-modal-content div[style*="background"] {
+    padding: 10px 14px !important;
+    gap: 4px !important;
+  }
 }

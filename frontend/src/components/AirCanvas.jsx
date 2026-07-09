@@ -3689,9 +3689,9 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
   const isCanvasEmpty = canvasMode === '3d' ? is3DEmpty : is2DEmpty
 
   return (
-    <div className="fade-in" style={styles.container}>
+    <div className="fade-in aircanvas-container" style={styles.container}>
       {/* Top action bar */}
-      <div style={styles.topBar}>
+      <div className="aircanvas-topbar" style={styles.topBar}>
         <div style={styles.gestureStatus}>
           <button 
             className={`glass-btn ${leftDrawerOpen ? 'glass-btn-active' : ''}`}
@@ -3765,7 +3765,7 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
           </div>
         )}
 
-        <div style={styles.actionButtons}>
+        <div className="aircanvas-actions" style={styles.actionButtons}>
           <div style={styles.segmentedControl}>
             <button 
               style={canvasMode === '2d' ? styles.segmentedBtnActive : styles.segmentedBtn}

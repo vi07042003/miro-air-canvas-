@@ -445,7 +445,7 @@ export default function DoodleStudio({ user }) {
   }
 
   return (
-    <div style={{
+    <div className="doodle-studio-grid" style={{
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
       gap: '20px',

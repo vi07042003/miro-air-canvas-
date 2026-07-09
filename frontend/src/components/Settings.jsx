@@ -288,7 +288,7 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
   }
 
   return (
-    <div className="fade-in" style={styles.container}>
+    <div className="fade-in settings-container" style={styles.container}>
       <h1 style={styles.title}>System Settings</h1>
       
       <div style={styles.layout}>

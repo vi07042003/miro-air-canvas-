@@ -296,9 +296,50 @@ const TOAST_STYLES = `
     height: 7px;
     border-radius: 50%;
     background: var(--toast-accent-color, #00f2fe);
-    box-shadow: 0 0 8px var(--toast-accent-color, #00f2fe);
     pointer-events: none;
     z-index: 9;
+  }
+
+  @media (max-width: 768px) {
+    .toast-liquid-capsule {
+      min-width: 260px !important;
+      max-width: 325px !important;
+      min-height: 48px !important;
+      padding: 8px 14px !important;
+      gap: 10px !important;
+      border-radius: 24px !important;
+      top: 24px !important;
+    }
+    
+    .toast-liquid-icon-container {
+      width: 28px !important;
+      height: 28px !important;
+    }
+    
+    .toast-liquid-icon-container svg {
+      width: 13px !important;
+      height: 13px !important;
+    }
+    
+    .toast-liquid-icon-container::after {
+      top: 2px !important;
+      left: 5px !important;
+      width: 8px !important;
+      height: 4px !important;
+    }
+    
+    .toast-liquid-title {
+      font-size: 12px !important;
+    }
+    
+    .toast-liquid-msg {
+      font-size: 11px !important;
+    }
+
+    .toast-liquid-capsule svg rect {
+      rx: 23px !important;
+      ry: 23px !important;
+    }
   }
 `
 
