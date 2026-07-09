@@ -117,15 +117,8 @@ You can configure the Gemini API Key in two ways:
 1. Launch AeroCanvas and navigate to **Doodle Art**.
 2. Scroll to the bottom of the drawing board to the **API Key** configuration panel.
 3. Click **Configure Key**, paste your Gemini API key, and click **Save**.
-4. The system will automatically validate the key with Google and save it to the backend environment dynamically.
-
-#### Option B: Via `.env` File
-1. In the `backend/` directory, create or open the `.env` file.
-2. Add the following line:
-   ```env
-   GEMINI_API_KEY=your_actual_api_key_here
-   ```
-3. Save the file. The backend will automatically detect and reload the key.
+4. The system will automatically validate the key with Google and save it to the backend database dynamically.
+5. user can also delete the key after use 
 
 > [!NOTE]
 > If no Gemini API Key is configured, AeroCanvas will automatically run on **Secondary Fallback Mode** (using free Hugging Face BLIP or Pollinations AI vision models). While functional, sketch recognition accuracy may be lower.
