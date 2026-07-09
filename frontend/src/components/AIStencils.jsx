@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, ArrowRight, Download, HelpCircle, RefreshCw, Layers, Check, Search } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import { useToast } from './Toast'
+import { getFriendlyErrorMessage } from '../utils/errorHelper'
 
 export default function AIStencils({ user, onApplyStencil }) {
   const { showToast } = useToast()
@@ -63,7 +64,7 @@ export default function AIStencils({ user, onApplyStencil }) {
 
       const data = await response.json()
       if (!response.ok) {
-        setError(data.detail || 'Failed to generate stencil')
+        setError(getFriendlyErrorMessage(data.detail || data, 'Failed to generate stencil'))
       } else {
         // Fetch the image from the returned stencil_url in the browser to avoid server timeout
         const imgRes = await fetch(data.stencil_url)
@@ -81,9 +82,9 @@ export default function AIStencils({ user, onApplyStencil }) {
         showToast(`AI Stencil for "${promptKeyword}" generated!`, 'ai')
       }
     } catch (err) {
-      setError(err.message === "Failed to load image from generator"
+      setError(getFriendlyErrorMessage(err, err.message === "Failed to load image from generator"
         ? 'Failed to fetch the image from AI service. Please try again.'
-        : 'Network error. Failed to connect to server.')
+        : 'Network error. Failed to connect to server.'))
       console.error(err)
     } finally {
       setLoading(false)

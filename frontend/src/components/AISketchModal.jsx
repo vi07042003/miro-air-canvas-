@@ -4,6 +4,7 @@ import { Sparkles, HelpCircle, Key, Cpu, ToggleLeft, ToggleRight, Layers, Chevro
 import { motion, AnimatePresence } from 'framer-motion'
 import { BACKEND_URL } from '../App'
 import { useToast } from './Toast'
+import { getFriendlyErrorMessage } from '../utils/errorHelper'
 
 export default function AISketchModal({
   isOpen,
@@ -22,6 +23,7 @@ export default function AISketchModal({
   const [error, setError] = useState('')
   const [serviceUsed, setServiceUsed] = useState('')
   const [isModelSelectOpen, setIsModelSelectOpen] = useState(false)
+  const [showTokenHelp, setShowTokenHelp] = useState(false)
 
   // Auto-close model dropdown when clicking outside
   useEffect(() => {
@@ -152,8 +154,7 @@ export default function AISketchModal({
       showToast(`AI Sketch outline for "${prompt.trim()}" generated!`, 'ai')
       onClose()
     } catch (err) {
-      const rawMsg = err.message || 'Error connecting to server';
-      setError(typeof rawMsg === 'object' ? JSON.stringify(rawMsg) : String(rawMsg));
+      setError(getFriendlyErrorMessage(err, 'Failed to connect to backend server.'));
       fetchUsage()
     } finally {
       setGenerating(false)

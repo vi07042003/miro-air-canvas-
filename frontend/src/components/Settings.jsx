@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Palette, Save, Camera, ChevronDown } from 'lucide-react'
 import { BACKEND_URL } from '../App'
+import { getFriendlyErrorMessage } from '../utils/errorHelper'
 
 import auroraSkyImg from '../assets/aurora_sky.png'
 import liquidPearlImg from '../assets/liquid_pearl.png'
@@ -276,10 +277,11 @@ export default function Settings({ onThemeChange, activeThemeName, glassOpacity,
         setSettingsMessage('Settings saved successfully!')
         setTimeout(() => setSettingsMessage(''), 3000)
       } else {
-        setSettingsMessage('Failed to save settings')
+        const data = await res.json().catch(() => null)
+        setSettingsMessage(getFriendlyErrorMessage(data?.detail || data, 'Failed to save settings'))
       }
     } catch (e) {
-      setSettingsMessage('Error saving settings')
+      setSettingsMessage(getFriendlyErrorMessage(e, 'Error saving settings'))
     } finally {
       setLoadingSettings(false)
     }

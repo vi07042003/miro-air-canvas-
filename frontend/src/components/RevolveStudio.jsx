@@ -6,6 +6,7 @@ import { useToast } from './Toast'
 import SaveSketchModal from './SaveSketchModal'
 import { PRESET_COLORS, styles as modalStyles } from './AirCanvas.constants'
 import { BACKEND_URL } from '../App'
+import { getFriendlyErrorMessage } from '../utils/errorHelper'
 
 const getBgColor = () => {
   if (typeof window !== 'undefined') {
@@ -647,13 +648,13 @@ export default function RevolveStudio({ user, initialDrawing, onDrawingCleared, 
         }, 1000)
       } else {
         const data = await res.json()
-        const errorMsg = data.detail || (isUpdate ? 'Failed to update model' : 'Failed to save model')
+        const errorMsg = getFriendlyErrorMessage(data.detail || data, isUpdate ? 'Failed to update model' : 'Failed to save model')
         setDbMessage(errorMsg)
         showToast(errorMsg, 'error')
       }
     } catch (err) {
       console.error(err)
-      const errorMsg = 'Server connection error'
+      const errorMsg = getFriendlyErrorMessage(err, 'Server connection error')
       setDbMessage(errorMsg)
       showToast(errorMsg, 'error')
     } finally {

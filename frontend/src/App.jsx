@@ -13,6 +13,7 @@ import DoodleStudio from './components/DoodleStudio'
 import CollaborationPage from './components/CollaborationPage'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useToast } from './components/Toast'
+import { getFriendlyErrorMessage } from './utils/errorHelper'
 
 // Backend URL configuration
 export const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -178,12 +179,14 @@ function App() {
           'Authorization': `Bearer ${user.token}`
         }
       })
-      if (!res.ok) throw new Error('Failed to create room')
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.detail || 'Failed to create room')
+      }
       const data = await res.json()
       return data.room_code
     } catch (err) {
-      showToast('Error creating collaboration session', 'error')
-      console.error(err)
+      showToast(getFriendlyErrorMessage(err, 'Error creating collaboration session'), 'error')
       return null
     }
   }
@@ -313,7 +316,7 @@ function App() {
 
       const data = await response.json()
       if (!response.ok) {
-        setProfileMessage(data.detail || 'Failed to update profile')
+        setProfileMessage(getFriendlyErrorMessage(data.detail || data, 'Failed to update profile'))
       } else {
         // Update user state
         setUser({ username: data.username, token: data.token, profilePicture: data.profile_picture })
@@ -331,7 +334,7 @@ function App() {
         }, 1500)
       }
     } catch (err) {
-      setProfileMessage('Error connecting to backend')
+      setProfileMessage(getFriendlyErrorMessage(err, 'Error connecting to backend'))
     } finally {
       setProfileLoading(false)
     }

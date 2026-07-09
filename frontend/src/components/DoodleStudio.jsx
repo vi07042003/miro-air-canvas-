@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Wand2, Download, Trash2, Eraser, Paintbrush, RotateCcw } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import { useToast } from './Toast'
+import { getFriendlyErrorMessage } from '../utils/errorHelper'
 
 const getBgColor = () => {
   if (typeof window !== 'undefined') {
@@ -102,11 +103,11 @@ export default function DoodleStudio({ user }) {
         await checkGeminiStatus()
       } else {
         const errData = await res.json()
-        showToast(errData.detail || "Failed to update API key.", "error")
+        showToast(getFriendlyErrorMessage(errData.detail || errData, "Failed to update API key."), "error")
       }
     } catch (err) {
       console.error("Error saving Gemini key:", err)
-      showToast("Error communicating with backend.", "error")
+      showToast(getFriendlyErrorMessage(err, "Error communicating with backend."), "error")
     } finally {
       setIsSavingKey(false)
     }
@@ -125,11 +126,11 @@ export default function DoodleStudio({ user }) {
         await checkGeminiStatus()
       } else {
         const errData = await res.json()
-        showToast(errData.detail || "Failed to delete API key.", "error")
+        showToast(getFriendlyErrorMessage(errData.detail || errData, "Failed to delete API key."), "error")
       }
     } catch (err) {
       console.error("Error deleting Gemini key:", err)
-      showToast("Error communicating with backend.", "error")
+      showToast(getFriendlyErrorMessage(err, "Error communicating with backend."), "error")
     } finally {
       setIsDeletingKey(false)
     }
@@ -419,13 +420,14 @@ export default function DoodleStudio({ user }) {
         showToast("Artwork generated successfully!", "success")
       } else {
         const data = await res.json()
-        setError(data.detail || "Failed to generate artwork. Please try again.")
-        showToast("Generation failed", "error")
+        const errMsg = getFriendlyErrorMessage(data.detail || data, "Failed to generate artwork. Please try again.")
+        setError(errMsg)
+        showToast(errMsg, "error")
       }
     } catch (err) {
-      console.error(err)
-      setError("Failed to connect to backend server.")
-      showToast("Server connection error", "error")
+      const errMsg = getFriendlyErrorMessage(err, "Failed to connect to backend server.")
+      setError(errMsg)
+      showToast(errMsg, "error")
     } finally {
       setGenerating(false)
     }

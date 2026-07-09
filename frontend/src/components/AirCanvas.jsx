@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import { useToast } from './Toast'
+import { getFriendlyErrorMessage } from '../utils/errorHelper'
 import { 
   project3DPoint, unprojectPoint, drawViewportGrid, drawAxisHelper, 
   getMesh, drawMesh, draw3DStroke, generateOBJString 
@@ -3652,13 +3653,13 @@ export default function AirCanvas({ initialDrawing, onDrawingCleared, onDrawingS
         }, 1000)
       } else {
         const data = await res.json()
-        const errorMsg = data.detail || (isUpdate ? 'Failed to update sketch' : 'Failed to save sketch')
+        const errorMsg = getFriendlyErrorMessage(data.detail || data, isUpdate ? 'Failed to update sketch' : 'Failed to save sketch')
         setDbMessage(errorMsg)
         showToast(errorMsg, 'error')
       }
     } catch (err) {
       console.error(err)
-      const errorMsg = 'Server connection error'
+      const errorMsg = getFriendlyErrorMessage(err, 'Server connection error')
       setDbMessage(errorMsg)
       showToast(errorMsg, 'error')
     } finally {

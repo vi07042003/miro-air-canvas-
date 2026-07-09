@@ -5,6 +5,7 @@ import { BACKEND_URL } from '../App'
 import GlassDialog from './GlassDialog'
 import { useToast } from './Toast'
 import { motion, AnimatePresence } from 'framer-motion'
+import { getFriendlyErrorMessage } from '../utils/errorHelper'
 
 export default function Gallery({ onEditDrawing }) {
   const { showToast } = useToast()
@@ -53,11 +54,11 @@ export default function Gallery({ onEditDrawing }) {
         setDrawings(data)
       } else {
         const data = await res.json()
-        setErrorMsg(data.detail || 'Failed to retrieve drawings')
+        setErrorMsg(getFriendlyErrorMessage(data.detail || data, 'Failed to retrieve drawings'))
       }
     } catch (e) {
       console.error('Error fetching drawings:', e)
-      setErrorMsg('Failed to connect to the backend server')
+      setErrorMsg(getFriendlyErrorMessage(e, 'Failed to connect to the backend server'))
     } finally {
       setLoading(false)
     }
@@ -100,7 +101,7 @@ export default function Gallery({ onEditDrawing }) {
               isOpen: true,
               type: 'alert',
               title: 'Error',
-              message: data.detail || 'Could not delete drawing',
+              message: getFriendlyErrorMessage(data.detail || data, 'Could not delete drawing'),
               confirmText: 'OK',
               onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
             })
@@ -111,7 +112,7 @@ export default function Gallery({ onEditDrawing }) {
             isOpen: true,
             type: 'alert',
             title: 'Network Error',
-            message: 'A network error occurred. Please check your connection and try again.',
+            message: getFriendlyErrorMessage(err, 'A network error occurred. Please check your connection and try again.'),
             confirmText: 'OK',
             onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false }))
           })

@@ -84,13 +84,15 @@ export function useCollaboration({
           'Authorization': `Bearer ${user.token}`
         }
       })
-      if (!res.ok) throw new Error('Failed to create room')
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.detail || 'Failed to create room')
+      }
       const data = await res.json()
       setRoomCode(data.room_code)
       return data.room_code
     } catch (err) {
-      showToast('Error creating collaboration session', 'error')
-      console.error(err)
+      showToast(getFriendlyErrorMessage(err, 'Error creating collaboration session'), 'error')
       return null
     }
   }

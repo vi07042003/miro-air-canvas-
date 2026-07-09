@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { User, Lock, LogIn, UserPlus, Sparkles, AlertCircle } from 'lucide-react'
 import { BACKEND_URL } from '../App'
+import { getFriendlyErrorMessage } from '../utils/errorHelper'
 
 export default function Auth({ onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true)
@@ -42,10 +43,10 @@ export default function Auth({ onLoginSuccess }) {
       if (res.ok) {
         onLoginSuccess(data.username, data.token, data.profile_picture)
       } else {
-        setError(data.detail || 'Authentication failed')
+        setError(getFriendlyErrorMessage(data.detail || data, 'Authentication failed. Please check your credentials.'))
       }
     } catch (err) {
-      setError('Connection to server failed. Please ensure the backend is running.')
+      setError(getFriendlyErrorMessage(err, 'Could not connect to the server. Please verify the backend is running.'))
     } finally {
       setLoading(false)
     }
