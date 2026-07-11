@@ -27,7 +27,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/miro
+      - DATABASE_URL=postgresql://postgres:postgres@aerocanvas-db:5432/miro
       - JWT_SECRET_KEY=aerocanvas_glowing_liquid_glass_key_2026
     volumes:
       - ./backend:/app

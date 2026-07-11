@@ -37,23 +37,28 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", "aerocanvas_glowing_liquid_glass_key_20
 
 # Utility Hashing Functions
 def hash_password(password: str) -> str:
-    """Hash password using SHA-256 with PBKDF2."""
-    salt = secrets.token_hex(16)
-    key = hashlib.pbkdf2_hmac(
-        'sha256',
-        password.encode('utf-8'),
-        salt.encode('utf-8'),
-        100000
-    )
-    return f"{salt}:{key.hex()}"
+    """Hash password using bcrypt."""
+    import bcrypt
+    password_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode('utf-8')
 
 def verify_password(password: str, hashed_password: str) -> bool:
-    """Verify password match against stored hash."""
+    """Verify password match against stored hash (supporting both bcrypt and legacy PBKDF2-SHA256)."""
     try:
+        import bcrypt
+        password_bytes = password.encode('utf-8')
+        
+        # Check if it is a bcrypt hash (starts with $2a$ or $2b$)
+        if hashed_password.startswith('$2a$') or hashed_password.startswith('$2b$'):
+            return bcrypt.checkpw(password_bytes, hashed_password.encode('utf-8'))
+        
+        # Fallback to legacy PBKDF2-SHA256
         salt, hex_key = hashed_password.split(':')
         key = hashlib.pbkdf2_hmac(
             'sha256',
-            password.encode('utf-8'),
+            password_bytes,
             salt.encode('utf-8'),
             100000
         )
@@ -203,6 +208,14 @@ def login(user_in: UserAuthSchema, db: Session = Depends(database.get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password"
         )
+
+    # Upgrade to bcrypt if it was a legacy hash
+    if not (db_user.password_hash.startswith('$2a$') or db_user.password_hash.startswith('$2b$')):
+        try:
+            db_user.password_hash = hash_password(user_in.password)
+            db.commit()
+        except Exception as e:
+            print(f"Failed to auto-upgrade password hash: {e}")
 
     token = generate_token(db_user.username, db_user.id)
     return UserResponseSchema(id=db_user.id, username=db_user.username, token=token, profile_picture=db_user.profile_picture)

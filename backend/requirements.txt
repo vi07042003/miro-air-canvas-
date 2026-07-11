@@ -6,3 +6,4 @@ pydantic==2.7.2
 python-dotenv==1.0.1
 opencv-python-headless
 mediapipe==0.10.14
+bcrypt==4.1.3

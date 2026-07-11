@@ -35,8 +35,22 @@ def get_db():
 def init_db():
     """Create all tables defined in models. Safe to call on every startup."""
     from models import Base
+    import time
+    
+    max_retries = 10
+    retry_delay = 2
+    for attempt in range(max_retries):
+        try:
+            Base.metadata.create_all(bind=engine)
+            break
+        except Exception as e:
+            if attempt == max_retries - 1:
+                print(f"[ERROR] Failed to initialize database after {max_retries} attempts: {e}")
+                raise
+            print(f"[WARNING] Database not ready yet or DNS resolving (attempt {attempt + 1}/{max_retries}). Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
+
     try:
-        Base.metadata.create_all(bind=engine)
         # Safe migration: add profile_picture and stencil_usage_count columns to users table if not exist
         with engine.begin() as conn:
             try:

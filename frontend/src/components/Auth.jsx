@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { User, Lock, LogIn, UserPlus, Sparkles, AlertCircle } from 'lucide-react'
+import { User, Lock, LogIn, UserPlus, Sparkles, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { BACKEND_URL } from '../App'
 import { getFriendlyErrorMessage } from '../utils/errorHelper'
 
@@ -7,6 +7,8 @@ export default function Auth({ onLoginSuccess }) {
   const [isLogin, setIsLogin] = useState(true)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [hoverEye, setHoverEye] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -96,13 +98,27 @@ export default function Auth({ onLoginSuccess }) {
             <div style={styles.inputWrapper}>
               <Lock size={16} style={styles.inputIcon} />
               <input 
-                type="password" 
+                type={showPassword ? "text" : "password"} 
                 className="glass-input" 
-                style={styles.inputWithIcon}
+                style={{ ...styles.inputWithIcon, paddingRight: '40px' }}
                 placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <button
+                type="button"
+                style={{ 
+                  ...styles.eyeBtn, 
+                  color: hoverEye ? '#fff' : 'var(--text-muted)' 
+                }}
+                onClick={() => setShowPassword(!showPassword)}
+                onMouseEnter={() => setHoverEye(true)}
+                onMouseLeave={() => setHoverEye(false)}
+                tabIndex="-1"
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 
@@ -120,6 +136,7 @@ export default function Auth({ onLoginSuccess }) {
             onClick={() => {
               setIsLogin(!isLogin)
               setError('')
+              setShowPassword(false)
             }}
           >
             {isLogin ? 'Sign Up Now' : 'Log In Here'}
@@ -216,6 +233,21 @@ const styles = {
   },
   inputWithIcon: {
     paddingLeft: '40px',
+  },
+  eyeBtn: {
+    position: 'absolute',
+    right: '14px',
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--text-muted)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '4px',
+    borderRadius: '4px',
+    transition: 'color 0.2s ease',
+    outline: 'none',
   },
   submitBtn: {
     width: '100%',
